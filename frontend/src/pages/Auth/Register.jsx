@@ -13,6 +13,7 @@ import {
   Container,
 } from '@mui/material'
 import {
+  Person as PersonIcon,
   Email as EmailIcon,
   Lock as LockIcon,
   Visibility,
@@ -23,18 +24,21 @@ import { useForm } from 'react-hook-form'
 
 import { useAuth } from '../../hooks/useAuth.jsx'
 
-const Login = () => {
-  const { login, loading } = useAuth()
+const Register = () => {
+  const { register: registerUser, loading } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
 
   const {
     register,
     handleSubmit,
     formState: { errors },
+    watch,
   } = useForm()
 
+  const password = watch('password')
+
   const onSubmit = async (data) => {
-    await login(data.email, data.password)
+    await registerUser(data.name, data.email, data.password)
   }
 
   const togglePasswordVisibility = () => {
@@ -58,10 +62,10 @@ const Login = () => {
             <Box sx={{ textAlign: 'center', mb: 4 }}>
               <WhatsAppIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
               <Typography variant="h4" component="h1" gutterBottom>
-                ChatBot System
+                Criar Conta
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Faça login para acessar sua conta
+                Crie sua conta para começar
               </Typography>
             </Box>
 
@@ -69,11 +73,34 @@ const Login = () => {
             <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate>
               <TextField
                 fullWidth
+                label="Nome completo"
+                margin="normal"
+                autoComplete="name"
+                autoFocus
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <PersonIcon color="action" />
+                    </InputAdornment>
+                  ),
+                }}
+                {...register('name', {
+                  required: 'Nome é obrigatório',
+                  minLength: {
+                    value: 2,
+                    message: 'Nome deve ter pelo menos 2 caracteres',
+                  },
+                })}
+                error={!!errors.name}
+                helperText={errors.name?.message}
+              />
+
+              <TextField
+                fullWidth
                 label="Email"
                 type="email"
                 margin="normal"
                 autoComplete="email"
-                autoFocus
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -97,7 +124,7 @@ const Login = () => {
                 label="Senha"
                 type={showPassword ? 'text' : 'password'}
                 margin="normal"
-                autoComplete="current-password"
+                autoComplete="new-password"
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -127,6 +154,28 @@ const Login = () => {
                 helperText={errors.password?.message}
               />
 
+              <TextField
+                fullWidth
+                label="Confirmar senha"
+                type={showPassword ? 'text' : 'password'}
+                margin="normal"
+                autoComplete="new-password"
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <LockIcon color="action" />
+                    </InputAdornment>
+                  ),
+                }}
+                {...register('confirmPassword', {
+                  required: 'Confirmação de senha é obrigatória',
+                  validate: (value) =>
+                    value === password || 'Senhas não coincidem',
+                })}
+                error={!!errors.confirmPassword}
+                helperText={errors.confirmPassword?.message}
+              />
+
               <Button
                 type="submit"
                 fullWidth
@@ -135,14 +184,14 @@ const Login = () => {
                 disabled={loading}
                 sx={{ mt: 3, mb: 2, py: 1.5 }}
               >
-                {loading ? 'Entrando...' : 'Entrar'}
+                {loading ? 'Criando conta...' : 'Criar conta'}
               </Button>
 
               <Box sx={{ textAlign: 'center' }}>
                 <Typography variant="body2">
-                  Não tem uma conta?{' '}
-                  <Link component={RouterLink} to="/register" underline="hover">
-                    Criar conta
+                  Já tem uma conta?{' '}
+                  <Link component={RouterLink} to="/login" underline="hover">
+                    Fazer login
                   </Link>
                 </Typography>
               </Box>
@@ -154,4 +203,4 @@ const Login = () => {
   )
 }
 
-export default Login
+export default Register

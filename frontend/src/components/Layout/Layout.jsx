@@ -20,7 +20,7 @@ import {
   Settings as SettingsIcon,
 } from '@mui/icons-material'
 
-import { useAuth } from '../../hooks/useAuth'
+import { useAuth } from '../../hooks/useAuth.jsx'
 import Sidebar from './Sidebar'
 
 const DRAWER_WIDTH = 280

@@ -3,7 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { Box } from '@mui/material'
 
 // Hooks
-import { useAuth } from './hooks/useAuth'
+import { useAuth } from './hooks/useAuth.jsx'
 
 // Components
 import Layout from './components/Layout/Layout'

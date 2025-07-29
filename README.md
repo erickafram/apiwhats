@@ -287,3 +287,19 @@ Para suporte e dúvidas:
 ---
 
 **Desenvolvido com ❤️ para automatizar atendimento no WhatsApp**
+
+INICIAR PROJETO
+# Instalar dependências do frontend
+npm run setup:frontend
+cd frontend && npm install && cd ..
+
+# Executar migration para templates
+npm run migrate
+
+
+# Opção 1: Tudo junto
+npm run dev:full
+
+# Opção 2: Separado
+npm run dev          # Backend (porta 5000)
+npm run dev:frontend # Frontend (porta 3000)

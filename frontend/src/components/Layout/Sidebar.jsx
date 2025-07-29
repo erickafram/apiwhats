@@ -15,7 +15,7 @@ import {
   Dashboard as DashboardIcon,
   SmartToy as BotIcon,
   AccountTree as FlowIcon,
-  Template as TemplateIcon,
+  ViewModule as TemplateIcon,
   Chat as ConversationIcon,
   Queue as QueueIcon,
   Analytics as AnalyticsIcon,
