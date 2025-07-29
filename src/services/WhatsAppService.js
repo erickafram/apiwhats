@@ -1,9 +1,10 @@
-const { 
-  default: makeWASocket, 
-  DisconnectReason, 
+const {
+  default: makeWASocket,
+  DisconnectReason,
   useMultiFileAuthState,
   downloadMediaMessage,
-  getContentType
+  getContentType,
+  fetchLatestBaileysVersion
 } = require('@whiskeysockets/baileys');
 const QRCode = require('qrcode');
 const fs = require('fs');
@@ -14,8 +15,12 @@ class WhatsAppService {
   constructor(io) {
     this.io = io;
     this.connections = new Map(); // botId -> socket connection
-    this.sessionDir = process.env.WHATSAPP_SESSION_DIR || 'sessions';
-    
+    this.sessionDir = process.env.WHATSAPP_SESSION_DIR || 'whatsapp_sessions';
+
+    // ADICIONAR: Rate limiting
+    this.lastMessageTime = new Map(); // botId -> timestamp
+    this.messageQueue = new Map(); // botId -> array de mensagens
+
     // Criar diretório de sessões se não existir
     if (!fs.existsSync(this.sessionDir)) {
       fs.mkdirSync(this.sessionDir, { recursive: true });
@@ -24,58 +29,222 @@ class WhatsAppService {
 
   async connectBot(botId) {
     try {
-      console.log(`Iniciando conexão para bot ${botId}`);
-      
+      console.log(`🔄 Iniciando conexão ROBUSTA para bot ${botId}`);
+
       const bot = await Bot.findByPk(botId);
       if (!bot) {
         throw new Error('Bot não encontrado');
       }
 
-      // Se já está conectado, retornar status atual
+      // Limpar conexão existente se houver
       if (this.connections.has(botId)) {
         const connection = this.connections.get(botId);
-        if (connection.socket && connection.socket.user) {
-          return {
-            status: 'connected',
-            phone: connection.socket.user.id.split(':')[0]
-          };
+        if (connection.socket) {
+          try {
+            connection.socket.end();
+          } catch (e) {}
         }
+        this.connections.delete(botId);
+        console.log(`🧹 Conexão anterior do bot ${botId} removida`);
       }
 
+      // Limpar sessão antiga
       const sessionPath = path.join(this.sessionDir, `bot_${botId}`);
+      if (fs.existsSync(sessionPath)) {
+        fs.rmSync(sessionPath, { recursive: true, force: true });
+        console.log(`🗑️ Sessão antiga do bot ${botId} removida`);
+      }
+
+      // Aguardar um pouco para estabilizar
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Buscar versão mais recente do Baileys
+      const { version, isLatest } = await fetchLatestBaileysVersion();
+      console.log(`📱 Usando Baileys versão: ${version.join('.')}, Latest: ${isLatest}`);
+
       const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
+
+      // Logger completamente silencioso
+      const baileyLogger = {
+        level: 'silent',
+        trace: () => {},
+        debug: () => {},
+        info: () => {},
+        warn: () => {},
+        error: () => {},
+        fatal: () => {},
+        child: () => ({
+          level: 'silent',
+          trace: () => {},
+          debug: () => {},
+          info: () => {},
+          warn: () => {},
+          error: () => {},
+          fatal: () => {}
+        })
+      };
+
+      // Aguardar um pouco para estabilizar
+      await new Promise(resolve => setTimeout(resolve, 5000)); // 5 segundos
 
       const socket = makeWASocket({
         auth: state,
+        browser: ['Chrome', 'Chrome', '110.0.0.0'],
         printQRInTerminal: false,
-        logger: {
-          level: 'silent',
-          child: () => ({ level: 'silent' })
+        logger: baileyLogger,
+        getMessage: async () => {
+          return {
+            conversation: ''
+          };
         }
       });
 
       // Armazenar conexão
       this.connections.set(botId, { socket, saveCreds, bot });
 
-      // Event handlers
-      socket.ev.on('connection.update', async (update) => {
-        await this.handleConnectionUpdate(botId, update);
+      // Promise para aguardar QR Code ou conexão
+      return new Promise((resolve, reject) => {
+        let resolved = false;
+        let qrGenerated = false;
+
+        // Timeout mais longo
+        const timeout = setTimeout(() => {
+          if (!resolved) {
+            resolved = true;
+            if (qrGenerated) {
+              resolve({
+                status: 'qr_ready',
+                message: 'QR Code disponível para escaneamento'
+              });
+            } else {
+              resolve({
+                status: 'timeout',
+                message: 'Timeout aguardando QR Code'
+              });
+            }
+          }
+        }, 60000);
+
+        // Event handlers melhorados
+        socket.ev.on('connection.update', async (update) => {
+          try {
+            // DEBUG COMPLETO
+            console.log('=== CONNECTION UPDATE ===');
+            console.log(JSON.stringify(update, null, 2));
+
+            if (update.lastDisconnect?.error) {
+              console.log('=== ERROR DETAILS ===');
+              console.log('Error:', update.lastDisconnect.error.message);
+              console.log('Stack:', update.lastDisconnect.error.stack);
+            }
+
+            const { connection, lastDisconnect, qr } = update;
+
+            console.log(`🔄 Bot ${botId} - Update: connection=${connection}, qr=${!!qr}`);
+
+            if (qr && !qrGenerated) {
+              qrGenerated = true;
+              console.log(`📱 QR Code gerado para bot ${botId}`);
+
+              try {
+                // Gerar QR Code como base64
+                const qrCodeDataURL = await QRCode.toDataURL(qr, {
+                  width: 256,
+                  margin: 2,
+                  color: {
+                    dark: '#000000',
+                    light: '#FFFFFF'
+                  }
+                });
+                const qrCodeBase64 = qrCodeDataURL.replace('data:image/png;base64,', '');
+
+                // Salvar no banco
+                await bot.update({
+                  qr_code: qrCodeBase64,
+                  connection_status: 'qr_generated'
+                });
+
+                if (!resolved) {
+                  resolved = true;
+                  clearTimeout(timeout);
+                  resolve({
+                    status: 'qr_generated',
+                    message: 'QR Code gerado com sucesso',
+                    qrCode: qrCodeBase64
+                  });
+                }
+              } catch (qrError) {
+                console.error(`❌ Erro ao gerar QR Code para bot ${botId}:`, qrError);
+              }
+            }
+
+            if (connection === 'open') {
+              console.log(`✅ Bot ${botId} conectado com sucesso!`);
+
+              // Aguardar MAIS tempo antes de qualquer ação
+              await new Promise(resolve => setTimeout(resolve, 10000)); // 10 segundos
+
+              await bot.update({
+                is_connected: true,
+                connection_status: 'connected',
+                phone_number: socket.user?.id?.split(':')[0] || null,
+                last_seen: new Date()
+              });
+
+              if (!resolved) {
+                resolved = true;
+                clearTimeout(timeout);
+                resolve({
+                  status: 'connected',
+                  message: 'Bot conectado com sucesso',
+                  phone: socket.user?.id?.split(':')[0]
+                });
+              }
+            }
+
+            if (connection === 'close') {
+              const statusCode = lastDisconnect?.error?.output?.statusCode;
+              console.log(`❌ Bot ${botId} desconectado. Código: ${statusCode}`);
+
+              await bot.update({
+                is_connected: false,
+                connection_status: 'disconnected',
+                qr_code: null
+              });
+
+              this.connections.delete(botId);
+
+              if (!resolved) {
+                resolved = true;
+                clearTimeout(timeout);
+                resolve({
+                  status: 'disconnected',
+                  message: `Conexão rejeitada pelo WhatsApp (${statusCode})`,
+                  error: statusCode
+                });
+              }
+            }
+
+          } catch (error) {
+            console.error(`❌ Erro no connection.update do bot ${botId}:`, error);
+          }
+        });
+
+        socket.ev.on('creds.update', saveCreds);
+
+        // Eventos de mensagem apenas se conectado
+        socket.ev.on('messages.upsert', async (messageUpdate) => {
+          if (socket.user) {
+            await this.handleIncomingMessages(botId, messageUpdate);
+          }
+        });
+
+        socket.ev.on('messages.update', async (messageUpdate) => {
+          if (socket.user) {
+            await this.handleMessageStatusUpdate(botId, messageUpdate);
+          }
+        });
       });
-
-      socket.ev.on('creds.update', saveCreds);
-
-      socket.ev.on('messages.upsert', async (messageUpdate) => {
-        await this.handleIncomingMessages(botId, messageUpdate);
-      });
-
-      socket.ev.on('messages.update', async (messageUpdate) => {
-        await this.handleMessageStatusUpdate(botId, messageUpdate);
-      });
-
-      return {
-        status: 'connecting',
-        message: 'Processo de conexão iniciado'
-      };
 
     } catch (error) {
       console.error(`Erro ao conectar bot ${botId}:`, error);
@@ -111,8 +280,13 @@ class WhatsAppService {
       }
 
       if (connection === 'close') {
-        const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-        
+        const statusCode = lastDisconnect?.error?.output?.statusCode;
+        const isLoggedOut = statusCode === DisconnectReason.loggedOut;
+        const isRestartRequired = statusCode === DisconnectReason.restartRequired;
+        const isBadSession = statusCode === DisconnectReason.badSession;
+
+        console.log(`Bot ${botId} desconectado. Código: ${statusCode}`);
+
         await bot.update({
           is_connected: false,
           connection_status: 'disconnected',
@@ -120,17 +294,21 @@ class WhatsAppService {
         });
 
         this.connections.delete(botId);
-
         this.io.emit('bot-disconnected', { botId });
 
-        if (shouldReconnect) {
-          console.log(`Reconectando bot ${botId}...`);
-          setTimeout(() => {
-            this.connectBot(botId);
-          }, 5000);
+        if (isLoggedOut) {
+          console.log(`Bot ${botId} foi deslogado pelo WhatsApp`);
+        } else if (isBadSession) {
+          console.log(`Bot ${botId} - sessão inválida, limpando...`);
+          await this.clearBotSession(botId);
+        } else if (isRestartRequired) {
+          console.log(`Bot ${botId} - restart necessário`);
         } else {
-          console.log(`Bot ${botId} foi deslogado`);
+          console.log(`Bot ${botId} - desconexão inesperada (${statusCode})`);
         }
+
+        // NÃO reconectar automaticamente para evitar bloqueios
+        console.log(`Bot ${botId} - reconexão manual necessária`);
       }
 
       if (connection === 'open') {
@@ -309,13 +487,36 @@ class WhatsAppService {
   async sendMessage(botId, userPhone, content, mediaType = 'text', options = {}) {
     try {
       const connection = this.connections.get(botId);
-      
+
       if (!connection || !connection.socket) {
         throw new Error('Bot não está conectado');
       }
 
       const jid = userPhone.includes('@') ? userPhone : `${userPhone}@s.whatsapp.net`;
-      
+
+      // ADICIONAR: Simular comportamento humano
+      try {
+        // Marcar como online
+        await connection.socket.sendPresenceUpdate('available');
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Simular digitação
+        await connection.socket.sendPresenceUpdate('composing', jid);
+
+        // Delay baseado no tamanho da mensagem (50-100ms por caractere)
+        const typingTime = Math.min(
+          content.length * (50 + Math.random() * 50),
+          5000 // máximo 5 segundos
+        );
+        await new Promise(resolve => setTimeout(resolve, typingTime));
+
+        // Parar de digitar
+        await connection.socket.sendPresenceUpdate('paused', jid);
+        await new Promise(resolve => setTimeout(resolve, 200));
+      } catch (e) {
+        // Continuar mesmo se falhar presença
+      }
+
       let messagePayload;
       
       switch (mediaType) {
@@ -357,9 +558,12 @@ class WhatsAppService {
       }
 
       const result = await connection.socket.sendMessage(jid, messagePayload);
-      
+
+      // ADICIONAR: Pequeno delay após enviar
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       console.log(`Mensagem enviada para ${userPhone} via bot ${botId}`);
-      
+
       return result;
       
     } catch (error) {
@@ -397,12 +601,23 @@ class WhatsAppService {
   async disconnectBot(botId) {
     try {
       const connection = this.connections.get(botId);
-      
-      if (connection && connection.socket) {
-        await connection.socket.logout();
-        connection.socket.end();
+
+      if (connection) {
+        // ADICIONAR: Limpar intervalo de presença
+        if (connection.presenceInterval) {
+          clearInterval(connection.presenceInterval);
+        }
+
+        if (connection.socket) {
+          try {
+            await connection.socket.sendPresenceUpdate('unavailable');
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await connection.socket.logout();
+          } catch (e) {}
+          connection.socket.end();
+        }
       }
-      
+
       this.connections.delete(botId);
       
       // Atualizar status no banco
@@ -469,6 +684,44 @@ class WhatsAppService {
     }
     
     return connectedBots;
+  }
+
+  async clearBotSession(botId) {
+    try {
+      console.log(`Limpando sessão do bot ${botId}`);
+
+      // Desconectar se estiver conectado
+      if (this.connections.has(botId)) {
+        const connection = this.connections.get(botId);
+        if (connection.socket) {
+          connection.socket.end();
+        }
+        this.connections.delete(botId);
+      }
+
+      // Limpar arquivos de sessão
+      const sessionPath = path.join(this.sessionDir, `bot_${botId}`);
+      if (fs.existsSync(sessionPath)) {
+        fs.rmSync(sessionPath, { recursive: true, force: true });
+        console.log(`Sessão do bot ${botId} removida`);
+      }
+
+      // Atualizar status no banco
+      const bot = await Bot.findByPk(botId);
+      if (bot) {
+        await bot.update({
+          is_connected: false,
+          connection_status: 'disconnected',
+          qr_code: null,
+          phone_number: null
+        });
+      }
+
+      return { success: true, message: 'Sessão limpa com sucesso' };
+    } catch (error) {
+      console.error(`Erro ao limpar sessão do bot ${botId}:`, error);
+      throw error;
+    }
   }
 }
 

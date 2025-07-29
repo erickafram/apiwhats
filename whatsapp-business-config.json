@@ -1,0 +1,8 @@
+{
+  "provider": "whatsapp-business-api",
+  "webhook_url": "http://localhost:5000/webhook/whatsapp",
+  "verify_token": "whatsapp_verify_token_oe54cehi3",
+  "access_token": "YOUR_WHATSAPP_BUSINESS_ACCESS_TOKEN",
+  "phone_number_id": "YOUR_PHONE_NUMBER_ID",
+  "business_account_id": "YOUR_BUSINESS_ACCOUNT_ID"
+}

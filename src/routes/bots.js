@@ -235,9 +235,10 @@ router.post('/:id/connect', validateParams(schemas.idParam), async (req, res) =>
     const result = await global.whatsappService.connectBot(bot.id);
 
     res.json({
-      message: 'Processo de conexão iniciado',
-      qr_code: result.qrCode,
-      status: result.status
+      message: result.message || 'Processo de conexão iniciado',
+      qrCode: result.qrCode || null,
+      status: result.status,
+      phone: result.phone || null
     });
   } catch (error) {
     console.error('Erro ao conectar bot:', error);
@@ -252,9 +253,9 @@ router.post('/:id/connect', validateParams(schemas.idParam), async (req, res) =>
 router.post('/:id/disconnect', validateParams(schemas.idParam), async (req, res) => {
   try {
     const bot = await Bot.findOne({
-      where: { 
+      where: {
         id: req.params.id,
-        user_id: req.user.id 
+        user_id: req.user.id
       }
     });
 
@@ -272,6 +273,38 @@ router.post('/:id/disconnect', validateParams(schemas.idParam), async (req, res)
     });
   } catch (error) {
     console.error('Erro ao desconectar bot:', error);
+    res.status(500).json({
+      error: 'Erro interno do servidor',
+      code: 'INTERNAL_ERROR'
+    });
+  }
+});
+
+// Limpar sessão do bot
+router.post('/:id/clear-session', validateParams(schemas.idParam), async (req, res) => {
+  try {
+    const bot = await Bot.findOne({
+      where: {
+        id: req.params.id,
+        user_id: req.user.id
+      }
+    });
+
+    if (!bot) {
+      return res.status(404).json({
+        error: 'Bot não encontrado',
+        code: 'BOT_NOT_FOUND'
+      });
+    }
+
+    const result = await global.whatsappService.clearBotSession(bot.id);
+
+    res.json({
+      message: 'Sessão limpa com sucesso',
+      result
+    });
+  } catch (error) {
+    console.error('Erro ao limpar sessão do bot:', error);
     res.status(500).json({
       error: 'Erro interno do servidor',
       code: 'INTERNAL_ERROR'

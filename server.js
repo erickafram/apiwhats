@@ -89,11 +89,22 @@ db.sequelize.sync({ force: false }).then(async () => {
 
   // Inicializar serviços após sincronização do banco
   const WhatsAppService = require('./src/services/WhatsAppService');
+  const WhatsAppSimulator = require('./src/services/WhatsAppSimulator');
   const BotManager = require('./src/services/BotManager');
   const QueueService = require('./src/services/QueueService');
 
+  // Usar WhatsApp real
+  const useSimulator = process.env.USE_WHATSAPP_SIMULATOR === 'true' || false; // Usar WhatsApp real
+
   // Instanciar serviços globais
-  global.whatsappService = new WhatsAppService(io);
+  if (useSimulator) {
+    console.log('🤖 Iniciando WhatsApp SIMULADOR para desenvolvimento');
+    global.whatsappService = new WhatsAppSimulator(io);
+  } else {
+    console.log('📱 Iniciando WhatsApp Service real');
+    global.whatsappService = new WhatsAppService(io);
+  }
+
   global.botManager = new BotManager(io);
   global.queueService = new QueueService(io);
 
