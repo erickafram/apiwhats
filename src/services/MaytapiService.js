@@ -266,15 +266,15 @@ class MaytapiService {
     try {
       // Buscar ou criar conversa
       let conversation = await Conversation.findOne({
-        where: { botId, phoneNumber }
+        where: { bot_id: botId, user_phone: phoneNumber }
       });
 
       if (!conversation) {
         conversation = await Conversation.create({
-          botId,
-          phoneNumber,
+          bot_id: botId,
+          user_phone: phoneNumber,
           status: 'active',
-          lastMessageAt: new Date()
+          last_activity_at: new Date()
         });
       }
 
