@@ -280,10 +280,10 @@ class MaytapiService {
 
       // Criar mensagem
       const message = await Message.create({
-        conversationId: conversation.id,
+        conversation_id: conversation.id,
         content,
         direction,
-        messageType: options.type || 'text',
+        message_type: options.type || 'text',
         metadata: options.metadata || {}
       });
 

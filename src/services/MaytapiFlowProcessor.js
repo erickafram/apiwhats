@@ -51,10 +51,10 @@ class MaytapiFlowProcessor {
       
       // Salvar mensagem recebida
       await Message.create({
-        conversationId: conversation.id,
+        conversation_id: conversation.id,
         content: messageContent,
         direction: 'incoming',
-        messageType: messageType,
+        message_type: messageType,
         metadata: { flow_id: flow.id }
       });
 
@@ -368,10 +368,10 @@ class MaytapiFlowProcessor {
         
         if (conversation) {
           await Message.create({
-            conversationId: conversation.id,
+            conversation_id: conversation.id,
             content: message,
             direction: 'outgoing',
-            messageType: 'text'
+            message_type: 'text'
           });
         }
       }
