@@ -6,7 +6,7 @@ module.exports = {
     {
       name: 'chatbot-whats-api',
       script: 'server.js',
-      cwd: '/home/chatbotwhats/htdocs/chatbotwhats.online/apiwhats',
+      cwd: '/home/chatbotwhats/htdocs/chatbotwhats.online',
       instances: 1,
       exec_mode: 'fork',
       env: {
