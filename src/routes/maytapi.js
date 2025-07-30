@@ -14,7 +14,7 @@ router.post('/webhook', async (req, res) => {
 
     // Processar mensagem via MaytapiService global
     if (global.maytapiService) {
-      await global.maytapiService.processWebhookMessage(req.body);
+      await global.maytapiService.processIncomingMessage(req.body);
     }
 
     res.status(200).json({ status: 'processed' });
