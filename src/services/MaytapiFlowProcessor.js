@@ -366,27 +366,55 @@ class MaytapiFlowProcessor {
 
       console.log(`🔧 DEBUG: Enviando mensagem - botId=${fixedBotId}, phoneNumber=${fixedPhoneNumber}`);
 
-      if (this.maytapiService) {
-        await this.maytapiService.sendMessage(fixedBotId, fixedPhoneNumber, message);
-        
-        // Salvar mensagem enviada
-        const conversation = await Conversation.findOne({
-          where: { bot_id: fixedBotId, user_phone: fixedPhoneNumber }
-        });
+      // BYPASS: Enviar diretamente via API HTTP
+      await this.sendDirectMessage(fixedPhoneNumber, message);
 
-        if (conversation) {
-          await Message.create({
-            bot_id: fixedBotId,
-            conversation_id: conversation.id,
-            sender_phone: fixedPhoneNumber,
-            content: message,
-            direction: 'outgoing',
-            message_type: 'text'
-          });
-        }
+      // Salvar mensagem enviada
+      const conversation = await Conversation.findOne({
+        where: { bot_id: fixedBotId, user_phone: fixedPhoneNumber }
+      });
+
+      if (conversation) {
+        await Message.create({
+          bot_id: fixedBotId,
+          conversation_id: conversation.id,
+          sender_phone: fixedPhoneNumber,
+          content: message,
+          direction: 'outgoing',
+          message_type: 'text'
+        });
       }
+
+      console.log(`✅ Mensagem enviada para ${fixedPhoneNumber}: ${message}`);
     } catch (error) {
       console.error('❌ Erro ao enviar mensagem:', error);
+    }
+  }
+
+  async sendDirectMessage(phoneNumber, message) {
+    try {
+      const axios = require('axios');
+
+      const url = 'https://api.maytapi.com/api/ebba8265-1e89-4e6a-8255-7eee3e64b7f5/103174/sendMessage';
+
+      const payload = {
+        to_number: phoneNumber,
+        type: 'text',
+        message: message
+      };
+
+      const response = await axios.post(url, payload, {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-maytapi-key': process.env.MAYTAPI_TOKEN
+        }
+      });
+
+      console.log(`🚀 Mensagem enviada via API direta: ${response.status}`);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Erro no envio direto:', error.message);
+      throw error;
     }
   }
 
