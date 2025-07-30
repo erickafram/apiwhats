@@ -367,7 +367,8 @@ class MaytapiService {
 
       let botId = null;
       for (const [id, connection] of this.connections) {
-        if (connection.phoneId === phone_id) {
+        // Comparar como string para evitar problemas de tipo
+        if (String(connection.phoneId) === String(phone_id)) {
           botId = id;
           break;
         }
