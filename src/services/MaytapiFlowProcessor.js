@@ -447,10 +447,14 @@ class MaytapiFlowProcessor {
 
   evaluateCondition(condition, input, variables) {
     const value = condition.variable ? variables[condition.variable] : input;
-    
+
+    console.log(`🔧 DEBUG Condição: variável="${condition.variable}", valor="${value}", operador="${condition.operator}", esperado="${condition.value}"`);
+
     switch (condition.operator) {
       case 'equals':
-        return value === condition.value;
+        const result = value === condition.value;
+        console.log(`🔧 DEBUG Equals: "${value}" === "${condition.value}" = ${result}`);
+        return result;
       case 'contains':
         return value.toLowerCase().includes(condition.value.toLowerCase());
       case 'starts_with':
