@@ -360,8 +360,8 @@ class MaytapiFlowProcessor {
 
   async sendMessage(botId, phoneNumber, message) {
     try {
-      if (this.maytapiService) {
-        await this.maytapiService.sendMessage(botId, phoneNumber, message);
+      if (global.maytapiService) {
+        await global.maytapiService.sendMessage(botId, phoneNumber, message);
         
         // Salvar mensagem enviada
         const conversation = await Conversation.findOne({
