@@ -5,6 +5,14 @@ module.exports = (sequelize, DataTypes) => {
       primaryKey: true,
       autoIncrement: true
     },
+    bot_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'bots',
+        key: 'id'
+      }
+    },
     conversation_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -18,8 +26,20 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
       unique: true
     },
+    sender_phone: {
+      type: DataTypes.STRING(20),
+      allowNull: false
+    },
+    sender_name: {
+      type: DataTypes.STRING(100),
+      allowNull: true
+    },
+    message_type: {
+      type: DataTypes.ENUM('text', 'image', 'audio', 'video', 'document', 'location', 'contact'),
+      defaultValue: 'text'
+    },
     direction: {
-      type: DataTypes.ENUM('in', 'out'),
+      type: DataTypes.ENUM('incoming', 'outgoing'),
       allowNull: false
     },
     content: {
