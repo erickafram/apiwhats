@@ -30,7 +30,10 @@ import {
   List,
   ListItem,
   ListItemText,
-  ListItemIcon
+  ListItemIcon,
+  Tabs,
+  Tab,
+  Paper
 } from '@mui/material'
 import {
   Add as AddIcon,
@@ -50,11 +53,13 @@ import {
   Message as MessageIcon,
   Input as InputIcon,
   CallSplit as ConditionIcon,
-  Stop as EndIcon
+  Stop as EndIcon,
+  Code as CodeIcon
 } from '@mui/icons-material'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { flowsAPI, botsAPI } from '../../services/api'
+import CodeFlowCreator from '../../components/CodeFlowCreator'
 
 const Flows = () => {
   const [flows, setFlows] = useState([])
@@ -62,6 +67,7 @@ const Flows = () => {
   const [loading, setLoading] = useState(true)
   const [selectedBot, setSelectedBot] = useState('all')
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [currentTab, setCurrentTab] = useState(0)
   const [newFlow, setNewFlow] = useState({
     name: '',
     description: '',
@@ -187,6 +193,15 @@ const Flows = () => {
     setSelectedFlow(null)
   }
 
+  const handleTabChange = (event, newValue) => {
+    setCurrentTab(newValue)
+  }
+
+  const handleFlowCreated = () => {
+    loadFlows()
+    setCurrentTab(0) // Voltar para a aba de listagem
+  }
+
   const getStatusColor = (flow) => {
     if (flow.is_active) return 'success'
     return 'default'
@@ -274,24 +289,35 @@ const Flows = () => {
         </Button>
       </Box>
 
-      {/* Filtro por Bot */}
-      <Box sx={{ mb: 3 }}>
-        <FormControl sx={{ minWidth: 200 }}>
-          <InputLabel>Filtrar por Bot</InputLabel>
-          <Select
-            value={selectedBot}
-            onChange={(e) => setSelectedBot(e.target.value)}
-            label="Filtrar por Bot"
-          >
-            <MenuItem value="all">Todos os Bots</MenuItem>
-            {bots.map((bot) => (
-              <MenuItem key={bot.id} value={bot.id}>
-                {bot.name}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      </Box>
+      {/* Abas */}
+      <Paper sx={{ mb: 3 }}>
+        <Tabs value={currentTab} onChange={handleTabChange}>
+          <Tab label="Meus Fluxos" icon={<FlowIcon />} />
+          <Tab label="Criar por Código" icon={<CodeIcon />} />
+        </Tabs>
+      </Paper>
+
+      {/* Conteúdo das Abas */}
+      {currentTab === 0 && (
+        <>
+          {/* Filtro por Bot */}
+          <Box sx={{ mb: 3 }}>
+            <FormControl sx={{ minWidth: 200 }}>
+              <InputLabel>Filtrar por Bot</InputLabel>
+              <Select
+                value={selectedBot}
+                onChange={(e) => setSelectedBot(e.target.value)}
+                label="Filtrar por Bot"
+              >
+                <MenuItem value="all">Todos os Bots</MenuItem>
+                {bots.map((bot) => (
+                  <MenuItem key={bot.id} value={bot.id}>
+                    {bot.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
 
       {flows.length === 0 ? (
         <Card>
@@ -441,6 +467,16 @@ const Flows = () => {
             </Grid>
           ))}
         </Grid>
+      )}
+        </>
+      )}
+
+      {/* Aba de Criação por Código */}
+      {currentTab === 1 && (
+        <CodeFlowCreator
+          bots={bots}
+          onFlowCreated={handleFlowCreated}
+        />
       )}
 
       {/* Menu de contexto */}

@@ -158,7 +158,7 @@ const Sidebar = ({ onItemClick }) => {
           WhatsApp Chatbot System v1.0
         </Typography>
         <Typography variant="caption" color="text.secondary" align="center" display="block">
-          Desenvolvido com ❤️
+          Desenvolvido por erickdev.online
         </Typography>
       </Box>
     </Box>

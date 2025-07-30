@@ -27,7 +27,10 @@ import {
   FormControlLabel,
   Accordion,
   AccordionSummary,
-  AccordionDetails
+  AccordionDetails,
+  Tabs,
+  Tab,
+  CircularProgress
 } from '@mui/material'
 import {
   Save as SaveIcon,
@@ -43,7 +46,9 @@ import {
   Start as StartIcon,
   ExpandMore as ExpandMoreIcon,
   Close as CloseIcon,
-  Visibility as PreviewIcon
+  Visibility as PreviewIcon,
+  Code as CodeIcon,
+  AccountTree as FlowIcon
 } from '@mui/icons-material'
 import { useParams, useNavigate } from 'react-router-dom'
 import ReactFlow, {
@@ -87,6 +92,12 @@ const FlowEditor = () => {
   const [selectedNode, setSelectedNode] = useState(null)
   const [nodeDialogOpen, setNodeDialogOpen] = useState(false)
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false)
+  const [currentTab, setCurrentTab] = useState(0)
+
+  // Estados para edição por código
+  const [codeEditorOpen, setCodeEditorOpen] = useState(false)
+  const [flowCode, setFlowCode] = useState('')
+  const [codeValidationError, setCodeValidationError] = useState('')
 
   // Estados do nó sendo editado
   const [editingNode, setEditingNode] = useState({
@@ -351,6 +362,114 @@ const FlowEditor = () => {
     }
   }
 
+  // Funções para edição por código
+  const handleTabChange = (event, newValue) => {
+    setCurrentTab(newValue)
+    if (newValue === 1) {
+      // Ao abrir a aba de código, carregar o JSON atual
+      const currentFlowData = {
+        name: flow?.name || '',
+        description: flow?.description || '',
+        trigger_keywords: flow?.trigger_keywords || [],
+        is_active: flow?.is_active || false,
+        is_default: flow?.is_default || false,
+        priority: flow?.priority || 0,
+        flow_data: {
+          nodes: nodes.map(node => ({
+            id: node.id,
+            type: node.data.nodeType || 'message',
+            position: node.position,
+            data: node.data
+          })),
+          edges: edges,
+          viewport: { x: 0, y: 0, zoom: 1 }
+        }
+      }
+      setFlowCode(JSON.stringify(currentFlowData, null, 2))
+    }
+  }
+
+  const validateFlowCode = (code) => {
+    try {
+      const parsed = JSON.parse(code)
+
+      if (!parsed.flow_data || !parsed.flow_data.nodes) {
+        throw new Error('Campo "flow_data.nodes" é obrigatório')
+      }
+
+      if (!Array.isArray(parsed.flow_data.nodes) || parsed.flow_data.nodes.length === 0) {
+        throw new Error('Deve haver pelo menos um nó no fluxo')
+      }
+
+      setCodeValidationError('')
+      return true
+    } catch (error) {
+      setCodeValidationError(error.message)
+      return false
+    }
+  }
+
+  const handleCodeChange = (event) => {
+    const newCode = event.target.value
+    setFlowCode(newCode)
+
+    if (newCode.trim()) {
+      validateFlowCode(newCode)
+    } else {
+      setCodeValidationError('')
+    }
+  }
+
+  const applyCodeChanges = async () => {
+    if (!validateFlowCode(flowCode)) {
+      toast.error('Código JSON inválido')
+      return
+    }
+
+    try {
+      const parsedFlow = JSON.parse(flowCode)
+
+      // Atualizar o fluxo no backend
+      await flowsAPI.update(id, parsedFlow)
+
+      // Atualizar o estado local
+      setFlow({ ...flow, ...parsedFlow })
+
+      // Converter para ReactFlow
+      if (parsedFlow.flow_data && parsedFlow.flow_data.nodes) {
+        const reactFlowNodes = parsedFlow.flow_data.nodes.map(node => ({
+          id: node.id,
+          type: 'default',
+          position: node.position || { x: Math.random() * 400, y: Math.random() * 400 },
+          data: {
+            label: getNodeLabel(node),
+            nodeType: node.type,
+            content: node.content,
+            ...node.data
+          },
+          style: {
+            background: getNodeColor(node.type),
+            color: 'white',
+            border: '1px solid #222138',
+            width: 180,
+            fontSize: 12
+          }
+        }))
+
+        const reactFlowEdges = parsedFlow.flow_data.edges || []
+
+        setNodes(reactFlowNodes)
+        setEdges(reactFlowEdges)
+      }
+
+      toast.success('Fluxo atualizado com sucesso!')
+      setCurrentTab(0) // Voltar para a aba visual
+    } catch (error) {
+      console.error('Erro ao aplicar mudanças:', error)
+      toast.error('Erro ao aplicar mudanças: ' + (error.response?.data?.error || error.message))
+    }
+  }
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
@@ -414,7 +533,17 @@ const FlowEditor = () => {
         </Toolbar>
       </Paper>
 
-      <Box sx={{ display: 'flex', flex: 1 }}>
+      {/* Abas */}
+      <Paper elevation={1}>
+        <Tabs value={currentTab} onChange={handleTabChange}>
+          <Tab label="Editor Visual" icon={<FlowIcon />} />
+          <Tab label="Editar por Código" icon={<CodeIcon />} />
+        </Tabs>
+      </Paper>
+
+      {/* Conteúdo das Abas */}
+      {currentTab === 0 && (
+        <Box sx={{ display: 'flex', flex: 1 }}>
         {/* Sidebar com tipos de nós */}
         <Drawer
           variant="persistent"
@@ -549,6 +678,78 @@ const FlowEditor = () => {
           </ReactFlow>
         </Box>
       </Box>
+      )}
+
+      {/* Aba de Edição por Código */}
+      {currentTab === 1 && (
+        <Box sx={{ p: 3, flex: 1 }}>
+          <Typography variant="h6" gutterBottom>
+            <CodeIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+            Editar Fluxo por Código
+          </Typography>
+
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Edite o fluxo diretamente através do código JSON. Tenha cuidado ao fazer alterações.
+          </Typography>
+
+          {/* Editor de Código */}
+          <Paper sx={{ p: 2, mb: 3 }}>
+            <Typography variant="subtitle2" gutterBottom>
+              Código JSON do Fluxo:
+            </Typography>
+            <TextField
+              fullWidth
+              multiline
+              rows={25}
+              value={flowCode}
+              onChange={handleCodeChange}
+              variant="outlined"
+              sx={{
+                '& .MuiInputBase-input': {
+                  fontFamily: 'monospace',
+                  fontSize: '0.875rem'
+                }
+              }}
+            />
+          </Paper>
+
+          {/* Validação */}
+          {codeValidationError && (
+            <Alert severity="error" sx={{ mb: 3 }}>
+              <Typography variant="body2">
+                <strong>Erro de validação:</strong> {codeValidationError}
+              </Typography>
+            </Alert>
+          )}
+
+          {flowCode && !codeValidationError && (
+            <Alert severity="success" sx={{ mb: 3 }}>
+              <Typography variant="body2">
+                <strong>✅ JSON válido!</strong> Pronto para aplicar as mudanças.
+              </Typography>
+            </Alert>
+          )}
+
+          {/* Botões de Ação */}
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button
+              variant="contained"
+              onClick={applyCodeChanges}
+              disabled={!flowCode || !!codeValidationError}
+              startIcon={<SaveIcon />}
+            >
+              Aplicar Mudanças
+            </Button>
+
+            <Button
+              variant="outlined"
+              onClick={() => setCurrentTab(0)}
+            >
+              Voltar ao Editor Visual
+            </Button>
+          </Box>
+        </Box>
+      )}
 
       {/* Dialog de edição de nó */}
       <Dialog

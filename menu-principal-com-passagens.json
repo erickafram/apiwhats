@@ -1,0 +1,1014 @@
+{
+  "name": "Menu Principal com Passagens",
+  "description": "Menu principal de navegação com opção de passagens de ônibus",
+  "trigger_keywords": [
+    "oi",
+    "olá",
+    "menu",
+    "ajuda",
+    "start"
+  ],
+  "is_active": true,
+  "is_default": true,
+  "priority": 200,
+  "flow_data": {
+    "nodes": [
+      {
+        "id": "start",
+        "type": "start",
+        "position": {
+          "x": -317.95919000143545,
+          "y": -8.200180757361096
+        },
+        "data": {
+          "label": "Início: start",
+          "nodeType": "start",
+          "content": null,
+          "id": "start",
+          "next": "welcome",
+          "type": "start",
+          "position": {
+            "x": -317.95919000143545,
+            "y": -8.200180757361096
+          }
+        }
+      },
+      {
+        "id": "welcome",
+        "type": "message",
+        "position": {
+          "x": -238.9508514000526,
+          "y": 398.8931988784721
+        },
+        "data": {
+          "label": "Mensagem: 👋 Olá! Bem-vindo ao...",
+          "nodeType": "message",
+          "content": "👋 Olá! Bem-vindo ao nosso atendimento!\n\nEscolha uma opção:\n\n1️⃣ Informações\n2️⃣ Cadastro\n3️⃣ Suporte\n4️⃣ Vendas\n5️⃣ Falar com IA\n🚌 6️⃣ Passagens de Ônibus\n\nDigite o número da opção desejada:",
+          "id": "welcome",
+          "next": "menu_input",
+          "type": "message",
+          "position": {
+            "x": -238.9508514000526,
+            "y": 398.8931988784721
+          }
+        }
+      },
+      {
+        "id": "menu_input",
+        "type": "input",
+        "position": {
+          "x": 581.206785629139,
+          "y": -26.770593078175608
+        },
+        "data": {
+          "label": "Entrada: menu_input",
+          "nodeType": "input",
+          "content": null,
+          "id": "menu_input",
+          "next": "menu_condition",
+          "type": "input",
+          "position": {
+            "x": 581.206785629139,
+            "y": -26.770593078175608
+          },
+          "variable": "menu_option"
+        }
+      },
+      {
+        "id": "menu_condition",
+        "type": "condition",
+        "position": {
+          "x": 581.4070481640283,
+          "y": 132.5796177431806
+        },
+        "data": {
+          "label": "Condição: menu_condition",
+          "nodeType": "condition",
+          "id": "menu_condition",
+          "next": "info",
+          "type": "condition",
+          "position": {
+            "x": 581.4070481640283,
+            "y": 132.5796177431806
+          },
+          "conditions": [
+            {
+              "next": "info",
+              "value": "1",
+              "operator": "equals",
+              "variable": "menu_option"
+            },
+            {
+              "next": "redirect_cadastro",
+              "value": "2",
+              "operator": "equals",
+              "variable": "menu_option"
+            },
+            {
+              "next": "redirect_suporte",
+              "value": "3",
+              "operator": "equals",
+              "variable": "menu_option"
+            },
+            {
+              "next": "redirect_vendas",
+              "value": "4",
+              "operator": "equals",
+              "variable": "menu_option"
+            },
+            {
+              "next": "ai_mode",
+              "value": "5",
+              "operator": "equals",
+              "variable": "menu_option"
+            },
+            {
+              "next": "passagens_rapidas",
+              "value": "6",
+              "operator": "equals",
+              "variable": "menu_option"
+            }
+          ],
+          "defaultNext": "invalid_option"
+        }
+      },
+      {
+        "id": "passagens_rapidas",
+        "type": "message",
+        "position": {
+          "x": 800,
+          "y": 300
+        },
+        "data": {
+          "label": "Mensagem: 🚌 PASSAGENS DISPONÍVEIS",
+          "nodeType": "message",
+          "content": "🚌 *PASSAGENS DISPONÍVEIS*\n\nPara qual cidade você precisa?\n\n✅ *DESTINOS COM PASSAGENS:*\n• Goiânia - R$ 65,00\n• Brasília - R$ 85,00\n• São Paulo - R$ 120,00\n• Rio de Janeiro - R$ 150,00\n• Belo Horizonte - R$ 95,00\n\n❌ *SEM PASSAGENS:* Outras cidades\n\nDigite o nome da cidade:",
+          "id": "passagens_rapidas",
+          "next": "get_destination",
+          "type": "message",
+          "position": {
+            "x": 800,
+            "y": 300
+          }
+        }
+      },
+      {
+        "id": "get_destination",
+        "type": "input",
+        "position": {
+          "x": 800,
+          "y": 450
+        },
+        "data": {
+          "label": "Entrada: Capturar Destino",
+          "nodeType": "input",
+          "content": null,
+          "id": "get_destination",
+          "next": "check_destination",
+          "type": "input",
+          "position": {
+            "x": 800,
+            "y": 450
+          },
+          "variable": "destination"
+        }
+      },
+      {
+        "id": "check_destination",
+        "type": "condition",
+        "position": {
+          "x": 800,
+          "y": 600
+        },
+        "data": {
+          "label": "Condição: Verificar Destino",
+          "nodeType": "condition",
+          "id": "check_destination",
+          "type": "condition",
+          "position": {
+            "x": 800,
+            "y": 600
+          },
+          "conditions": [
+            {
+              "variable": "destination",
+              "operator": "contains_any",
+              "value": ["goiania", "goiânia"],
+              "next": "goiania_options"
+            },
+            {
+              "variable": "destination",
+              "operator": "contains_any",
+              "value": ["brasilia", "brasília"],
+              "next": "brasilia_options"
+            },
+            {
+              "variable": "destination",
+              "operator": "contains_any",
+              "value": ["sao paulo", "são paulo", "sp"],
+              "next": "saopaulo_options"
+            },
+            {
+              "variable": "destination",
+              "operator": "contains_any",
+              "value": ["rio de janeiro", "rio", "rj"],
+              "next": "rio_options"
+            },
+            {
+              "variable": "destination",
+              "operator": "contains_any",
+              "value": ["belo horizonte", "bh"],
+              "next": "bh_options"
+            }
+          ],
+          "defaultNext": "destination_not_available"
+        }
+      },
+      {
+        "id": "destination_not_available",
+        "type": "message",
+        "position": {
+          "x": 1100,
+          "y": 600
+        },
+        "data": {
+          "label": "Mensagem: Destino Indisponível",
+          "nodeType": "message",
+          "content": "😔 *SEM PASSAGENS*\n\nInfelizmente não atendemos este destino.\n\n✅ *CIDADES ATENDIDAS:*\n• Goiânia - R$ 65,00\n• Brasília - R$ 85,00\n• São Paulo - R$ 120,00\n• Rio de Janeiro - R$ 150,00\n• Belo Horizonte - R$ 95,00\n\nDigite uma dessas cidades ou \"menu\" para voltar:",
+          "id": "destination_not_available",
+          "next": "get_destination",
+          "type": "message",
+          "position": {
+            "x": 1100,
+            "y": 600
+          }
+        }
+      },
+      {
+        "id": "goiania_options",
+        "type": "message",
+        "position": {
+          "x": 600,
+          "y": 750
+        },
+        "data": {
+          "label": "Mensagem: Opções Goiânia",
+          "nodeType": "message",
+          "content": "🎫 *GOIÂNIA - HOJE*\n\n1️⃣ 08:00 - R$ 65,00 (Convencional)\n2️⃣ 14:00 - R$ 75,00 (Executivo)\n3️⃣ 22:00 - R$ 85,00 (Leito)\n\n⚡ *COMPRA RÁPIDA:* Digite o número\n📞 *VENDEDOR:* Digite 0\n🏠 *MENU:* Digite \"menu\"",
+          "id": "goiania_options",
+          "next": "get_ticket_option",
+          "type": "message",
+          "position": {
+            "x": 600,
+            "y": 750
+          }
+        }
+      },
+      {
+        "id": "brasilia_options",
+        "type": "message",
+        "position": {
+          "x": 750,
+          "y": 750
+        },
+        "data": {
+          "label": "Mensagem: Opções Brasília",
+          "nodeType": "message",
+          "content": "🎫 *BRASÍLIA - HOJE*\n\n1️⃣ 07:00 - R$ 85,00 (Convencional)\n2️⃣ 13:00 - R$ 95,00 (Executivo)\n3️⃣ 21:00 - R$ 110,00 (Leito)\n\n⚡ *COMPRA RÁPIDA:* Digite o número\n📞 *VENDEDOR:* Digite 0\n🏠 *MENU:* Digite \"menu\"",
+          "id": "brasilia_options",
+          "next": "get_ticket_option",
+          "type": "message",
+          "position": {
+            "x": 750,
+            "y": 750
+          }
+        }
+      },
+      {
+        "id": "saopaulo_options",
+        "type": "message",
+        "position": {
+          "x": 900,
+          "y": 750
+        },
+        "data": {
+          "label": "Mensagem: Opções São Paulo",
+          "nodeType": "message",
+          "content": "🎫 *SÃO PAULO - HOJE*\n\n1️⃣ 06:00 - R$ 120,00 (Convencional)\n2️⃣ 12:00 - R$ 140,00 (Executivo)\n3️⃣ 20:00 - R$ 160,00 (Leito)\n\n⚡ *COMPRA RÁPIDA:* Digite o número\n📞 *VENDEDOR:* Digite 0\n🏠 *MENU:* Digite \"menu\"",
+          "id": "saopaulo_options",
+          "next": "get_ticket_option",
+          "type": "message",
+          "position": {
+            "x": 900,
+            "y": 750
+          }
+        }
+      },
+      {
+        "id": "rio_options",
+        "type": "message",
+        "position": {
+          "x": 1050,
+          "y": 750
+        },
+        "data": {
+          "label": "Mensagem: Opções Rio de Janeiro",
+          "nodeType": "message",
+          "content": "🎫 *RIO DE JANEIRO - HOJE*\n\n1️⃣ 05:00 - R$ 150,00 (Convencional)\n2️⃣ 11:00 - R$ 170,00 (Executivo)\n3️⃣ 19:00 - R$ 190,00 (Leito)\n\n⚡ *COMPRA RÁPIDA:* Digite o número\n📞 *VENDEDOR:* Digite 0\n🏠 *MENU:* Digite \"menu\"",
+          "id": "rio_options",
+          "next": "get_ticket_option",
+          "type": "message",
+          "position": {
+            "x": 1050,
+            "y": 750
+          }
+        }
+      },
+      {
+        "id": "bh_options",
+        "type": "message",
+        "position": {
+          "x": 1200,
+          "y": 750
+        },
+        "data": {
+          "label": "Mensagem: Opções Belo Horizonte",
+          "nodeType": "message",
+          "content": "🎫 *BELO HORIZONTE - HOJE*\n\n1️⃣ 09:00 - R$ 95,00 (Convencional)\n2️⃣ 15:00 - R$ 110,00 (Executivo)\n3️⃣ 23:00 - R$ 125,00 (Leito)\n\n⚡ *COMPRA RÁPIDA:* Digite o número\n📞 *VENDEDOR:* Digite 0\n🏠 *MENU:* Digite \"menu\"",
+          "id": "bh_options",
+          "next": "get_ticket_option",
+          "type": "message",
+          "position": {
+            "x": 1200,
+            "y": 750
+          }
+        }
+      },
+      {
+        "id": "get_ticket_option",
+        "type": "input",
+        "position": {
+          "x": 900,
+          "y": 900
+        },
+        "data": {
+          "label": "Entrada: Capturar Opção",
+          "nodeType": "input",
+          "content": null,
+          "id": "get_ticket_option",
+          "next": "process_ticket_option",
+          "type": "input",
+          "position": {
+            "x": 900,
+            "y": 900
+          },
+          "variable": "ticket_option"
+        }
+      },
+      {
+        "id": "process_ticket_option",
+        "type": "condition",
+        "position": {
+          "x": 900,
+          "y": 1050
+        },
+        "data": {
+          "label": "Condição: Processar Opção",
+          "nodeType": "condition",
+          "id": "process_ticket_option",
+          "type": "condition",
+          "position": {
+            "x": 900,
+            "y": 1050
+          },
+          "conditions": [
+            {
+              "variable": "ticket_option",
+              "operator": "equals",
+              "value": "0",
+              "next": "transfer_to_sales"
+            },
+            {
+              "variable": "ticket_option",
+              "operator": "contains_any",
+              "value": ["1", "2", "3"],
+              "next": "confirm_reservation"
+            },
+            {
+              "variable": "ticket_option",
+              "operator": "contains",
+              "value": "menu",
+              "next": "welcome"
+            }
+          ],
+          "defaultNext": "invalid_ticket_option"
+        }
+      },
+      {
+        "id": "invalid_ticket_option",
+        "type": "message",
+        "position": {
+          "x": 1200,
+          "y": 1050
+        },
+        "data": {
+          "label": "Mensagem: Opção Inválida",
+          "nodeType": "message",
+          "content": "❌ Opção inválida!\n\nDigite:\n• 1, 2 ou 3 para comprar\n• 0 para falar com vendedor\n• \"menu\" para voltar ao menu",
+          "id": "invalid_ticket_option",
+          "next": "get_ticket_option",
+          "type": "message",
+          "position": {
+            "x": 1200,
+            "y": 1050
+          }
+        }
+      },
+      {
+        "id": "confirm_reservation",
+        "type": "message",
+        "position": {
+          "x": 700,
+          "y": 1200
+        },
+        "data": {
+          "label": "Mensagem: Confirmar Reserva",
+          "nodeType": "message",
+          "content": "✅ *RESERVA CONFIRMADA!*\n\nDestino: {{destination}}\nOpção: {{ticket_option}}\n\n🎫 Sua passagem foi reservada por 15 minutos!\n\n📱 *PRÓXIMOS PASSOS:*\n1. Nosso vendedor entrará em contato\n2. Confirme seus dados\n3. Realize o pagamento\n\n⏰ Aguarde o contato...",
+          "id": "confirm_reservation",
+          "next": "transfer_to_sales",
+          "type": "message",
+          "position": {
+            "x": 700,
+            "y": 1200
+          }
+        }
+      },
+      {
+        "id": "transfer_to_sales",
+        "type": "action",
+        "position": {
+          "x": 900,
+          "y": 1350
+        },
+        "data": {
+          "label": "Ação: Transferir para Vendas",
+          "nodeType": "action",
+          "id": "transfer_to_sales",
+          "next": "end",
+          "type": "action",
+          "position": {
+            "x": 900,
+            "y": 1350
+          },
+          "action": "transfer_to_human",
+          "department": "vendas"
+        }
+      },
+      {
+        "id": "info",
+        "type": "message",
+        "position": {
+          "x": -124.1249607342874,
+          "y": 259.95622506364754
+        },
+        "data": {
+          "label": "Mensagem: 📋 *INFORMAÇÕES DA E...",
+          "nodeType": "message",
+          "content": "📋 *INFORMAÇÕES DA EMPRESA*\n\n🕒 *Horário:* Segunda a Sexta, 8h às 18h\n📍 *Endereço:* Rua Example, 123 - Centro\n📞 *Telefone:* (11) 99999-9999\n📧 *Email:* contato@empresa.com\n🌐 *Site:* www.empresa.com\n\nDigite \"menu\" para voltar ao menu principal.",
+          "id": "info",
+          "next": "end",
+          "type": "message",
+          "position": {
+            "x": -124.1249607342874,
+            "y": 259.95622506364754
+          }
+        }
+      },
+      {
+        "id": "redirect_cadastro",
+        "type": "message",
+        "position": {
+          "x": 311.9343631243495,
+          "y": 229.57852492136152
+        },
+        "data": {
+          "label": "Mensagem: 📝 Redirecionando pa...",
+          "nodeType": "message",
+          "content": "📝 Redirecionando para cadastro...\n\nDigite \"cadastro\" para iniciar seu cadastro.",
+          "id": "redirect_cadastro",
+          "next": "end",
+          "type": "message",
+          "position": {
+            "x": 311.9343631243495,
+            "y": 229.57852492136152
+          }
+        }
+      },
+      {
+        "id": "redirect_suporte",
+        "type": "message",
+        "position": {
+          "x": 486.72532039132807,
+          "y": 421.6270232137398
+        },
+        "data": {
+          "label": "Mensagem: 🛠️ Redirecionando p...",
+          "nodeType": "message",
+          "content": "🛠️ Redirecionando para suporte...\n\nDigite \"suporte\" para falar com nossa equipe técnica.",
+          "id": "redirect_suporte",
+          "next": "end",
+          "type": "message",
+          "position": {
+            "x": 486.72532039132807,
+            "y": 421.6270232137398
+          }
+        }
+      },
+      {
+        "id": "redirect_vendas",
+        "type": "message",
+        "position": {
+          "x": 122.28910776390398,
+          "y": -65.82487194266086
+        },
+        "data": {
+          "label": "Mensagem: 💰 Redirecionando pa...",
+          "nodeType": "message",
+          "content": "💰 Redirecionando para vendas...\n\nDigite \"vendas\" para conhecer nossos produtos.",
+          "id": "redirect_vendas",
+          "next": "end",
+          "type": "message",
+          "position": {
+            "x": 122.28910776390398,
+            "y": -65.82487194266086
+          }
+        }
+      },
+      {
+        "id": "ai_mode",
+        "type": "ai",
+        "position": {
+          "x": -76.53752716309612,
+          "y": 92.0154547148176
+        },
+        "data": {
+          "label": "IA: ai_mode",
+          "nodeType": "ai",
+          "id": "ai_mode",
+          "next": "end",
+          "type": "ai",
+          "prompt": "Você é um assistente virtual prestativo da empresa. Responda de forma amigável e profissional. Se não souber algo específico, oriente o usuário a usar o menu ou falar com um atendente.",
+          "position": {
+            "x": -76.53752716309612,
+            "y": 92.0154547148176
+          }
+        }
+      },
+      {
+        "id": "invalid_option",
+        "type": "message",
+        "position": {
+          "x": 434.2016613483256,
+          "y": 35.51511009779307
+        },
+        "data": {
+          "label": "Mensagem: ❌ Opção inválida!\n\nP...",
+          "nodeType": "message",
+          "content": "❌ Opção inválida!\n\nPor favor, digite um número de 1 a 6.\n\nDigite \"menu\" para ver as opções novamente.",
+          "id": "invalid_option",
+          "next": "end",
+          "type": "message",
+          "position": {
+            "x": 434.2016613483256,
+            "y": 35.51511009779307
+          }
+        }
+      },
+      {
+        "id": "end",
+        "type": "end",
+        "position": {
+          "x": 142.57682566411358,
+          "y": 521.5766604259909
+        },
+        "data": {
+          "label": "Fim: end",
+          "nodeType": "end",
+          "content": null,
+          "id": "end",
+          "next": null,
+          "type": "end",
+          "position": {
+            "x": 142.57682566411358,
+            "y": 521.5766604259909
+          }
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "start-welcome",
+        "source": "start",
+        "target": "welcome",
+        "type": "smoothstep",
+        "markerEnd": {
+          "type": "arrowclosed"
+        }
+      },
+      {
+        "id": "welcome-menu_input",
+        "source": "welcome",
+        "target": "menu_input",
+        "type": "smoothstep",
+        "markerEnd": {
+          "type": "arrowclosed"
+        }
+      },
+      {
+        "id": "menu_input-menu_condition",
+        "source": "menu_input",
+        "target": "menu_condition",
+        "type": "smoothstep",
+        "markerEnd": {
+          "type": "arrowclosed"
+        }
+      },
+      {
+        "id": "menu_condition-info-0",
+        "source": "menu_condition",
+        "target": "info",
+        "type": "smoothstep",
+        "label": "1",
+        "markerEnd": {
+          "type": "arrowclosed"
+        },
+        "style": {
+          "stroke": "#9c27b0"
+        }
+      },
+      {
+        "id": "menu_condition-redirect_cadastro-1",
+        "source": "menu_condition",
+        "target": "redirect_cadastro",
+        "type": "smoothstep",
+        "label": "2",
+        "markerEnd": {
+          "type": "arrowclosed"
+        },
+        "style": {
+          "stroke": "#9c27b0"
+        }
+      },
+      {
+        "id": "menu_condition-redirect_suporte-2",
+        "source": "menu_condition",
+        "target": "redirect_suporte",
+        "type": "smoothstep",
+        "label": "3",
+        "markerEnd": {
+          "type": "arrowclosed"
+        },
+        "style": {
+          "stroke": "#9c27b0"
+        }
+      },
+      {
+        "id": "menu_condition-redirect_vendas-3",
+        "source": "menu_condition",
+        "target": "redirect_vendas",
+        "type": "smoothstep",
+        "label": "4",
+        "markerEnd": {
+          "type": "arrowclosed"
+        },
+        "style": {
+          "stroke": "#9c27b0"
+        }
+      },
+      {
+        "id": "menu_condition-ai_mode-4",
+        "source": "menu_condition",
+        "target": "ai_mode",
+        "type": "smoothstep",
+        "label": "5",
+        "markerEnd": {
+          "type": "arrowclosed"
+        },
+        "style": {
+          "stroke": "#9c27b0"
+        }
+      },
+      {
+        "id": "menu_condition-passagens_rapidas-5",
+        "source": "menu_condition",
+        "target": "passagens_rapidas",
+        "type": "smoothstep",
+        "label": "6",
+        "markerEnd": {
+          "type": "arrowclosed"
+        },
+        "style": {
+          "stroke": "#ff5722"
+        }
+      },
+      {
+        "id": "passagens_rapidas-get_destination",
+        "source": "passagens_rapidas",
+        "target": "get_destination",
+        "type": "smoothstep",
+        "markerEnd": {
+          "type": "arrowclosed"
+        }
+      },
+      {
+        "id": "get_destination-check_destination",
+        "source": "get_destination",
+        "target": "check_destination",
+        "type": "smoothstep",
+        "markerEnd": {
+          "type": "arrowclosed"
+        }
+      },
+      {
+        "id": "check_destination-goiania_options",
+        "source": "check_destination",
+        "target": "goiania_options",
+        "type": "smoothstep",
+        "label": "Goiânia",
+        "markerEnd": {
+          "type": "arrowclosed"
+        },
+        "style": {
+          "stroke": "#4caf50"
+        }
+      },
+      {
+        "id": "check_destination-brasilia_options",
+        "source": "check_destination",
+        "target": "brasilia_options",
+        "type": "smoothstep",
+        "label": "Brasília",
+        "markerEnd": {
+          "type": "arrowclosed"
+        },
+        "style": {
+          "stroke": "#4caf50"
+        }
+      },
+      {
+        "id": "check_destination-saopaulo_options",
+        "source": "check_destination",
+        "target": "saopaulo_options",
+        "type": "smoothstep",
+        "label": "São Paulo",
+        "markerEnd": {
+          "type": "arrowclosed"
+        },
+        "style": {
+          "stroke": "#4caf50"
+        }
+      },
+      {
+        "id": "check_destination-rio_options",
+        "source": "check_destination",
+        "target": "rio_options",
+        "type": "smoothstep",
+        "label": "Rio de Janeiro",
+        "markerEnd": {
+          "type": "arrowclosed"
+        },
+        "style": {
+          "stroke": "#4caf50"
+        }
+      },
+      {
+        "id": "check_destination-bh_options",
+        "source": "check_destination",
+        "target": "bh_options",
+        "type": "smoothstep",
+        "label": "Belo Horizonte",
+        "markerEnd": {
+          "type": "arrowclosed"
+        },
+        "style": {
+          "stroke": "#4caf50"
+        }
+      },
+      {
+        "id": "check_destination-destination_not_available",
+        "source": "check_destination",
+        "target": "destination_not_available",
+        "type": "smoothstep",
+        "label": "Outros",
+        "markerEnd": {
+          "type": "arrowclosed"
+        },
+        "style": {
+          "stroke": "#f44336"
+        }
+      },
+      {
+        "id": "destination_not_available-get_destination",
+        "source": "destination_not_available",
+        "target": "get_destination",
+        "type": "smoothstep",
+        "markerEnd": {
+          "type": "arrowclosed"
+        }
+      },
+      {
+        "id": "goiania_options-get_ticket_option",
+        "source": "goiania_options",
+        "target": "get_ticket_option",
+        "type": "smoothstep",
+        "markerEnd": {
+          "type": "arrowclosed"
+        }
+      },
+      {
+        "id": "brasilia_options-get_ticket_option",
+        "source": "brasilia_options",
+        "target": "get_ticket_option",
+        "type": "smoothstep",
+        "markerEnd": {
+          "type": "arrowclosed"
+        }
+      },
+      {
+        "id": "saopaulo_options-get_ticket_option",
+        "source": "saopaulo_options",
+        "target": "get_ticket_option",
+        "type": "smoothstep",
+        "markerEnd": {
+          "type": "arrowclosed"
+        }
+      },
+      {
+        "id": "rio_options-get_ticket_option",
+        "source": "rio_options",
+        "target": "get_ticket_option",
+        "type": "smoothstep",
+        "markerEnd": {
+          "type": "arrowclosed"
+        }
+      },
+      {
+        "id": "bh_options-get_ticket_option",
+        "source": "bh_options",
+        "target": "get_ticket_option",
+        "type": "smoothstep",
+        "markerEnd": {
+          "type": "arrowclosed"
+        }
+      },
+      {
+        "id": "get_ticket_option-process_ticket_option",
+        "source": "get_ticket_option",
+        "target": "process_ticket_option",
+        "type": "smoothstep",
+        "markerEnd": {
+          "type": "arrowclosed"
+        }
+      },
+      {
+        "id": "process_ticket_option-transfer_to_sales",
+        "source": "process_ticket_option",
+        "target": "transfer_to_sales",
+        "type": "smoothstep",
+        "label": "0",
+        "markerEnd": {
+          "type": "arrowclosed"
+        },
+        "style": {
+          "stroke": "#2196f3"
+        }
+      },
+      {
+        "id": "process_ticket_option-confirm_reservation",
+        "source": "process_ticket_option",
+        "target": "confirm_reservation",
+        "type": "smoothstep",
+        "label": "1,2,3",
+        "markerEnd": {
+          "type": "arrowclosed"
+        },
+        "style": {
+          "stroke": "#4caf50"
+        }
+      },
+      {
+        "id": "process_ticket_option-welcome",
+        "source": "process_ticket_option",
+        "target": "welcome",
+        "type": "smoothstep",
+        "label": "menu",
+        "markerEnd": {
+          "type": "arrowclosed"
+        },
+        "style": {
+          "stroke": "#ff9800"
+        }
+      },
+      {
+        "id": "process_ticket_option-invalid_ticket_option",
+        "source": "process_ticket_option",
+        "target": "invalid_ticket_option",
+        "type": "smoothstep",
+        "label": "inválido",
+        "markerEnd": {
+          "type": "arrowclosed"
+        },
+        "style": {
+          "stroke": "#f44336"
+        }
+      },
+      {
+        "id": "invalid_ticket_option-get_ticket_option",
+        "source": "invalid_ticket_option",
+        "target": "get_ticket_option",
+        "type": "smoothstep",
+        "markerEnd": {
+          "type": "arrowclosed"
+        }
+      },
+      {
+        "id": "confirm_reservation-transfer_to_sales",
+        "source": "confirm_reservation",
+        "target": "transfer_to_sales",
+        "type": "smoothstep",
+        "markerEnd": {
+          "type": "arrowclosed"
+        }
+      },
+      {
+        "id": "transfer_to_sales-end",
+        "source": "transfer_to_sales",
+        "target": "end",
+        "type": "smoothstep",
+        "markerEnd": {
+          "type": "arrowclosed"
+        }
+      },
+      {
+        "id": "info-end",
+        "source": "info",
+        "target": "end",
+        "type": "smoothstep",
+        "markerEnd": {
+          "type": "arrowclosed"
+        }
+      },
+      {
+        "id": "redirect_cadastro-end",
+        "source": "redirect_cadastro",
+        "target": "end",
+        "type": "smoothstep",
+        "markerEnd": {
+          "type": "arrowclosed"
+        }
+      },
+      {
+        "id": "redirect_suporte-end",
+        "source": "redirect_suporte",
+        "target": "end",
+        "type": "smoothstep",
+        "markerEnd": {
+          "type": "arrowclosed"
+        }
+      },
+      {
+        "id": "redirect_vendas-end",
+        "source": "redirect_vendas",
+        "target": "end",
+        "type": "smoothstep",
+        "markerEnd": {
+          "type": "arrowclosed"
+        }
+      },
+      {
+        "id": "ai_mode-end",
+        "source": "ai_mode",
+        "target": "end",
+        "type": "smoothstep",
+        "markerEnd": {
+          "type": "arrowclosed"
+        }
+      },
+      {
+        "id": "invalid_option-end",
+        "source": "invalid_option",
+        "target": "end",
+        "type": "smoothstep",
+        "markerEnd": {
+          "type": "arrowclosed"
+        }
+      }
+    ],
+    "viewport": {
+      "x": 0,
+      "y": 0,
+      "zoom": 1
+    }
+  }
+}
