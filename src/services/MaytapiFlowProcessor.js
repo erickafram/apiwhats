@@ -254,7 +254,9 @@ class MaytapiFlowProcessor {
 
   async processConditionNode(node, botId, phoneNumber, messageContent, userState, userVars, flow) {
     const conditions = node.conditions || [];
-    
+
+    console.log(`🔧 DEBUG userVars:`, userVars);
+
     for (const condition of conditions) {
       if (this.evaluateCondition(condition, messageContent, userVars)) {
         userState.currentNode = condition.next;
