@@ -359,7 +359,7 @@ class MaytapiService {
   // Processar webhook de mensagem recebida
   async processIncomingMessage(webhookData) {
     try {
-      const { phone_id, message } = webhookData;
+      const { phone_id, message, user } = webhookData;
       
       // Encontrar bot pela phoneId
       console.log(`🔧 DEBUG: Procurando bot para phoneId: ${phone_id}`);
@@ -379,8 +379,11 @@ class MaytapiService {
         return;
       }
 
-      const phoneNumber = message.from_number;
+      // Extrair número do telefone do usuário
+      const phoneNumber = user?.phone || message.from_number || user?.id?.replace('@c.us', '');
       const content = message.text || message.caption || '[Mídia]';
+
+      console.log(`🔧 DEBUG: phoneNumber extraído: ${phoneNumber}`);
 
       // Salvar mensagem
       await this.saveMessage(botId, phoneNumber, content, 'incoming', {

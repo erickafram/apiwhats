@@ -31,6 +31,15 @@ class BotManager {
           flows: bot.flows || [],
           lastActivity: new Date()
         });
+
+        // Conectar bot automaticamente se usar Maytapi
+        if (global.maytapiService && process.env.USE_MAYTAPI === 'true') {
+          try {
+            await global.maytapiService.connectBot(bot.id);
+          } catch (error) {
+            console.error(`❌ Erro ao conectar bot ${bot.id} automaticamente:`, error.message);
+          }
+        }
       }
 
       console.log(`BotManager inicializado com ${activeBots.length} bots ativos`);
