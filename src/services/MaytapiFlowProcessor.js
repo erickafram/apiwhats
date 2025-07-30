@@ -397,10 +397,14 @@ class MaytapiFlowProcessor {
 
       const url = 'https://api.maytapi.com/api/ebba8265-1e89-4e6a-8255-7eee3e64b7f5/103174/sendMessage';
 
+      // Gerar ID único para evitar duplicação
+      const uniqueId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
       const payload = {
         to_number: phoneNumber,
         type: 'text',
-        message: message
+        message: message,
+        id: uniqueId
       };
 
       const response = await axios.post(url, payload, {
