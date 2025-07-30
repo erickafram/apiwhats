@@ -360,6 +360,7 @@ class MaytapiFlowProcessor {
 
   async sendMessage(botId, phoneNumber, message) {
     try {
+      console.log(`🔧 DEBUG MaytapiFlowProcessor.sendMessage: botId=${botId}, phoneNumber=${phoneNumber}`);
       if (this.maytapiService) {
         await this.maytapiService.sendMessage(botId, phoneNumber, message);
         
