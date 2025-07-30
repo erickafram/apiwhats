@@ -51,7 +51,9 @@ class MaytapiFlowProcessor {
       
       // Salvar mensagem recebida
       await Message.create({
+        bot_id: botId,
         conversation_id: conversation.id,
+        sender_phone: phoneNumber,
         content: messageContent,
         direction: 'incoming',
         message_type: messageType,
@@ -368,7 +370,9 @@ class MaytapiFlowProcessor {
         
         if (conversation) {
           await Message.create({
+            bot_id: botId,
             conversation_id: conversation.id,
+            sender_phone: phoneNumber,
             content: message,
             direction: 'outgoing',
             message_type: 'text'
