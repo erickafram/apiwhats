@@ -35,13 +35,15 @@ import {
 } from '@mui/icons-material'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { botsAPI } from '../../services/api'
+import { botsAPI, maytapiAPI } from '../../services/api'
 import QRCodeDialog from '../../components/Common/QRCodeDialog'
 
 const Bots = () => {
   const [bots, setBots] = useState([])
   const [loading, setLoading] = useState(true)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [maytapiConnections, setMaytapiConnections] = useState({})
+  const [connectingBots, setConnectingBots] = useState(new Set())
   const [newBot, setNewBot] = useState({
     name: '',
     description: '',
@@ -60,6 +62,14 @@ const Bots = () => {
 
   useEffect(() => {
     loadBots()
+    loadMaytapiConnections()
+
+    // Atualizar conexões Maytapi a cada 30 segundos
+    const interval = setInterval(() => {
+      loadMaytapiConnections()
+    }, 30000)
+
+    return () => clearInterval(interval)
   }, [])
 
   const loadBots = async () => {
@@ -72,6 +82,26 @@ const Bots = () => {
       toast.error('Erro ao carregar bots')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadMaytapiConnections = async () => {
+    try {
+      const response = await maytapiAPI.getConnections()
+      setMaytapiConnections(response.data.connections || {})
+    } catch (error) {
+      console.error('Erro ao carregar conexões Maytapi:', error)
+      // Não mostrar erro para o usuário, pois pode não estar usando Maytapi
+    }
+  }
+
+  const checkBotConnectionStatus = async (botId) => {
+    try {
+      const response = await botsAPI.getConnectionStatus(botId)
+      return response.data
+    } catch (error) {
+      console.error('Erro ao verificar status de conexão:', error)
+      return { connected: false, status: 'error' }
     }
   }
 
@@ -113,8 +143,31 @@ const Bots = () => {
 
   const handleConnectBot = async (bot) => {
     try {
+      setConnectingBots(prev => new Set([...prev, bot.id]))
+
+      // Tentar conectar via Maytapi primeiro
+      try {
+        const maytapiResponse = await maytapiAPI.connectBot(bot.id)
+
+        if (maytapiResponse.data.connected) {
+          toast.success(`Bot conectado via Maytapi! Número: 556392901378`)
+          await loadBots()
+          await loadMaytapiConnections()
+          return
+        } else if (maytapiResponse.data.phoneId) {
+          toast.success('Bot conectado à instância Maytapi!')
+          await loadBots()
+          await loadMaytapiConnections()
+          return
+        }
+      } catch (maytapiError) {
+        console.log('Maytapi não disponível, tentando método padrão...')
+      }
+
+      // Fallback para método padrão
       const response = await botsAPI.connect(bot.id)
       toast.success('Processo de conexão iniciado!')
+
       if (response.data.qrCode) {
         setQrCodeDialog({
           open: true,
@@ -122,10 +175,19 @@ const Bots = () => {
           botName: bot.name
         })
       }
-      loadBots()
+
+      await loadBots()
+      await loadMaytapiConnections()
+
     } catch (error) {
       console.error('Erro ao conectar bot:', error)
       toast.error(error.response?.data?.error || 'Erro ao conectar bot')
+    } finally {
+      setConnectingBots(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(bot.id)
+        return newSet
+      })
     }
   }
 
@@ -153,12 +215,22 @@ const Bots = () => {
   }
 
   const getStatusColor = (bot) => {
+    // Verificar se está conectado via Maytapi
+    const maytapiConnection = maytapiConnections[bot.id]
+    if (maytapiConnection?.connected) return 'success'
+
     if (bot.is_connected) return 'success'
     if (bot.is_active) return 'warning'
     return 'default'
   }
 
   const getStatusText = (bot) => {
+    // Verificar se está conectado via Maytapi
+    const maytapiConnection = maytapiConnections[bot.id]
+    if (maytapiConnection?.connected) {
+      return `Conectado (Maytapi: ${maytapiConnection.phoneId})`
+    }
+
     if (bot.is_connected) return 'Conectado'
     if (bot.is_active) return 'Ativo'
     return 'Inativo'
@@ -238,7 +310,15 @@ const Bots = () => {
                     {bot.ai_config?.enabled && (
                       <Chip label="IA Ativa" color="info" size="small" />
                     )}
-                    {bot.phone_number && (
+                    {maytapiConnections[bot.id]?.connected && (
+                      <Chip
+                        label={`Maytapi: 556392901378`}
+                        color="success"
+                        size="small"
+                        variant="outlined"
+                      />
+                    )}
+                    {bot.phone_number && !maytapiConnections[bot.id]?.connected && (
                       <Chip label={bot.phone_number} size="small" />
                     )}
                   </Box>
@@ -258,13 +338,21 @@ const Bots = () => {
                     </IconButton>
                   </Tooltip>
 
-                  <Tooltip title="Conectar WhatsApp">
+                  <Tooltip title={
+                    maytapiConnections[bot.id]?.connected
+                      ? `Conectado via Maytapi (${maytapiConnections[bot.id].phoneId})`
+                      : "Conectar WhatsApp"
+                  }>
                     <IconButton
                       onClick={() => handleConnectBot(bot)}
-                      color="success"
-                      disabled={!bot.is_active}
+                      color={maytapiConnections[bot.id]?.connected ? "success" : "primary"}
+                      disabled={!bot.is_active || connectingBots.has(bot.id)}
                     >
-                      <WhatsAppIcon />
+                      {connectingBots.has(bot.id) ? (
+                        <CircularProgress size={20} />
+                      ) : (
+                        <WhatsAppIcon />
+                      )}
                     </IconButton>
                   </Tooltip>
 

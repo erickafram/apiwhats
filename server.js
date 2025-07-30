@@ -44,6 +44,7 @@ const templateRoutes = require('./src/routes/templates');
 const queueRoutes = require('./src/routes/queue');
 const conversationRoutes = require('./src/routes/conversations');
 const analyticsRoutes = require('./src/routes/analytics');
+const maytapiRoutes = require('./src/routes/maytapi');
 
 // Usar rotas
 app.use('/api/auth', authRoutes);
@@ -53,6 +54,7 @@ app.use('/api/templates', templateRoutes);
 app.use('/api/queue', queueRoutes);
 app.use('/api/conversations', conversationRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/maytapi', maytapiRoutes);
 
 // Rota de health check
 app.get('/health', (req, res) => {
@@ -90,18 +92,24 @@ db.sequelize.sync({ force: false }).then(async () => {
   // Inicializar serviços após sincronização do banco
   const WhatsAppService = require('./src/services/WhatsAppService');
   const WhatsAppSimulator = require('./src/services/WhatsAppSimulator');
+  const MaytapiService = require('./src/services/MaytapiService');
   const BotManager = require('./src/services/BotManager');
   const QueueService = require('./src/services/QueueService');
 
-  // Usar WhatsApp real
-  const useSimulator = process.env.USE_WHATSAPP_SIMULATOR === 'true' || false; // Usar WhatsApp real
+  // Verificar qual serviço usar
+  const useMaytapi = process.env.USE_MAYTAPI === 'true';
+  const useSimulator = process.env.USE_WHATSAPP_SIMULATOR === 'true' || false;
 
   // Instanciar serviços globais
-  if (useSimulator) {
+  if (useMaytapi) {
+    console.log('🚀 Iniciando Maytapi WhatsApp Service');
+    global.maytapiService = new MaytapiService(io);
+    global.whatsappService = global.maytapiService; // Compatibilidade
+  } else if (useSimulator) {
     console.log('🤖 Iniciando WhatsApp SIMULADOR para desenvolvimento');
     global.whatsappService = new WhatsAppSimulator(io);
   } else {
-    console.log('📱 Iniciando WhatsApp Service real');
+    console.log('📱 Iniciando WhatsApp Service real (Baileys)');
     global.whatsappService = new WhatsAppService(io);
   }
 

@@ -367,12 +367,27 @@ router.post('/:id/test', validateParams(schemas.idParam), async (req, res) => {
     const FlowProcessor = require('../services/FlowProcessor');
     const processor = new FlowProcessor();
 
-    const result = await processor.processMessage({
-      flow,
-      message: message || 'Teste',
-      userPhone: user_phone,
-      isTest: true
-    });
+    // Criar objetos mock para teste
+    const mockBot = flow.bot || { id: flow.bot_id, name: 'Bot Teste' };
+    const mockConversation = {
+      id: 'test-conversation',
+      botId: flow.bot_id,
+      phoneNumber: user_phone || '5511999999999',
+      user_phone: user_phone || '5511999999999',
+      status: 'active'
+    };
+    const mockMessage = {
+      content: message || 'Teste',
+      type: 'text',
+      timestamp: new Date()
+    };
+
+    const result = await processor.processMessage(
+      mockBot,
+      mockConversation,
+      mockMessage,
+      flow
+    );
 
     res.json({
       message: 'Teste executado com sucesso',
@@ -424,6 +439,115 @@ router.get('/:id/export', validateParams(schemas.idParam), async (req, res) => {
     res.json(exportData);
   } catch (error) {
     console.error('Erro ao exportar fluxo:', error);
+    res.status(500).json({
+      error: 'Erro interno do servidor',
+      code: 'INTERNAL_ERROR'
+    });
+  }
+});
+
+// Ativar fluxo
+router.patch('/:id/activate', validateParams(schemas.idParam), async (req, res) => {
+  try {
+    const flow = await Flow.findOne({
+      where: { id: req.params.id },
+      include: [{
+        model: Bot,
+        as: 'bot',
+        where: { user_id: req.user.id }
+      }]
+    });
+
+    if (!flow) {
+      return res.status(404).json({
+        error: 'Fluxo não encontrado',
+        code: 'FLOW_NOT_FOUND'
+      });
+    }
+
+    await flow.update({ is_active: true });
+
+    res.json({
+      message: 'Fluxo ativado com sucesso',
+      flow: flow
+    });
+  } catch (error) {
+    console.error('Erro ao ativar fluxo:', error);
+    res.status(500).json({
+      error: 'Erro interno do servidor',
+      code: 'INTERNAL_ERROR'
+    });
+  }
+});
+
+// Desativar fluxo
+router.patch('/:id/deactivate', validateParams(schemas.idParam), async (req, res) => {
+  try {
+    const flow = await Flow.findOne({
+      where: { id: req.params.id },
+      include: [{
+        model: Bot,
+        as: 'bot',
+        where: { user_id: req.user.id }
+      }]
+    });
+
+    if (!flow) {
+      return res.status(404).json({
+        error: 'Fluxo não encontrado',
+        code: 'FLOW_NOT_FOUND'
+      });
+    }
+
+    await flow.update({ is_active: false });
+
+    res.json({
+      message: 'Fluxo desativado com sucesso',
+      flow: flow
+    });
+  } catch (error) {
+    console.error('Erro ao desativar fluxo:', error);
+    res.status(500).json({
+      error: 'Erro interno do servidor',
+      code: 'INTERNAL_ERROR'
+    });
+  }
+});
+
+// Definir como fluxo padrão
+router.patch('/:id/set-default', validateParams(schemas.idParam), async (req, res) => {
+  try {
+    const flow = await Flow.findOne({
+      where: { id: req.params.id },
+      include: [{
+        model: Bot,
+        as: 'bot',
+        where: { user_id: req.user.id }
+      }]
+    });
+
+    if (!flow) {
+      return res.status(404).json({
+        error: 'Fluxo não encontrado',
+        code: 'FLOW_NOT_FOUND'
+      });
+    }
+
+    // Remover is_default de outros fluxos do mesmo bot
+    await Flow.update(
+      { is_default: false },
+      { where: { bot_id: flow.bot_id } }
+    );
+
+    // Definir este fluxo como padrão
+    await flow.update({ is_default: true, is_active: true });
+
+    res.json({
+      message: 'Fluxo definido como padrão com sucesso',
+      flow: flow
+    });
+  } catch (error) {
+    console.error('Erro ao definir fluxo padrão:', error);
     res.status(500).json({
       error: 'Erro interno do servidor',
       code: 'INTERNAL_ERROR'

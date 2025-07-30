@@ -18,14 +18,28 @@ class FlowProcessor {
 
   async processMessage({ bot, flow, conversation, message, aiService }) {
     try {
+      // Validar parâmetros
+      if (!bot || !conversation || !flow) {
+        console.error('❌ Parâmetros inválidos para processMessage:', {
+          bot: !!bot,
+          conversation: !!conversation,
+          flow: !!flow
+        });
+        return { success: false, error: 'Parâmetros inválidos' };
+      }
+
       // Registrar execução do fluxo
-      await Analytics.recordMetric({
-        botId: bot.id,
-        type: 'flow_executed',
-        flowId: flow.id,
-        conversationId: conversation.id,
-        userPhone: conversation.user_phone
-      });
+      try {
+        await Analytics.recordMetric({
+          botId: bot.id,
+          type: 'flow_executed',
+          flowId: flow.id,
+          conversationId: conversation.id,
+          userPhone: conversation.user_phone || conversation.phoneNumber
+        });
+      } catch (analyticsError) {
+        console.log('⚠️ Erro ao registrar métrica (continuando):', analyticsError.message);
+      }
 
       // Determinar nó atual
       let currentNodeId = conversation.current_node;

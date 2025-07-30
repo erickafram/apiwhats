@@ -389,4 +389,50 @@ router.get('/:id/stats', validateParams(schemas.idParam), validateQuery(schemas.
   }
 });
 
+// Verificar status de conexão do bot
+router.get('/:id/connection-status', validateParams(schemas.idParam), async (req, res) => {
+  try {
+    const bot = await Bot.findOne({
+      where: {
+        id: req.params.id,
+        user_id: req.user.id
+      }
+    });
+
+    if (!bot) {
+      return res.status(404).json({
+        error: 'Bot não encontrado',
+        code: 'BOT_NOT_FOUND'
+      });
+    }
+
+    // Verificar status no serviço WhatsApp/Maytapi
+    let connectionInfo = { connected: false, status: 'disconnected' };
+
+    if (global.whatsappService && global.whatsappService.getConnectionInfo) {
+      connectionInfo = global.whatsappService.getConnectionInfo(bot.id);
+    }
+
+    // Atualizar status no banco de dados
+    await bot.update({
+      is_connected: connectionInfo.connected,
+      connection_status: connectionInfo.status || 'unknown'
+    });
+
+    res.json({
+      botId: bot.id,
+      connected: connectionInfo.connected,
+      status: connectionInfo.status || 'unknown',
+      phoneId: connectionInfo.phoneId || null,
+      lastChecked: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Erro ao verificar status de conexão:', error);
+    res.status(500).json({
+      error: 'Erro interno do servidor',
+      code: 'INTERNAL_ERROR'
+    });
+  }
+});
+
 module.exports = router;

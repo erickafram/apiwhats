@@ -105,6 +105,7 @@ export const botsAPI = {
   connect: (id) => api.post(`/bots/${id}/connect`),
   disconnect: (id) => api.post(`/bots/${id}/disconnect`),
   getQRCode: (id) => api.get(`/bots/${id}/qr-code`),
+  getConnectionStatus: (id) => api.get(`/bots/${id}/connection-status`),
 }
 
 export const flowsAPI = {
@@ -115,6 +116,10 @@ export const flowsAPI = {
   delete: (id) => api.delete(`/flows/${id}`),
   duplicate: (id) => api.post(`/flows/${id}/duplicate`),
   test: (id, data) => api.post(`/flows/${id}/test`, data),
+  getByBot: (botId) => api.get(`/flows/bot/${botId}`),
+  activate: (id) => api.patch(`/flows/${id}/activate`),
+  deactivate: (id) => api.patch(`/flows/${id}/deactivate`),
+  setDefault: (id) => api.patch(`/flows/${id}/set-default`),
 }
 
 export const templatesAPI = {
@@ -151,6 +156,14 @@ export const analyticsAPI = {
   getDashboard: (params = {}) => api.get('/analytics/dashboard', { params }),
   getBotAnalytics: (id, params = {}) => api.get(`/analytics/bot/${id}`, { params }),
   getFlowAnalytics: (id, params = {}) => api.get(`/analytics/flow/${id}`, { params }),
+}
+
+export const maytapiAPI = {
+  getConnections: () => api.get('/maytapi/connections'),
+  connectBot: (botId) => api.post(`/maytapi/connect/${botId}`),
+  disconnectBot: (botId) => api.post(`/maytapi/disconnect/${botId}`),
+  getQRCode: (botId) => api.get(`/maytapi/qr/${botId}`),
+  sendTestMessage: (data) => api.post('/maytapi/send-test', data),
 }
 
 export default api
