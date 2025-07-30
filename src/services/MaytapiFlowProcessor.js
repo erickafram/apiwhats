@@ -5,10 +5,25 @@ class MaytapiFlowProcessor {
     this.maytapiService = maytapiService;
     this.userStates = new Map(); // phoneNumber -> state
     this.userVariables = new Map(); // phoneNumber -> variables
+    this.messageCache = new Map(); // Cache para evitar duplicatas
+  }
+
+  // Método para limpar estado de um usuário
+  clearUserState(phoneNumber) {
+    this.userStates.delete(phoneNumber);
+    this.userVariables.delete(phoneNumber);
+    this.messageCache.delete(phoneNumber);
+    console.log(`🧹 Estado limpo para usuário: ${phoneNumber}`);
   }
 
   async processMessage(botId, phoneNumber, messageContent, messageType = 'text') {
     try {
+      // Comando especial para limpar estado
+      if (messageContent.toLowerCase() === 'reset' || messageContent.toLowerCase() === 'limpar') {
+        this.clearUserState(phoneNumber);
+        await this.sendDirectMessage(phoneNumber, '🧹 Estado limpo! Digite "oi" para começar novamente.');
+        return { success: true };
+      }
       console.log(`🔄 Processando mensagem via fluxo Maytapi: Bot ${botId}, De: ${phoneNumber}`);
 
       // Buscar ou criar conversa
