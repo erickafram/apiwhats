@@ -235,6 +235,11 @@ class MaytapiFlowProcessor {
     // Salvar resposta em variável se configurado
     if (node.variable) {
       userVars[node.variable] = messageContent;
+      // Também salvar no userVariables global
+      if (!this.userVariables.has(phoneNumber)) {
+        this.userVariables.set(phoneNumber, {});
+      }
+      this.userVariables.get(phoneNumber)[node.variable] = messageContent;
       console.log(`💾 Variável salva: ${node.variable} = ${messageContent}`);
     }
 
