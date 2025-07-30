@@ -402,10 +402,16 @@ class MaytapiFlowProcessor {
     try {
       const axios = require('axios');
 
+      // Pequeno delay para evitar conflitos
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       const url = 'https://api.maytapi.com/api/ebba8265-1e89-4e6a-8255-7eee3e64b7f5/103174/sendMessage';
 
-      // Gerar ID único para evitar duplicação
-      const uniqueId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      // Gerar ID único mais robusto para evitar duplicação
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).substring(2, 15);
+      const hash = require('crypto').createHash('md5').update(`${phoneNumber}_${message}_${timestamp}`).digest('hex').substring(0, 8);
+      const uniqueId = `msg_${timestamp}_${random}_${hash}`;
 
       const payload = {
         to_number: phoneNumber,
