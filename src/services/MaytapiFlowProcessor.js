@@ -24,6 +24,25 @@ class MaytapiFlowProcessor {
         await this.sendDirectMessage(phoneNumber, '🧹 Estado limpo! Digite "oi" para começar novamente.');
         return { success: true };
       }
+
+      // Comando para voltar ao menu principal
+      if (messageContent.toLowerCase() === 'menu') {
+        this.clearUserState(phoneNumber);
+        const menuMessage = `👋 Olá! Bem-vindo ao nosso atendimento!
+
+Escolha uma opção:
+
+1️⃣ Informações
+2️⃣ Cadastro
+3️⃣ Suporte
+4️⃣ Vendas
+5️⃣ Falar com IA
+
+Digite o número da opção desejada:`;
+
+        await this.sendDirectMessage(phoneNumber, menuMessage);
+        return { success: true };
+      }
       console.log(`🔄 Processando mensagem via fluxo Maytapi: Bot ${botId}, De: ${phoneNumber}`);
 
       // Buscar ou criar conversa
