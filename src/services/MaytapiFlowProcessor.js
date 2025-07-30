@@ -164,8 +164,8 @@ class MaytapiFlowProcessor {
   }
 
   async processNode(node, conversation, messageContent, userState, userVars, flow) {
-    const botId = conversation.botId;
-    const phoneNumber = conversation.phoneNumber;
+    const botId = conversation.bot_id;
+    const phoneNumber = conversation.user_phone;
 
     switch (node.type) {
       case 'start':
