@@ -5,25 +5,23 @@ const router = express.Router();
 router.post('/webhook', async (req, res) => {
   try {
     console.log('📨 Webhook Maytapi recebido:', JSON.stringify(req.body, null, 2));
-
-    const webhookData = req.body;
-
-    // Verificar se é uma mensagem
-    if (webhookData.type === 'message' && webhookData.message) {
-      // Processar mensagem através do serviço global
-      if (global.maytapiService) {
-        await global.maytapiService.processIncomingMessage(webhookData);
-      } else {
-        console.log('⚠️ MaytapiService não inicializado');
-      }
+    
+    const { type, phone_id, message, user } = req.body;
+    
+    if (type !== 'message' || !message) {
+      return res.status(200).json({ status: 'ignored' });
     }
 
-    // Responder com sucesso
-    res.status(200).json({ success: true });
+    // Processar mensagem via MaytapiService global
+    if (global.maytapiService) {
+      await global.maytapiService.processWebhookMessage(req.body);
+    }
 
+    res.status(200).json({ status: 'processed' });
+    
   } catch (error) {
-    console.error('❌ Erro no webhook Maytapi:', error);
-    res.status(500).json({ error: 'Erro interno do servidor' });
+    console.error('❌ Erro no webhook:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -69,7 +67,7 @@ router.post('/connect/:botId', async (req, res) => {
   }
 });
 
-// Endpoint para desconectar bot específico
+// Endpoint para desconectar bot
 router.post('/disconnect/:botId', async (req, res) => {
   try {
     const { botId } = req.params;
@@ -83,28 +81,6 @@ router.post('/disconnect/:botId', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Erro ao desconectar bot:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Endpoint para enviar mensagem de teste
-router.post('/send-test', async (req, res) => {
-  try {
-    const { botId, to, message } = req.body;
-
-    if (!global.maytapiService) {
-      return res.status(503).json({ error: 'MaytapiService não inicializado' });
-    }
-
-    if (!botId || !to || !message) {
-      return res.status(400).json({ error: 'botId, to e message são obrigatórios' });
-    }
-
-    const result = await global.maytapiService.sendMessage(botId, to, message);
-    res.json(result);
-
-  } catch (error) {
-    console.error('❌ Erro ao enviar mensagem:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -130,6 +106,24 @@ router.get('/qr/:botId', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Erro ao gerar QR Code:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint para enviar mensagem de teste
+router.post('/send-test', async (req, res) => {
+  try {
+    const { botId, to, message } = req.body;
+
+    if (!global.maytapiService) {
+      return res.status(503).json({ error: 'MaytapiService não inicializado' });
+    }
+
+    const result = await global.maytapiService.sendMessage(botId, to, message);
+    res.json(result);
+
+  } catch (error) {
+    console.error('❌ Erro ao enviar mensagem:', error);
     res.status(500).json({ error: error.message });
   }
 });

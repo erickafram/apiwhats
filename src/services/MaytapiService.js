@@ -77,6 +77,8 @@ class MaytapiService {
         bot
       });
 
+      console.log(`🔧 DEBUG: Conexão salva para bot ${botId}, phoneId: ${phoneId}`);
+
       // Emitir evento de conexão
       this.io.emit('bot_connection_update', {
         botId,
@@ -360,6 +362,9 @@ class MaytapiService {
       const { phone_id, message } = webhookData;
       
       // Encontrar bot pela phoneId
+      console.log(`🔧 DEBUG: Procurando bot para phoneId: ${phone_id}`);
+      console.log(`🔧 DEBUG: Conexões disponíveis:`, Array.from(this.connections.entries()).map(([id, conn]) => ({botId: id, phoneId: conn.phoneId})));
+
       let botId = null;
       for (const [id, connection] of this.connections) {
         if (connection.phoneId === phone_id) {

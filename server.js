@@ -1,3 +1,4 @@
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -22,10 +23,14 @@ app.use(cors({
   credentials: true
 }));
 
+// Configurar trust proxy ANTES do rate limiting
+app.set('trust proxy', 1);
+
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100 // máximo 100 requests por IP
+  max: 100, // máximo 100 requests por IP
+  trustProxy: true // Para CloudPanel/nginx
 });
 app.use(limiter);
 
@@ -100,11 +105,20 @@ db.sequelize.sync({ force: false }).then(async () => {
   const useMaytapi = process.env.USE_MAYTAPI === 'true';
   const useSimulator = process.env.USE_WHATSAPP_SIMULATOR === 'true' || false;
 
+  console.log('🔧 Configuração de serviços:');
+  console.log('USE_MAYTAPI:', useMaytapi);
+  console.log('USE_WHATSAPP_SIMULATOR:', useSimulator);
+
   // Instanciar serviços globais
   if (useMaytapi) {
     console.log('🚀 Iniciando Maytapi WhatsApp Service');
-    global.maytapiService = new MaytapiService(io);
-    global.whatsappService = global.maytapiService; // Compatibilidade
+    try {
+      global.maytapiService = new MaytapiService(io);
+      global.whatsappService = global.maytapiService; // Compatibilidade
+      console.log('✅ MaytapiService inicializado com sucesso');
+    } catch (error) {
+      console.error('❌ Erro ao inicializar MaytapiService:', error);
+    }
   } else if (useSimulator) {
     console.log('🤖 Iniciando WhatsApp SIMULADOR para desenvolvimento');
     global.whatsappService = new WhatsAppSimulator(io);
@@ -119,12 +133,20 @@ db.sequelize.sync({ force: false }).then(async () => {
   // Inicializar serviços
   try {
     await global.botManager.initialize();
-    console.log('Serviços inicializados com sucesso');
+    console.log('✅ Serviços inicializados com sucesso');
+    
+    // Verificar se MaytapiService está disponível
+    if (global.maytapiService) {
+      console.log('✅ MaytapiService está disponível globalmente');
+    } else {
+      console.log('⚠️ MaytapiService não está disponível');
+    }
+    
   } catch (error) {
-    console.error('Erro ao inicializar serviços:', error);
+    console.error('❌ Erro ao inicializar serviços:', error);
   }
 }).catch(error => {
-  console.error('Erro ao sincronizar banco de dados:', error);
+  console.error('❌ Erro ao sincronizar banco de dados:', error);
 });
 
 const PORT = process.env.PORT || 5000;
@@ -135,3 +157,4 @@ server.listen(PORT, () => {
 });
 
 module.exports = { app, server, io };
+
