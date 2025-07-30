@@ -207,8 +207,14 @@ class MaytapiService {
   // Enviar mensagem
   async sendMessage(botId, to, message, options = {}) {
     try {
+      console.log(`🔧 DEBUG sendMessage: botId=${botId}, to=${to}`);
+      console.log(`🔧 DEBUG connections:`, Array.from(this.connections.entries()));
+
       const connection = this.connections.get(botId);
+      console.log(`🔧 DEBUG connection:`, connection);
+
       if (!connection || !connection.connected) {
+        console.log(`🔧 DEBUG: connection=${!!connection}, connected=${connection?.connected}`);
         throw new Error('Bot não conectado');
       }
 
