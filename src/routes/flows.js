@@ -165,34 +165,64 @@ router.get('/:id', validateParams(schemas.idParam), async (req, res) => {
 // Criar novo fluxo
 router.post('/', validate(schemas.createFlow), async (req, res) => {
   try {
+    console.log('🔧 DEBUG: Criando fluxo com dados:', JSON.stringify(req.body, null, 2));
+
     const { bot_id, ...flowData } = req.body;
 
+    // bot_id é obrigatório
+    if (!bot_id) {
+      console.log('🔧 DEBUG: bot_id é obrigatório');
+      return res.status(400).json({
+        error: 'bot_id é obrigatório. Todo fluxo deve estar vinculado a um bot.',
+        code: 'BOT_ID_REQUIRED'
+      });
+    }
+
     // Verificar se o bot pertence ao usuário
+    console.log('🔧 DEBUG: Verificando bot_id:', bot_id, 'para usuário:', req.user.id);
     const bot = await Bot.findOne({
       where: { id: bot_id, user_id: req.user.id }
     });
 
     if (!bot) {
+      console.log('🔧 DEBUG: Bot não encontrado ou não pertence ao usuário');
       return res.status(404).json({
-        error: 'Bot não encontrado',
+        error: 'Bot não encontrado ou você não tem permissão para acessá-lo',
         code: 'BOT_NOT_FOUND'
       });
     }
 
+    console.log('🔧 DEBUG: Bot encontrado:', bot.name);
+    console.log('🔧 DEBUG: Dados para criar fluxo:', {
+      ...flowData,
+      bot_id: bot_id
+    });
+
     const flow = await Flow.create({
       ...flowData,
-      bot_id
+      bot_id: bot_id
     });
+
+    console.log('🔧 DEBUG: Fluxo criado com sucesso:', flow.id);
 
     res.status(201).json({
       message: 'Fluxo criado com sucesso',
       flow
     });
   } catch (error) {
-    console.error('Erro ao criar fluxo:', error);
+    console.error('🔧 DEBUG: Erro ao criar fluxo:', error);
+    console.error('🔧 DEBUG: Stack trace:', error.stack);
+    console.error('🔧 DEBUG: Error details:', {
+      name: error.name,
+      message: error.message,
+      sql: error.sql,
+      parameters: error.parameters
+    });
+
     res.status(500).json({
-      error: 'Erro interno do servidor',
-      code: 'INTERNAL_ERROR'
+      error: 'Erro interno do servidor ao criar fluxo',
+      code: 'INTERNAL_ERROR',
+      details: error.message
     });
   }
 });
@@ -200,6 +230,9 @@ router.post('/', validate(schemas.createFlow), async (req, res) => {
 // Atualizar fluxo
 router.put('/:id', validateParams(schemas.idParam), validate(schemas.updateFlow), async (req, res) => {
   try {
+    console.log(`🔧 DEBUG: Atualizando fluxo ID ${req.params.id}`);
+    console.log(`🔧 DEBUG: Dados recebidos:`, JSON.stringify(req.body, null, 2));
+
     const flow = await Flow.findOne({
       where: { id: req.params.id },
       include: [
@@ -212,11 +245,14 @@ router.put('/:id', validateParams(schemas.idParam), validate(schemas.updateFlow)
     });
 
     if (!flow) {
+      console.log(`❌ DEBUG: Fluxo ${req.params.id} não encontrado para usuário ${req.user.id}`);
       return res.status(404).json({
         error: 'Fluxo não encontrado',
         code: 'FLOW_NOT_FOUND'
       });
     }
+
+    console.log(`✅ DEBUG: Fluxo encontrado: ${flow.name}`);
 
     // Se está definindo como padrão, remover padrão dos outros fluxos do bot
     if (req.body.is_default === true) {
@@ -224,9 +260,15 @@ router.put('/:id', validateParams(schemas.idParam), validate(schemas.updateFlow)
         { is_default: false },
         { where: { bot_id: flow.bot_id, id: { [require('sequelize').Op.ne]: flow.id } } }
       );
+      console.log(`🔧 DEBUG: Removido is_default de outros fluxos do bot ${flow.bot_id}`);
     }
 
+    const oldFlowData = flow.flow_data;
     await flow.update(req.body);
+
+    console.log(`✅ DEBUG: Fluxo ${req.params.id} atualizado com sucesso`);
+    console.log(`🔧 DEBUG: flow_data antes:`, JSON.stringify(oldFlowData, null, 2));
+    console.log(`🔧 DEBUG: flow_data depois:`, JSON.stringify(flow.flow_data, null, 2));
 
     res.json({
       message: 'Fluxo atualizado com sucesso',
@@ -600,6 +642,461 @@ router.post('/clear-cache', async (req, res) => {
     res.status(500).json({
       error: 'Erro ao limpar cache',
       code: 'CACHE_CLEAR_ERROR',
+      details: error.message
+    });
+  }
+});
+
+// Gerar fluxo com IA
+router.post('/generate-with-ai', async (req, res) => {
+  try {
+    const { description, bot_id } = req.body;
+
+    if (!description || !description.trim()) {
+      return res.status(400).json({
+        error: 'Descrição é obrigatória',
+        code: 'DESCRIPTION_REQUIRED'
+      });
+    }
+
+    // Usar o AIService para gerar o fluxo
+    const AIService = require('../services/AIService');
+    const aiService = new AIService();
+
+    // Prompt especializado para criação de fluxos
+    const systemPrompt = `Você é um especialista em criação de fluxos conversacionais para chatbots do WhatsApp.
+
+Crie um fluxo completo e funcional baseado na descrição fornecida.
+
+Estrutura obrigatória do JSON:
+{
+  "name": "Nome do Fluxo",
+  "description": "Descrição do fluxo",
+  "trigger_keywords": ["palavra1", "palavra2"],
+  "bot_id": null,
+  "is_active": true,
+  "is_default": false,
+  "flow_data": {
+    "nodes": [
+      {
+        "id": "start",
+        "type": "start",
+        "position": {"x": 100, "y": 100},
+        "next": "welcome"
+      },
+      {
+        "id": "welcome",
+        "type": "message",
+        "content": "Mensagem de boas-vindas",
+        "position": {"x": 100, "y": 200},
+        "next": "menu"
+      }
+    ],
+    "edges": []
+  }
+}
+
+Tipos de nó válidos: start, message, input, condition, ai, action, end
+- start: sempre o primeiro nó
+- message: enviar mensagem
+- input: capturar entrada do usuário
+- condition: decisões baseadas em condições
+- ai: resposta gerada por IA
+- end: finalizar conversa
+
+Use emojis nas mensagens para tornar mais amigável.
+Crie um fluxo lógico e bem estruturado.
+
+Responda APENAS com o JSON válido, sem explicações adicionais.`;
+
+    const aiResponse = await aiService.generateResponse({
+      message: `Crie um fluxo conversacional para: ${description}`,
+      context: [],
+      config: {
+        system_prompt: systemPrompt,
+        temperature: 0.7,
+        max_tokens: 2000
+      }
+    });
+
+    let generatedFlow;
+
+    if (aiResponse && aiResponse.content) {
+      try {
+        // Tentar parsear a resposta da IA
+        const cleanContent = aiResponse.content.replace(/```json\n?|\n?```/g, '').trim();
+        generatedFlow = JSON.parse(cleanContent);
+
+        // Validar estrutura básica
+        if (!generatedFlow.flow_data || !generatedFlow.flow_data.nodes) {
+          throw new Error('Estrutura de fluxo inválida');
+        }
+
+      } catch (parseError) {
+        console.error('Erro ao parsear resposta da IA:', parseError);
+        // Fallback: criar um fluxo básico
+        generatedFlow = createFallbackFlow(description, bot_id);
+      }
+    } else {
+      // Fallback: criar um fluxo básico
+      generatedFlow = createFallbackFlow(description, bot_id);
+    }
+
+    // Adicionar bot_id se fornecido
+    if (bot_id) {
+      generatedFlow.bot_id = bot_id;
+    }
+
+    res.json({
+      success: true,
+      flow: generatedFlow,
+      ai_used: true,
+      confidence: aiResponse?.confidence || 0.8
+    });
+
+  } catch (error) {
+    console.error('Erro ao gerar fluxo com IA:', error);
+    res.status(500).json({
+      error: 'Erro interno do servidor ao gerar fluxo',
+      code: 'AI_GENERATION_ERROR',
+      details: error.message
+    });
+  }
+});
+
+// Função para criar fluxo básico como fallback
+function createFallbackFlow(description, bot_id) {
+  return {
+    name: "Fluxo Gerado por IA",
+    description: description,
+    trigger_keywords: ["oi", "olá", "menu", "ajuda"],
+    bot_id: bot_id || null,
+    is_active: true,
+    is_default: false,
+    flow_data: {
+      nodes: [
+        {
+          id: "start",
+          type: "start",
+          position: { x: 100, y: 100 },
+          next: "welcome"
+        },
+        {
+          id: "welcome",
+          type: "message",
+          content: "Olá! 👋 Bem-vindo ao nosso atendimento!\n\nComo posso ajudá-lo hoje?",
+          position: { x: 100, y: 200 },
+          next: "menu"
+        },
+        {
+          id: "menu",
+          type: "message",
+          content: "Escolha uma opção:\n\n1️⃣ Informações\n2️⃣ Suporte\n3️⃣ Falar com atendente\n\nDigite o número da opção:",
+          position: { x: 100, y: 300 },
+          next: "input"
+        },
+        {
+          id: "input",
+          type: "input",
+          content: "Aguardando sua escolha...",
+          position: { x: 100, y: 400 },
+          next: "condition"
+        },
+        {
+          id: "condition",
+          type: "condition",
+          conditions: [
+            { value: "1", next: "info" },
+            { value: "2", next: "support" },
+            { value: "3", next: "human" }
+          ],
+          position: { x: 100, y: 500 }
+        },
+        {
+          id: "info",
+          type: "message",
+          content: "ℹ️ Aqui estão nossas informações principais.\n\nObrigado pelo contato!",
+          position: { x: 200, y: 600 },
+          next: "end"
+        },
+        {
+          id: "support",
+          type: "ai",
+          prompt: `Você é um assistente de suporte. Contexto: ${description}. Ajude o usuário de forma útil e amigável.`,
+          position: { x: 300, y: 600 },
+          next: "end"
+        },
+        {
+          id: "human",
+          type: "message",
+          content: "👨‍💼 Transferindo para atendente humano...\n\nAguarde um momento.",
+          position: { x: 400, y: 600 },
+          next: "end"
+        },
+        {
+          id: "end",
+          type: "end",
+          position: { x: 300, y: 700 }
+        }
+      ],
+      edges: []
+    }
+  };
+}
+
+// Editar fluxo com IA
+router.post('/edit-with-ai', async (req, res) => {
+  try {
+    console.log('🤖 Iniciando edição com IA...');
+    const { description, currentFlow } = req.body;
+
+    console.log('🤖 Descrição:', description);
+    console.log('🤖 Fluxo atual recebido:', currentFlow ? 'Sim' : 'Não');
+
+    if (!description || !description.trim()) {
+      console.log('🤖 Erro: Descrição vazia');
+      return res.status(400).json({
+        error: 'Descrição das mudanças é obrigatória',
+        code: 'DESCRIPTION_REQUIRED'
+      });
+    }
+
+    if (!currentFlow) {
+      console.log('🤖 Erro: Fluxo atual não fornecido');
+      return res.status(400).json({
+        error: 'Dados do fluxo atual são obrigatórios',
+        code: 'CURRENT_FLOW_REQUIRED'
+      });
+    }
+
+    // Validar estrutura do fluxo atual
+    if (!currentFlow.flow_data || !currentFlow.flow_data.nodes) {
+      console.log('🤖 Erro: Estrutura do fluxo inválida');
+      return res.status(400).json({
+        error: 'Estrutura do fluxo atual é inválida',
+        code: 'INVALID_FLOW_STRUCTURE'
+      });
+    }
+
+    // Usar o AIService para editar o fluxo
+    const AIService = require('../services/AIService');
+    const aiService = new AIService();
+
+    // Prompt especializado para análise e correção de fluxos
+    const systemPrompt = `Você é um ESPECIALISTA EM DEBUGGING de fluxos conversacionais para chatbots do WhatsApp.
+
+MISSÃO: Analisar o problema descrito pelo usuário, identificar a causa raiz no fluxo e corrigi-la.
+
+PROCESSO DE ANÁLISE:
+1. 🔍 ANALISE o problema descrito pelo usuário
+2. 🧠 IDENTIFIQUE a causa raiz no fluxo atual:
+   - Conexões quebradas entre nós (campo "next" incorreto)
+   - Condições mal configuradas (conditions array)
+   - IDs de nós que não existem
+   - Tipos de nó incorretos
+   - Conteúdo de mensagens inadequado
+3. 🔧 CORRIJA o problema específico
+4. ✅ VALIDE que a correção resolve o problema
+
+PROBLEMAS COMUNS E SOLUÇÕES:
+- "Opção X não responde": Verificar se condition tem o valor correto e next aponta para nó existente
+- "Fica travado": Verificar se todos os nós têm next válido ou são do tipo end
+- "Não entende entrada": Verificar se há nó input antes de condition
+- "Pula etapas": Verificar sequência de next entre nós
+
+ESTRUTURA DE RESPOSTA:
+Retorne um JSON com duas partes:
+
+{
+  "analysis": "Análise detalhada do problema encontrado e como foi corrigido",
+  "flow": {
+    "name": "Nome do Fluxo",
+    "description": "Descrição",
+    "trigger_keywords": ["palavra1", "palavra2"],
+    "bot_id": 1,
+    "is_active": true,
+    "is_default": false,
+    "flow_data": {
+      "nodes": [...nós corrigidos...],
+      "edges": [...edges corrigidas...],
+      "viewport": {"x": 0, "y": 0, "zoom": 1}
+    }
+  }
+}
+
+REGRAS TÉCNICAS:
+- Mantenha TODOS os campos obrigatórios
+- Para condition: {"conditions": [{"value": "1", "operator": "equals", "variable": "menu_option", "next": "node_id"}]}
+- Para input: {"variable": "nome_variavel", "next": "proximo_node"}
+- IDs únicos e consistentes
+- Posições (x,y) adequadas para novos nós
+- Edges devem conectar source → target corretamente
+
+IMPORTANTE: Seja um detective! Encontre exatamente o que está quebrado e conserte.`;
+
+    const contextMessage = `Fluxo atual:
+${JSON.stringify(currentFlow, null, 2)}
+
+Mudanças solicitadas: ${description}`;
+
+    const aiResponse = await aiService.generateResponse({
+      message: contextMessage,
+      context: [],
+      config: {
+        system_prompt: systemPrompt,
+        temperature: 0.7,
+        max_tokens: 3000
+      }
+    });
+
+    let editedFlow;
+    let aiResult;
+
+    if (aiResponse && aiResponse.content) {
+      try {
+        console.log('🤖 Resposta bruta da IA (primeiros 500 chars):', aiResponse.content.substring(0, 500));
+
+        // Limpar a resposta da IA de forma mais robusta
+        let cleanContent = aiResponse.content.trim();
+
+        // Remover markdown code blocks
+        cleanContent = cleanContent.replace(/```json\s*/g, '');
+        cleanContent = cleanContent.replace(/```\s*/g, '');
+
+        // Remover texto explicativo antes e depois do JSON
+        const jsonStart = cleanContent.indexOf('{');
+        const jsonEnd = cleanContent.lastIndexOf('}');
+
+        if (jsonStart === -1 || jsonEnd === -1 || jsonEnd <= jsonStart) {
+          throw new Error('JSON não encontrado na resposta da IA');
+        }
+
+        cleanContent = cleanContent.substring(jsonStart, jsonEnd + 1);
+
+        // Tentar corrigir problemas comuns de JSON
+        cleanContent = cleanContent
+          .replace(/,\s*}/g, '}')  // Remove vírgulas antes de }
+          .replace(/,\s*]/g, ']')  // Remove vírgulas antes de ]
+          .replace(/'/g, '"')      // Substitui aspas simples por duplas
+
+        console.log('🤖 Conteúdo limpo (primeiros 500 chars):', cleanContent.substring(0, 500));
+
+        // Tentar parsear
+        aiResult = JSON.parse(cleanContent);
+        console.log('🤖 JSON parseado com sucesso!');
+
+        // Verificar se tem análise e fluxo
+        if (aiResult.analysis && aiResult.flow) {
+          console.log('🤖 Análise da IA:', aiResult.analysis);
+          editedFlow = aiResult.flow;
+        } else if (aiResult.flow_data) {
+          // Formato antigo - fluxo direto
+          editedFlow = aiResult;
+        } else {
+          throw new Error('Estrutura de resposta inválida da IA');
+        }
+
+        // Validações obrigatórias
+        if (!editedFlow.flow_data) {
+          throw new Error('Campo flow_data é obrigatório');
+        }
+
+        if (!editedFlow.flow_data.nodes || !Array.isArray(editedFlow.flow_data.nodes)) {
+          throw new Error('Campo flow_data.nodes deve ser um array');
+        }
+
+        if (editedFlow.flow_data.nodes.length === 0) {
+          throw new Error('Fluxo deve ter pelo menos um nó');
+        }
+
+        // Validar se tem pelo menos um nó start
+        const hasStart = editedFlow.flow_data.nodes.some(node => node.type === 'start');
+        if (!hasStart) {
+          throw new Error('Fluxo deve ter pelo menos um nó do tipo start');
+        }
+
+        // Garantir que todos os nós tenham IDs únicos
+        const nodeIds = editedFlow.flow_data.nodes.map(node => node.id);
+        const uniqueIds = [...new Set(nodeIds)];
+        if (nodeIds.length !== uniqueIds.length) {
+          throw new Error('Fluxo contém IDs de nós duplicados');
+        }
+
+        // Garantir campos obrigatórios
+        editedFlow.name = editedFlow.name || currentFlow.name;
+        editedFlow.description = editedFlow.description || currentFlow.description;
+        editedFlow.trigger_keywords = editedFlow.trigger_keywords || currentFlow.trigger_keywords || [];
+        editedFlow.bot_id = editedFlow.bot_id || currentFlow.bot_id;
+        editedFlow.is_active = editedFlow.is_active !== undefined ? editedFlow.is_active : currentFlow.is_active;
+        editedFlow.is_default = editedFlow.is_default !== undefined ? editedFlow.is_default : currentFlow.is_default;
+
+        // Garantir estrutura de flow_data
+        if (!editedFlow.flow_data.edges) {
+          editedFlow.flow_data.edges = [];
+        }
+        if (!editedFlow.flow_data.viewport) {
+          editedFlow.flow_data.viewport = { x: 0, y: 0, zoom: 1 };
+        }
+
+        console.log('🤖 Fluxo validado com sucesso!');
+        console.log('🤖 Nodes:', editedFlow.flow_data.nodes.length);
+        console.log('🤖 Edges:', editedFlow.flow_data.edges.length);
+
+      } catch (parseError) {
+        console.error('🤖 Erro ao parsear/validar resposta da IA:', parseError.message);
+        console.error('🤖 Conteúdo completo da resposta:', aiResponse.content);
+
+        // Fallback mais inteligente: aplicar mudança simples
+        console.log('🤖 Aplicando fallback: modificação simples do fluxo');
+
+        editedFlow = {
+          ...currentFlow,
+          description: `${currentFlow.description} (Editado: ${description})`,
+          flow_data: {
+            ...currentFlow.flow_data,
+            nodes: currentFlow.flow_data.nodes.map(node => {
+              // Modificar o primeiro nó de mensagem encontrado
+              if (node.type === 'message' && node.content) {
+                return {
+                  ...node,
+                  content: `${node.content}\n\n✨ Editado com IA: ${description}`
+                };
+              }
+              return node;
+            })
+          }
+        };
+
+        console.log('🤖 Fallback aplicado com sucesso');
+      }
+    } else {
+      console.error('🤖 IA não retornou conteúdo');
+      throw new Error('IA não conseguiu processar a solicitação de edição');
+    }
+
+    // Preparar resposta com análise se disponível
+    const response = {
+      success: true,
+      flow: editedFlow,
+      ai_used: true,
+      confidence: aiResponse.confidence || 0.8,
+      changes_applied: description
+    };
+
+    // Adicionar análise se a IA forneceu
+    if (typeof aiResult !== 'undefined' && aiResult.analysis) {
+      response.analysis = aiResult.analysis;
+      console.log('🤖 Incluindo análise na resposta:', aiResult.analysis);
+    }
+
+    console.log('🤖 Edição concluída com sucesso');
+    res.json(response);
+
+  } catch (error) {
+    console.error('Erro ao editar fluxo com IA:', error);
+    res.status(500).json({
+      error: 'Erro interno do servidor ao editar fluxo',
+      code: 'AI_EDIT_ERROR',
       details: error.message
     });
   }

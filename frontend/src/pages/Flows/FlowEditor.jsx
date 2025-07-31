@@ -23,6 +23,7 @@ import {
   Alert,
   Toolbar,
   Divider,
+  Badge,
   Switch,
   FormControlLabel,
   Accordion,
@@ -48,7 +49,9 @@ import {
   Close as CloseIcon,
   Visibility as PreviewIcon,
   Code as CodeIcon,
-  AccountTree as FlowIcon
+  AccountTree as FlowIcon,
+  AutoAwesome as AutoAwesomeIcon,
+  Send as SendIcon
 } from '@mui/icons-material'
 import { useParams, useNavigate } from 'react-router-dom'
 import ReactFlow, {
@@ -64,6 +67,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css'
 import toast from 'react-hot-toast'
 import { flowsAPI } from '../../services/api'
+import WhatsAppSimulator from '../../components/WhatsAppSimulator'
 
 // Tipos de nós disponíveis
 const nodeTypes = [
@@ -95,6 +99,16 @@ const FlowEditor = () => {
   const [nodeDialogOpen, setNodeDialogOpen] = useState(false)
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false)
   const [currentTab, setCurrentTab] = useState(0)
+
+  // Estados para edição com IA
+  const [aiEditDialogOpen, setAiEditDialogOpen] = useState(false)
+  const [aiEditDescription, setAiEditDescription] = useState('')
+  const [aiEditGenerating, setAiEditGenerating] = useState(false)
+  const [aiEditStep, setAiEditStep] = useState('input')
+  const [aiAnalysis, setAiAnalysis] = useState('')
+
+  // Estado para o simulador do WhatsApp
+  const [whatsappSimulatorOpen, setWhatsappSimulatorOpen] = useState(false)
 
   // Estados para edição por código
   const [codeEditorOpen, setCodeEditorOpen] = useState(false)
@@ -163,22 +177,30 @@ const FlowEditor = () => {
 
       // Converter dados do fluxo para ReactFlow
       if (flowData.flow_data && flowData.flow_data.nodes) {
-        const reactFlowNodes = flowData.flow_data.nodes.map(node => ({
+        const reactFlowNodes = flowData.flow_data.nodes.map((node, index) => ({
           id: node.id,
           type: 'default',
-          position: node.position || { x: Math.random() * 400, y: Math.random() * 400 },
+          position: node.position || getAutoPosition(node, index, flowData.flow_data.nodes),
           data: {
-            label: getNodeLabel(node),
+            label: getNodeLabel(node, index),
             nodeType: node.type,
             content: node.content,
+            stepNumber: getStepNumber(node, index),
             ...node
           },
           style: {
-            background: getNodeColor(node.type),
+            background: `linear-gradient(135deg, ${getNodeColor(node.type)}, ${getNodeColor(node.type)}dd)`,
             color: 'white',
-            border: '1px solid #222138',
-            width: 180,
-            fontSize: 12
+            border: `2px solid ${getNodeColor(node.type)}`,
+            borderRadius: '12px',
+            width: 200,
+            minHeight: 80,
+            fontSize: 11,
+            fontWeight: 600,
+            textAlign: 'center',
+            padding: '8px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            transition: 'all 0.3s ease'
           }
         }))
 
@@ -195,20 +217,260 @@ const FlowEditor = () => {
     }
   }
 
-  const getNodeLabel = (node) => {
+  const getNodeLabel = (node, index) => {
     const nodeType = nodeTypes.find(nt => nt.type === node.type)
     const typeLabel = nodeType ? nodeType.label : node.type
 
-    if (node.content && node.content.length > 20) {
-      return `${typeLabel}: ${node.content.substring(0, 20)}...`
+    // Determinar o ícone e número do passo
+    let stepIcon = ''
+    let stepNumber = ''
+
+    if (node.type === 'start') {
+      stepIcon = '🚀'
+      stepNumber = 'INÍCIO'
+    } else if (node.type === 'end') {
+      stepIcon = '🏁'
+      stepNumber = 'FIM'
+    } else if (node.type === 'condition') {
+      stepIcon = '🔀'
+      stepNumber = 'DECISÃO'
+    } else if (node.type === 'ai') {
+      stepIcon = '🤖'
+      stepNumber = 'IA'
+    } else {
+      stepIcon = '📝'
+      stepNumber = `PASSO ${index + 1}`
     }
 
-    return `${typeLabel}: ${node.id}`
+    // Criar label mais limpo e legível
+    let content = ''
+    if (node.content && node.content.length > 25) {
+      content = node.content.substring(0, 25) + '...'
+    } else if (node.content) {
+      content = node.content
+    } else {
+      content = typeLabel
+    }
+
+    return `${stepIcon} ${stepNumber}\n${content}`
   }
 
   const getNodeColor = (type) => {
-    const nodeType = nodeTypes.find(nt => nt.type === type)
-    return nodeType ? nodeType.color : '#666'
+    const colors = {
+      'start': '#4caf50',      // Verde - Início
+      'message': '#2196f3',    // Azul - Mensagem
+      'input': '#ff9800',      // Laranja - Input
+      'condition': '#9c27b0',  // Roxo - Condição
+      'ai': '#e91e63',         // Rosa - IA
+      'end': '#f44336',        // Vermelho - Fim
+      'action': '#607d8b',     // Cinza azulado - Ação
+      'delay': '#795548'       // Marrom - Delay
+    }
+
+    return colors[type] || '#666'
+  }
+
+  const getStepNumber = (node, index) => {
+    if (node.type === 'start') return '🚀'
+    if (node.type === 'end') return '🏁'
+    if (node.type === 'condition') return '🔀'
+    if (node.type === 'ai') return '🤖'
+    return `${index + 1}`
+  }
+
+  const getAutoPosition = (node, index, allNodes) => {
+    // Configurações de layout
+    const nodeWidth = 220
+    const nodeHeight = 100
+    const horizontalSpacing = 280
+    const verticalSpacing = 150
+    const startX = 100
+    const startY = 100
+
+    // Organizar em fluxo vertical com ramificações
+    if (node.type === 'start') {
+      return { x: startX, y: startY }
+    }
+
+    // Para outros nós, calcular posição baseada no índice
+    const row = Math.floor(index / 3) // 3 nós por linha
+    const col = index % 3
+
+    return {
+      x: startX + (col * horizontalSpacing),
+      y: startY + (row * verticalSpacing)
+    }
+  }
+
+  const autoLayoutNodes = () => {
+    const updatedNodes = nodes.map((node, index) => ({
+      ...node,
+      position: getAutoPosition(node.data, index, nodes)
+    }))
+
+    setNodes(updatedNodes)
+    toast.success('Layout reorganizado automaticamente!')
+  }
+
+  // Funções para edição com IA
+  const editFlowWithAI = async () => {
+    if (!aiEditDescription.trim()) {
+      toast.error('Por favor, descreva as mudanças que deseja fazer')
+      return
+    }
+
+    setAiEditGenerating(true)
+    setAiEditStep('generating')
+
+    try {
+      console.log('🤖 Editando fluxo com IA:', aiEditDescription)
+
+      // Preparar dados do fluxo atual de forma mais robusta
+      const currentFlowData = {
+        id: flow?.id,
+        name: flow?.name || '',
+        description: flow?.description || '',
+        trigger_keywords: flow?.trigger_keywords || [],
+        bot_id: flow?.bot_id,
+        is_active: flow?.is_active !== undefined ? flow.is_active : true,
+        is_default: flow?.is_default !== undefined ? flow.is_default : false,
+        flow_data: {
+          nodes: nodes.map(node => ({
+            id: node.id,
+            type: node.data.nodeType || 'message',
+            content: node.data.content || '',
+            position: node.position || { x: 0, y: 0 },
+            next: node.data.next || null,
+            conditions: node.data.conditions || [],
+            variable: node.data.variable || null,
+            action: node.data.action || null
+          })),
+          edges: edges || [],
+          viewport: { x: 0, y: 0, zoom: 1 }
+        }
+      }
+
+      console.log('🤖 Dados preparados para IA:')
+      console.log('🤖 - ID:', currentFlowData.id)
+      console.log('🤖 - Nome:', currentFlowData.name)
+      console.log('🤖 - Bot ID:', currentFlowData.bot_id)
+      console.log('🤖 - Nodes:', currentFlowData.flow_data.nodes.length)
+
+      const response = await fetch('/api/flows/edit-with-ai', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          description: aiEditDescription,
+          currentFlow: currentFlowData
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('🤖 Erro da API:', errorData)
+        throw new Error(errorData.error || 'Erro ao editar fluxo com IA')
+      }
+
+      const data = await response.json()
+      console.log('🤖 Resposta da API:', data)
+
+      if (!data.success || !data.flow) {
+        throw new Error('Resposta inválida da API de edição')
+      }
+
+      // Mostrar análise da IA se disponível
+      if (data.analysis) {
+        console.log('🤖 Análise da IA:', data.analysis)
+        setAiAnalysis(data.analysis)
+        setAiEditStep('completed')
+        toast.success('IA analisou e corrigiu o problema!', {
+          duration: 5000
+        })
+      } else {
+        setAiEditStep('completed')
+        toast.success('Fluxo editado com sucesso!')
+      }
+
+      // Aplicar as mudanças
+      if (data.flow && data.flow.flow_data && data.flow.flow_data.nodes) {
+        console.log('🤖 Aplicando mudanças ao fluxo...')
+
+        try {
+          const reactFlowNodes = data.flow.flow_data.nodes.map((node, index) => ({
+            id: node.id,
+            type: 'default',
+            position: node.position || getAutoPosition(node, index, data.flow.flow_data.nodes),
+            data: {
+              label: getNodeLabel(node, index),
+              nodeType: node.type,
+              content: node.content,
+              stepNumber: getStepNumber(node, index),
+              ...node
+            },
+            style: {
+              background: `linear-gradient(135deg, ${getNodeColor(node.type)}, ${getNodeColor(node.type)}dd)`,
+              color: 'white',
+              border: `2px solid ${getNodeColor(node.type)}`,
+              borderRadius: '12px',
+              width: 200,
+              minHeight: 80,
+              fontSize: 11,
+              fontWeight: 600,
+              textAlign: 'center',
+              padding: '8px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              transition: 'all 0.3s ease'
+            }
+          }))
+
+          // Gerar edges se não existirem
+          let reactFlowEdges = []
+          if (data.flow.flow_data.edges && data.flow.flow_data.edges.length > 0) {
+            reactFlowEdges = data.flow.flow_data.edges
+          } else {
+            reactFlowEdges = generateEdgesFromNodes(data.flow.flow_data.nodes)
+          }
+
+          console.log('🤖 Atualizando nodes:', reactFlowNodes.length)
+          console.log('🤖 Atualizando edges:', reactFlowEdges.length)
+
+          setNodes(reactFlowNodes)
+          setEdges(reactFlowEdges)
+
+          // Atualizar dados do fluxo
+          setFlow({ ...flow, ...data.flow })
+
+          console.log('🤖 Fluxo atualizado com sucesso!')
+
+        } catch (updateError) {
+          console.error('🤖 Erro ao aplicar mudanças:', updateError)
+          throw new Error('Erro ao aplicar as mudanças no fluxo visual')
+        }
+      } else {
+        throw new Error('Dados do fluxo editado são inválidos')
+      }
+
+      setAiEditStep('success')
+      toast.success('Fluxo editado com sucesso pela IA!')
+
+    } catch (error) {
+      console.error('🤖 Erro ao editar fluxo com IA:', error)
+      toast.error('Erro ao editar fluxo: ' + error.message)
+      setAiEditStep('input')
+    } finally {
+      setAiEditGenerating(false)
+    }
+  }
+
+  const resetAIEditDialog = () => {
+    setAiEditDialogOpen(false)
+    setAiEditDescription('')
+    setAiEditStep('input')
+    setAiEditGenerating(false)
+    setAiAnalysis('')
   }
 
   const generateEdgesFromNodes = (flowNodes) => {
@@ -221,8 +483,15 @@ const FlowEditor = () => {
           source: node.id,
           target: node.next,
           type: 'smoothstep',
+          animated: true,
+          style: {
+            stroke: '#2196f3',
+            strokeWidth: 3,
+            strokeDasharray: '5,5'
+          },
           markerEnd: {
             type: MarkerType.ArrowClosed,
+            color: '#2196f3'
           }
         })
       }
@@ -235,11 +504,24 @@ const FlowEditor = () => {
               source: node.id,
               target: condition.next,
               type: 'smoothstep',
+              animated: true,
               label: condition.value || `Condição ${index + 1}`,
+              style: {
+                stroke: '#9c27b0',
+                strokeWidth: 3
+              },
+              labelStyle: {
+                fill: '#9c27b0',
+                fontWeight: 600,
+                fontSize: 12,
+                backgroundColor: 'white',
+                padding: '2px 6px',
+                borderRadius: '4px'
+              },
               markerEnd: {
                 type: MarkerType.ArrowClosed,
-              },
-              style: { stroke: '#9c27b0' }
+                color: '#9c27b0'
+              }
             })
           }
         })
@@ -406,15 +688,7 @@ const FlowEditor = () => {
     return outgoingEdge ? outgoingEdge.target : null
   }
 
-  const testFlow = async () => {
-    try {
-      await flowsAPI.test(id, { message: 'Teste do editor' })
-      toast.success('Teste do fluxo executado!')
-    } catch (error) {
-      console.error('Erro ao testar fluxo:', error)
-      toast.error('Erro ao testar fluxo')
-    }
-  }
+
 
   // Funções para edição por código
   const handleTabChange = (event, newValue) => {
@@ -475,7 +749,12 @@ const FlowEditor = () => {
   }
 
   const applyCodeChanges = async () => {
+    console.log('🚀 DEBUG Frontend: applyCodeChanges CHAMADA!')
+    console.log('🔧 DEBUG Frontend: flowCode:', flowCode)
+    console.log('🔧 DEBUG Frontend: validateFlowCode result:', validateFlowCode(flowCode))
+
     if (!validateFlowCode(flowCode)) {
+      console.log('❌ DEBUG Frontend: Código JSON inválido')
       toast.error('Código JSON inválido')
       return
     }
@@ -483,8 +762,14 @@ const FlowEditor = () => {
     try {
       const parsedFlow = JSON.parse(flowCode)
 
+      console.log('🔧 DEBUG Frontend: Iniciando applyCodeChanges')
+      console.log('🔧 DEBUG Frontend: Flow ID:', id)
+      console.log('🔧 DEBUG Frontend: Dados a enviar:', parsedFlow)
+
       // Atualizar o fluxo no backend
-      await flowsAPI.update(id, parsedFlow)
+      console.log('🔧 DEBUG Frontend: Chamando flowsAPI.update...')
+      const response = await flowsAPI.update(id, parsedFlow)
+      console.log('🔧 DEBUG Frontend: Resposta da API:', response)
 
       // Atualizar o estado local
       setFlow({ ...flow, ...parsedFlow })
@@ -519,7 +804,9 @@ const FlowEditor = () => {
       toast.success('Fluxo atualizado com sucesso!')
       setCurrentTab(0) // Voltar para a aba visual
     } catch (error) {
-      console.error('Erro ao aplicar mudanças:', error)
+      console.error('🔧 DEBUG Frontend: Erro ao aplicar mudanças:', error)
+      console.error('🔧 DEBUG Frontend: Error response:', error.response)
+      console.error('🔧 DEBUG Frontend: Error data:', error.response?.data)
       toast.error('Erro ao aplicar mudanças: ' + (error.response?.data?.error || error.message))
     }
   }
@@ -606,32 +893,51 @@ const FlowEditor = () => {
               Visualizar
             </Button>
 
-            <Button
-              startIcon={<PlayIcon />}
-              onClick={testFlow}
-              variant="outlined"
-              color="success"
-              size="small"
-              sx={{ mr: 1 }}
-            >
-              Testar
-            </Button>
+
 
             <Button
-              startIcon={<SaveIcon />}
-              onClick={() => saveFlow(true)}
-              variant="contained"
-              disabled={saving}
+              startIcon={<AutoAwesomeIcon />}
+              onClick={() => setAiEditDialogOpen(true)}
+              variant="outlined"
               size="small"
               sx={{
                 mr: 1,
-                background: 'linear-gradient(45deg, #1976d2 30%, #42a5f5 90%)',
+                color: '#e91e63',
+                borderColor: '#e91e63',
                 '&:hover': {
-                  background: 'linear-gradient(45deg, #1565c0 30%, #1976d2 90%)',
+                  backgroundColor: '#e91e63',
+                  color: 'white'
                 }
               }}
             >
-              {saving ? 'Salvando...' : 'Salvar Agora'}
+              Editar com IA
+            </Button>
+
+            <Button
+              startIcon={<SettingsIcon />}
+              onClick={autoLayoutNodes}
+              variant="outlined"
+              size="small"
+              sx={{ mr: 1 }}
+            >
+              Auto Layout
+            </Button>
+
+            <Button
+              startIcon={<PlayIcon />}
+              onClick={() => setWhatsappSimulatorOpen(true)}
+              variant="contained"
+              color="success"
+              size="small"
+              sx={{
+                mr: 1,
+                background: 'linear-gradient(45deg, #25d366 30%, #128c7e 90%)',
+                '&:hover': {
+                  background: 'linear-gradient(45deg, #128c7e 30%, #075e54 90%)',
+                }
+              }}
+            >
+              💬 Testar
             </Button>
 
             <Button
@@ -673,6 +979,23 @@ const FlowEditor = () => {
           />
         </Tabs>
       </Paper>
+
+      {/* Legenda dos tipos de nós */}
+      {currentTab === 0 && (
+        <Paper sx={{ mx: 2, mt: 1, p: 2, backgroundColor: '#f8f9fa', borderRadius: '12px' }}>
+          <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600, color: '#1976d2' }}>
+            📋 Legenda dos Nós do Fluxo:
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            <Chip size="small" sx={{ backgroundColor: '#4caf50', color: 'white', fontWeight: 600 }} label="🚀 Início" />
+            <Chip size="small" sx={{ backgroundColor: '#2196f3', color: 'white', fontWeight: 600 }} label="💬 Mensagem" />
+            <Chip size="small" sx={{ backgroundColor: '#ff9800', color: 'white', fontWeight: 600 }} label="📝 Input" />
+            <Chip size="small" sx={{ backgroundColor: '#9c27b0', color: 'white', fontWeight: 600 }} label="🔀 Condição" />
+            <Chip size="small" sx={{ backgroundColor: '#e91e63', color: 'white', fontWeight: 600 }} label="🤖 IA" />
+            <Chip size="small" sx={{ backgroundColor: '#f44336', color: 'white', fontWeight: 600 }} label="🏁 Fim" />
+          </Box>
+        </Paper>
+      )}
 
       {/* Conteúdo das Abas */}
       {currentTab === 0 && (
@@ -828,6 +1151,11 @@ const FlowEditor = () => {
             onConnect={onConnect}
             onNodeClick={onNodeClick}
             fitView
+            fitViewOptions={{
+              padding: 0.2,
+              minZoom: 0.5,
+              maxZoom: 1.5
+            }}
             attributionPosition="bottom-left"
             style={{
               background: 'transparent',
@@ -835,6 +1163,7 @@ const FlowEditor = () => {
             }}
             defaultEdgeOptions={{
               type: 'smoothstep',
+              animated: true,
               markerEnd: {
                 type: MarkerType.ArrowClosed,
                 color: '#1976d2',
@@ -1168,6 +1497,148 @@ const FlowEditor = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Dialog de edição com IA */}
+      <Dialog
+        open={aiEditDialogOpen}
+        onClose={resetAIEditDialog}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)'
+          }
+        }}
+      >
+        <DialogTitle sx={{
+          background: 'linear-gradient(45deg, #e91e63 30%, #f06292 90%)',
+          color: 'white',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1
+        }}>
+          <AutoAwesomeIcon />
+          Editar Fluxo com Inteligência Artificial
+        </DialogTitle>
+
+        <DialogContent sx={{ p: 3 }}>
+          {aiEditStep === 'input' && (
+            <Box>
+              <Typography variant="h6" sx={{ mb: 2, color: '#1976d2' }}>
+                🤖 Descreva as mudanças que você quer fazer no fluxo
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 3, color: '#666' }}>
+                Exemplo: "Adicionar uma opção de horário de funcionamento", "Incluir um menu de produtos", "Melhorar as mensagens de boas-vindas"
+              </Typography>
+
+              <TextField
+                fullWidth
+                multiline
+                rows={4}
+                variant="outlined"
+                label="Descreva as mudanças..."
+                placeholder="Ex: Quero adicionar uma nova opção no menu principal para 'Promoções' que mostre os produtos em oferta e depois redirecione para o atendente."
+                value={aiEditDescription}
+                onChange={(e) => setAiEditDescription(e.target.value)}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '12px',
+                    backgroundColor: 'white'
+                  }
+                }}
+              />
+            </Box>
+          )}
+
+          {aiEditStep === 'generating' && (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <CircularProgress size={60} sx={{ color: '#e91e63', mb: 2 }} />
+              <Typography variant="h6" sx={{ mb: 1 }}>
+                🧠 IA está editando seu fluxo...
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Analisando o fluxo atual e aplicando as mudanças solicitadas
+              </Typography>
+            </Box>
+          )}
+
+          {aiEditStep === 'completed' && (
+            <Box sx={{ py: 3 }}>
+              <Typography variant="h6" sx={{ mb: 2, color: '#4caf50', display: 'flex', alignItems: 'center', gap: 1 }}>
+                ✅ Fluxo analisado e corrigido!
+              </Typography>
+
+              {aiAnalysis && (
+                <Box sx={{
+                  bgcolor: '#f8f9fa',
+                  border: '1px solid #e9ecef',
+                  borderRadius: '12px',
+                  p: 3,
+                  mb: 2
+                }}>
+                  <Typography variant="subtitle2" sx={{ mb: 1, color: '#1976d2', fontWeight: 600 }}>
+                    🔍 Análise da IA:
+                  </Typography>
+                  <Typography variant="body2" sx={{
+                    whiteSpace: 'pre-wrap',
+                    lineHeight: 1.6,
+                    color: '#333'
+                  }}>
+                    {aiAnalysis}
+                  </Typography>
+                </Box>
+              )}
+
+              <Typography variant="body2" color="text.secondary">
+                As correções foram aplicadas ao seu fluxo. Você pode testar o fluxo ou continuar editando.
+              </Typography>
+            </Box>
+          )}
+
+          {aiEditStep === 'success' && (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <Typography variant="h6" sx={{ mb: 2, color: '#4caf50' }}>
+                ✅ Fluxo editado com sucesso!
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                As mudanças foram aplicadas ao seu fluxo. Você pode continuar editando ou salvar as alterações.
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+
+        <DialogActions sx={{ p: 3, gap: 1 }}>
+          <Button onClick={resetAIEditDialog} color="inherit">
+            {aiEditStep === 'success' ? 'Fechar' : 'Cancelar'}
+          </Button>
+
+          {aiEditStep === 'input' && (
+            <Button
+              onClick={editFlowWithAI}
+              variant="contained"
+              disabled={!aiEditDescription.trim() || aiEditGenerating}
+              startIcon={<SendIcon />}
+              sx={{
+                background: 'linear-gradient(45deg, #e91e63 30%, #f06292 90%)',
+                '&:hover': {
+                  background: 'linear-gradient(45deg, #c2185b 30%, #e91e63 90%)',
+                }
+              }}
+            >
+              Aplicar Mudanças com IA
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
+
+      {/* Simulador do WhatsApp */}
+      <WhatsAppSimulator
+        open={whatsappSimulatorOpen}
+        onClose={() => setWhatsappSimulatorOpen(false)}
+        flow={flow}
+        botName={flow?.name || 'ChatBot'}
+      />
     </Box>
   )
 }

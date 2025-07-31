@@ -54,7 +54,9 @@ import {
   Input as InputIcon,
   CallSplit as ConditionIcon,
   Stop as EndIcon,
-  Code as CodeIcon
+  Code as CodeIcon,
+  AutoAwesome as AutoAwesomeIcon,
+  Send as SendIcon
 } from '@mui/icons-material'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -78,6 +80,14 @@ const Flows = () => {
   })
   const [anchorEl, setAnchorEl] = useState(null)
   const [selectedFlow, setSelectedFlow] = useState(null)
+
+  // Estados para criação com IA
+  const [aiCreateDialogOpen, setAiCreateDialogOpen] = useState(false)
+  const [aiDescription, setAiDescription] = useState('')
+  const [aiGenerating, setAiGenerating] = useState(false)
+  const [generatedFlow, setGeneratedFlow] = useState(null)
+  const [aiStep, setAiStep] = useState('input') // 'input', 'generating', 'preview'
+
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -193,6 +203,120 @@ const Flows = () => {
     setSelectedFlow(null)
   }
 
+  // Funções para criação com IA
+  const generateFlowWithAI = async () => {
+    if (!aiDescription.trim()) {
+      toast.error('Por favor, descreva o fluxo que deseja criar')
+      return
+    }
+
+    setAiGenerating(true)
+    setAiStep('generating')
+
+    try {
+      console.log('🤖 Gerando fluxo com IA:', aiDescription)
+
+      // Determinar o bot_id para a geração
+      let botId = null
+      if (selectedBot !== 'all') {
+        botId = parseInt(selectedBot)
+      } else if (bots.length > 0) {
+        botId = bots[0].id
+      }
+
+      const response = await fetch('/api/flows/generate-with-ai', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          description: aiDescription,
+          bot_id: botId
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Erro ao gerar fluxo com IA')
+      }
+
+      const data = await response.json()
+      console.log('🤖 Fluxo gerado:', data)
+
+      setGeneratedFlow(data.flow)
+      setAiStep('preview')
+      toast.success('Fluxo gerado com sucesso pela IA!')
+
+    } catch (error) {
+      console.error('🤖 Erro ao gerar fluxo com IA:', error)
+      toast.error('Erro ao gerar fluxo: ' + error.message)
+      setAiStep('input')
+    } finally {
+      setAiGenerating(false)
+    }
+  }
+
+  const handleSaveAIFlow = async () => {
+    if (!generatedFlow) {
+      toast.error('Nenhum fluxo foi gerado para salvar')
+      return
+    }
+
+    try {
+      console.log('💾 Salvando fluxo gerado pela IA:', generatedFlow)
+
+      // Determinar o bot_id correto
+      let botId = null
+
+      if (selectedBot !== 'all') {
+        // Se um bot específico foi selecionado, usar ele
+        botId = parseInt(selectedBot)
+      } else if (bots.length > 0) {
+        // Se não há bot selecionado, usar o primeiro bot do usuário
+        botId = bots[0].id
+      }
+
+      if (!botId) {
+        toast.error('É necessário ter pelo menos um bot para criar fluxos. Crie um bot primeiro.')
+        return
+      }
+
+      const flowToSave = {
+        ...generatedFlow,
+        bot_id: botId
+      }
+
+      console.log('💾 Dados do fluxo a salvar:', flowToSave)
+
+      const response = await flowsAPI.create(flowToSave)
+      console.log('💾 Fluxo salvo com sucesso:', response.data)
+
+      toast.success('Fluxo criado e salvo com sucesso!')
+
+      // Resetar estado
+      resetAIDialog()
+
+      // Recarregar lista de fluxos
+      await loadFlows()
+
+      // Navegar para o editor do fluxo criado
+      navigate(`/flows/${response.data.flow.id}/edit`)
+
+    } catch (error) {
+      console.error('💾 Erro ao salvar fluxo:', error)
+      toast.error('Erro ao salvar fluxo: ' + (error.response?.data?.error || error.message))
+    }
+  }
+
+  const resetAIDialog = () => {
+    setAiCreateDialogOpen(false)
+    setAiDescription('')
+    setGeneratedFlow(null)
+    setAiStep('input')
+    setAiGenerating(false)
+  }
+
   const handleTabChange = (event, newValue) => {
     setCurrentTab(newValue)
   }
@@ -280,13 +404,28 @@ const Flows = () => {
         <Typography variant="h4" component="h1">
           Fluxos Conversacionais
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setCreateDialogOpen(true)}
-        >
-          Novo Fluxo
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            variant="contained"
+            startIcon={<AutoAwesomeIcon />}
+            onClick={() => setAiCreateDialogOpen(true)}
+            sx={{
+              background: 'linear-gradient(45deg, #e91e63 30%, #f06292 90%)',
+              '&:hover': {
+                background: 'linear-gradient(45deg, #c2185b 30%, #e91e63 90%)',
+              }
+            }}
+          >
+            Criar com IA
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<AddIcon />}
+            onClick={() => setCreateDialogOpen(true)}
+          >
+            Novo Fluxo
+          </Button>
+        </Box>
       </Box>
 
       {/* Abas */}
@@ -609,6 +748,158 @@ const Flows = () => {
           <Button onClick={handleCreateFlow} variant="contained">
             Criar Fluxo
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog de criação com IA */}
+      <Dialog
+        open={aiCreateDialogOpen}
+        onClose={resetAIDialog}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)'
+          }
+        }}
+      >
+        <DialogTitle sx={{
+          background: 'linear-gradient(45deg, #e91e63 30%, #f06292 90%)',
+          color: 'white',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1
+        }}>
+          <AutoAwesomeIcon />
+          Criar Fluxo com Inteligência Artificial
+        </DialogTitle>
+
+        <DialogContent sx={{ p: 3 }}>
+          {aiStep === 'input' && (
+            <Box>
+              <Typography variant="h6" sx={{ mb: 2, color: '#1976d2' }}>
+                🤖 Descreva o fluxo que você quer criar
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 3, color: '#666' }}>
+                Seja específico sobre o que o bot deve fazer. Exemplo: "Criar um fluxo de atendimento para uma pizzaria com opções de cardápio, pedidos e entrega"
+              </Typography>
+
+              <TextField
+                fullWidth
+                multiline
+                rows={6}
+                variant="outlined"
+                label="Descreva seu fluxo..."
+                placeholder="Ex: Quero um fluxo para atendimento de uma loja de roupas. O bot deve cumprimentar o cliente, mostrar categorias (masculino, feminino, infantil), permitir consulta de produtos, informar preços e horário de funcionamento, e no final dar opção de falar com atendente humano."
+                value={aiDescription}
+                onChange={(e) => setAiDescription(e.target.value)}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '12px',
+                    backgroundColor: 'white'
+                  }
+                }}
+              />
+            </Box>
+          )}
+
+          {aiStep === 'generating' && (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <CircularProgress size={60} sx={{ color: '#e91e63', mb: 2 }} />
+              <Typography variant="h6" sx={{ mb: 1 }}>
+                🧠 IA está criando seu fluxo...
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Analisando sua descrição e gerando o fluxo conversacional
+              </Typography>
+            </Box>
+          )}
+
+          {aiStep === 'preview' && generatedFlow && (
+            <Box>
+              <Typography variant="h6" sx={{ mb: 2, color: '#1976d2' }}>
+                ✨ Fluxo gerado com sucesso!
+              </Typography>
+
+              <Alert severity="success" sx={{ mb: 2, borderRadius: '12px' }}>
+                <Typography variant="body2">
+                  <strong>📋 {generatedFlow.name}</strong><br />
+                  {generatedFlow.description}
+                </Typography>
+              </Alert>
+
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+                {generatedFlow.trigger_keywords?.map((keyword, index) => (
+                  <Chip
+                    key={index}
+                    label={keyword}
+                    size="small"
+                    color="primary"
+                    variant="outlined"
+                  />
+                ))}
+              </Box>
+
+              <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                🔗 Estrutura do Fluxo: {generatedFlow.flow_data?.nodes?.length || 0} nós criados
+              </Typography>
+
+              <Alert severity="info" sx={{ borderRadius: '12px' }}>
+                <Typography variant="body2">
+                  💡 Você pode editar este fluxo após salvá-lo usando o editor visual ou por código.
+                </Typography>
+              </Alert>
+            </Box>
+          )}
+        </DialogContent>
+
+        <DialogActions sx={{ p: 3, gap: 1 }}>
+          <Button onClick={resetAIDialog} color="inherit">
+            Cancelar
+          </Button>
+
+          {aiStep === 'input' && (
+            <Button
+              onClick={generateFlowWithAI}
+              variant="contained"
+              disabled={!aiDescription.trim() || aiGenerating}
+              startIcon={<SendIcon />}
+              sx={{
+                background: 'linear-gradient(45deg, #e91e63 30%, #f06292 90%)',
+                '&:hover': {
+                  background: 'linear-gradient(45deg, #c2185b 30%, #e91e63 90%)',
+                }
+              }}
+            >
+              Gerar com IA
+            </Button>
+          )}
+
+          {aiStep === 'preview' && (
+            <>
+              <Button
+                onClick={() => setAiStep('input')}
+                variant="outlined"
+                startIcon={<EditIcon />}
+              >
+                Editar Descrição
+              </Button>
+              <Button
+                onClick={handleSaveAIFlow}
+                variant="contained"
+                startIcon={<AddIcon />}
+                sx={{
+                  background: 'linear-gradient(45deg, #4caf50 30%, #66bb6a 90%)',
+                  '&:hover': {
+                    background: 'linear-gradient(45deg, #388e3c 30%, #4caf50 90%)',
+                  }
+                }}
+              >
+                Criar Fluxo
+              </Button>
+            </>
+          )}
         </DialogActions>
       </Dialog>
     </Box>

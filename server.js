@@ -5,6 +5,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const http = require('http');
 const socketIo = require('socket.io');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -41,6 +42,9 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Middleware para uploads
 app.use('/uploads', express.static('uploads'));
 
+// Servir arquivos estáticos do frontend
+app.use(express.static(path.join(__dirname, 'frontend/dist')));
+
 // Importar rotas
 const authRoutes = require('./src/routes/auth');
 const botRoutes = require('./src/routes/bots');
@@ -75,9 +79,15 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Middleware para rotas não encontradas
-app.use('*', (req, res) => {
-  res.status(404).json({ error: 'Rota não encontrada' });
+// Rota catch-all para SPA - deve vir DEPOIS das rotas da API
+app.get('*', (req, res) => {
+  // Se a requisição é para API, retorna 404
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ error: 'Rota da API não encontrada' });
+  }
+
+  // Para todas as outras rotas, serve o index.html do frontend
+  res.sendFile(path.join(__dirname, 'frontend/dist/index.html'));
 });
 
 // Configurar Socket.IO

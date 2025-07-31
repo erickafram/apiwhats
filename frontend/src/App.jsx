@@ -23,6 +23,7 @@ import ConversationDetail from './pages/Conversations/ConversationDetail'
 import Queue from './pages/Queue/Queue'
 import Analytics from './pages/Analytics/Analytics'
 import Settings from './pages/Settings/Settings'
+import LandingPage from './pages/Landing/LandingPage'
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -56,9 +57,13 @@ const PublicRoute = ({ children }) => {
 
 function App() {
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+    <Box sx={{ display: '', minHeight: '100vh' }}>
       <Routes>
         {/* Public Routes */}
+        <Route
+          path="/"
+          element={<LandingPage />}
+        />
         <Route
           path="/login"
           element={

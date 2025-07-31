@@ -7,7 +7,7 @@ module.exports = (sequelize, DataTypes) => {
     },
     bot_id: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: false, // bot_id é obrigatório
       references: {
         model: 'bots',
         key: 'id'

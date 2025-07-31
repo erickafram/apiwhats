@@ -2,9 +2,12 @@ const Joi = require('joi');
 
 const validate = (schema) => {
   return (req, res, next) => {
-    const { error } = schema.validate(req.body, { 
+    console.log(`🔧 DEBUG Validação: Validando dados para ${req.method} ${req.path}`);
+    console.log(`🔧 DEBUG Validação: Dados recebidos:`, JSON.stringify(req.body, null, 2));
+
+    const { error } = schema.validate(req.body, {
       abortEarly: false,
-      stripUnknown: true 
+      stripUnknown: true
     });
 
     if (error) {
@@ -14,6 +17,7 @@ const validate = (schema) => {
         value: detail.context.value
       }));
 
+      console.log(`❌ DEBUG Validação: Erro de validação:`, errors);
       return res.status(400).json({
         error: 'Dados de entrada inválidos',
         code: 'VALIDATION_ERROR',
@@ -21,6 +25,7 @@ const validate = (schema) => {
       });
     }
 
+    console.log(`✅ DEBUG Validação: Dados válidos, prosseguindo...`);
     next();
   };
 };
@@ -123,6 +128,7 @@ const schemas = {
   createFlow: Joi.object({
     name: Joi.string().min(2).max(100).required(),
     description: Joi.string().max(500).allow(''),
+    bot_id: Joi.number().integer().required(), // Obrigatório
     flow_data: Joi.object({
       nodes: Joi.array().default([]),
       edges: Joi.array().default([]),
@@ -134,7 +140,9 @@ const schemas = {
     }).default(),
     trigger_keywords: Joi.array().items(Joi.string()).default([]),
     trigger_conditions: Joi.object().default(),
-    priority: Joi.number().integer().min(0).default(0)
+    priority: Joi.number().integer().min(0).default(0),
+    is_active: Joi.boolean().default(true),
+    is_default: Joi.boolean().default(false)
   }),
 
   updateFlow: Joi.object({
