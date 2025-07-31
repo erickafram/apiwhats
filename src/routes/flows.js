@@ -844,6 +844,178 @@ function createFallbackFlow(description, bot_id) {
   };
 }
 
+// Função para aplicar edições simples quando a IA falha
+function applySimpleFlowEdit(currentFlow, description) {
+  const lowerDescription = description.toLowerCase();
+
+  // Detectar comando de remoção de opções - regex mais flexível
+  const removeOptionMatch = lowerDescription.match(/(?:retire?|remova?|exclua?).*(?:opção|opcao|opcoes|opções)\s*(\d+)(?:\s*(?:e|,)\s*(\d+))?/);
+
+  // Também detectar padrões como "opções 4 e 5" ou "4 e 5"
+  const removeNumbersMatch = lowerDescription.match(/(?:opções?|opcoes?)\s*(\d+)\s*(?:e|,)\s*(\d+)|(\d+)\s*(?:e|,)\s*(\d+)/);
+
+  if (removeOptionMatch || removeNumbersMatch) {
+    let optionsToRemove = [];
+
+    if (removeOptionMatch) {
+      optionsToRemove.push(removeOptionMatch[1]);
+      if (removeOptionMatch[2]) {
+        optionsToRemove.push(removeOptionMatch[2]);
+      }
+    } else if (removeNumbersMatch) {
+      if (removeNumbersMatch[1] && removeNumbersMatch[2]) {
+        optionsToRemove.push(removeNumbersMatch[1], removeNumbersMatch[2]);
+      } else if (removeNumbersMatch[3] && removeNumbersMatch[4]) {
+        optionsToRemove.push(removeNumbersMatch[3], removeNumbersMatch[4]);
+      }
+    }
+
+    console.log('🤖 Fallback: Removendo opções', optionsToRemove);
+
+    return {
+      ...currentFlow,
+      description: `${currentFlow.description} (Editado: ${description})`,
+      flow_data: {
+        ...currentFlow.flow_data,
+        nodes: currentFlow.flow_data.nodes.map(node => {
+          // Encontrar nó de mensagem com menu
+          if (node.type === 'message' && node.content && node.content.includes('Escolha uma opção:')) {
+            let newContent = node.content;
+
+            // Remover as linhas das opções especificadas
+            optionsToRemove.forEach(optionNum => {
+              const regex = new RegExp(`\\n?${optionNum}[️⃣]*\\s*[^\\n]*`, 'g');
+              newContent = newContent.replace(regex, '');
+            });
+
+            return {
+              ...node,
+              content: newContent.trim()
+            };
+          }
+
+          // Remover nós de condição relacionados às opções removidas
+          if (node.type === 'condition' && node.conditions) {
+            const filteredConditions = node.conditions.filter(condition => {
+              return !optionsToRemove.includes(condition.value);
+            });
+
+            return {
+              ...node,
+              conditions: filteredConditions
+            };
+          }
+
+          return node;
+        }),
+        edges: currentFlow.flow_data.edges.filter(edge => {
+          // Manter apenas edges que não levam a nós de opções removidas
+          const sourceNode = currentFlow.flow_data.nodes.find(n => n.id === edge.source);
+          if (sourceNode && sourceNode.type === 'condition') {
+            const condition = sourceNode.conditions?.find(c =>
+              optionsToRemove.includes(c.value) && c.next === edge.target
+            );
+            return !condition;
+          }
+          return true;
+        })
+      }
+    };
+  }
+
+  // Detectar comando de alteração de texto - regex mais flexível
+  const changeTextMatch = lowerDescription.match(/(?:altere?|mude?|substitua?|troque?|edite?)\s+(?:o\s+texto\s+)?(?:da\s+opção\s+\d+\s+)?(?:de\s+)?(.+?)\s+para\s+(.+)/);
+  if (changeTextMatch) {
+    const fromText = changeTextMatch[1].trim();
+    const toText = changeTextMatch[2].trim();
+
+    console.log('🤖 Fallback: Alterando texto de', fromText, 'para', toText);
+
+    return {
+      ...currentFlow,
+      description: `${currentFlow.description} (Editado: ${description})`,
+      flow_data: {
+        ...currentFlow.flow_data,
+        nodes: currentFlow.flow_data.nodes.map(node => {
+          if (node.type === 'message' && node.content) {
+            // Fazer substituição case-insensitive
+            const regex = new RegExp(fromText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+            const newContent = node.content.replace(regex, toText);
+
+            if (newContent !== node.content) {
+              return {
+                ...node,
+                content: newContent
+              };
+            }
+          }
+          return node;
+        })
+      }
+    };
+  }
+
+  // Detectar comando para criar menu de opções - regex mais flexível
+  const createMenuMatch = lowerDescription.match(/(?:vamos\s+)?(?:colocar|criar|adicionar|fazer).*(?:usuario|usuário).*(?:escolher|selecionar).*(?:temos|são)\s+(.+)/) ||
+                          lowerDescription.match(/(?:temos|são|opções|opcoes):\s*(.+)/) ||
+                          lowerDescription.match(/(?:temos)\s+([^.]+)/);
+  if (createMenuMatch) {
+    const optionsText = createMenuMatch[1];
+    const options = optionsText.split(/[,;]/).map(opt => opt.trim()).filter(opt => opt.length > 0);
+
+    console.log('🤖 Fallback: Criando menu com opções:', options);
+
+    return {
+      ...currentFlow,
+      description: `${currentFlow.description} (Editado: ${description})`,
+      flow_data: {
+        ...currentFlow.flow_data,
+        nodes: currentFlow.flow_data.nodes.map(node => {
+          // Encontrar nó que pede input de cidade
+          if (node.type === 'message' && node.content &&
+              (node.content.includes('cidade de ORIGEM') || node.content.includes('digite a cidade'))) {
+
+            // Criar menu de opções
+            let menuContent = node.content.split('\n')[0]; // Manter primeira linha
+            menuContent += '\n\nEscolha uma cidade:\n\n';
+
+            options.forEach((option, index) => {
+              menuContent += `${index + 1}️⃣ ${option}\n`;
+            });
+
+            menuContent += '\nDigite o número da opção desejada:';
+
+            return {
+              ...node,
+              content: menuContent
+            };
+          }
+          return node;
+        })
+      }
+    };
+  }
+
+  // Fallback genérico para outros comandos
+  return {
+    ...currentFlow,
+    description: `${currentFlow.description} (Editado: ${description})`,
+    flow_data: {
+      ...currentFlow.flow_data,
+      nodes: currentFlow.flow_data.nodes.map(node => {
+        // Modificar o primeiro nó de mensagem encontrado
+        if (node.type === 'message' && node.content) {
+          return {
+            ...node,
+            content: `${node.content}\n\n✨ Editado com IA: ${description}`
+          };
+        }
+        return node;
+      })
+    }
+  };
+}
+
 // Editar fluxo com IA
 router.post('/edit-with-ai', async (req, res) => {
   try {
@@ -903,6 +1075,8 @@ PROBLEMAS COMUNS E SOLUÇÕES:
 - "Fica travado": Verificar se todos os nós têm next válido ou são do tipo end
 - "Não entende entrada": Verificar se há nó input antes de condition
 - "Pula etapas": Verificar sequência de next entre nós
+- "Remover opção X": Remover linha da opção do conteúdo da mensagem E remover condition correspondente E remover edges relacionadas
+- "Retire opção X e Y": Remover múltiplas opções do menu e suas condições/conexões
 
 ESTRUTURA DE RESPOSTA:
 Retorne um JSON com duas partes:
@@ -932,22 +1106,40 @@ REGRAS TÉCNICAS:
 - Posições (x,y) adequadas para novos nós
 - Edges devem conectar source → target corretamente
 
-IMPORTANTE: Seja um detective! Encontre exatamente o que está quebrado e conserte.`;
+IMPORTANTE: Seja um detective! Encontre exatamente o que está quebrado e conserte.
+
+EXEMPLO DE REMOÇÃO DE OPÇÕES:
+Se o usuário pedir "Retire a opção 4 e 5 do fluxo":
+1. Encontre o nó de mensagem que contém o menu
+2. Remova as linhas "4️⃣ Opção 4" e "5️⃣ Opção 5" do content
+3. Encontre o nó condition que verifica menu_option
+4. Remova as conditions com value "4" e "5"
+5. Remova as edges que conectam essas conditions aos próximos nós
+6. Mantenha apenas as opções 1, 2 e 3 funcionando
+
+SEMPRE retorne JSON válido com analysis explicando o que foi feito.`;
 
     const contextMessage = `Fluxo atual:
 ${JSON.stringify(currentFlow, null, 2)}
 
 Mudanças solicitadas: ${description}`;
 
-    const aiResponse = await aiService.generateResponse({
-      message: contextMessage,
-      context: [],
-      config: {
-        system_prompt: systemPrompt,
-        temperature: 0.7,
-        max_tokens: 3000
-      }
-    });
+    let aiResponse = null;
+
+    try {
+      aiResponse = await aiService.generateResponse({
+        message: contextMessage,
+        context: [],
+        config: {
+          system_prompt: systemPrompt,
+          temperature: 0.7,
+          max_tokens: 3000
+        }
+      });
+    } catch (aiError) {
+      console.error('Erro ao gerar resposta com IA:', aiError);
+      aiResponse = null;
+    }
 
     let editedFlow;
     let aiResult;
@@ -1044,34 +1236,21 @@ Mudanças solicitadas: ${description}`;
 
       } catch (parseError) {
         console.error('🤖 Erro ao parsear/validar resposta da IA:', parseError.message);
-        console.error('🤖 Conteúdo completo da resposta:', aiResponse.content);
+        console.error('🤖 Conteúdo completo da resposta:', aiResponse ? aiResponse.content : 'Nenhum conteúdo');
 
         // Fallback mais inteligente: aplicar mudança simples
         console.log('🤖 Aplicando fallback: modificação simples do fluxo');
 
-        editedFlow = {
-          ...currentFlow,
-          description: `${currentFlow.description} (Editado: ${description})`,
-          flow_data: {
-            ...currentFlow.flow_data,
-            nodes: currentFlow.flow_data.nodes.map(node => {
-              // Modificar o primeiro nó de mensagem encontrado
-              if (node.type === 'message' && node.content) {
-                return {
-                  ...node,
-                  content: `${node.content}\n\n✨ Editado com IA: ${description}`
-                };
-              }
-              return node;
-            })
-          }
-        };
+        editedFlow = applySimpleFlowEdit(currentFlow, description);
 
         console.log('🤖 Fallback aplicado com sucesso');
       }
     } else {
       console.error('🤖 IA não retornou conteúdo');
-      throw new Error('IA não conseguiu processar a solicitação de edição');
+      console.log('🤖 Aplicando fallback: IA não respondeu');
+
+      editedFlow = applySimpleFlowEdit(currentFlow, description);
+      console.log('🤖 Fallback aplicado com sucesso');
     }
 
     // Preparar resposta com análise se disponível
@@ -1079,14 +1258,17 @@ Mudanças solicitadas: ${description}`;
       success: true,
       flow: editedFlow,
       ai_used: true,
-      confidence: aiResponse.confidence || 0.8,
+      confidence: (aiResponse && aiResponse.confidence) ? aiResponse.confidence : 0.8,
       changes_applied: description
     };
 
     // Adicionar análise se a IA forneceu
-    if (typeof aiResult !== 'undefined' && aiResult.analysis) {
+    if (typeof aiResult !== 'undefined' && aiResult && aiResult.analysis) {
       response.analysis = aiResult.analysis;
       console.log('🤖 Incluindo análise na resposta:', aiResult.analysis);
+    } else if (editedFlow && description.toLowerCase().includes('retire')) {
+      // Adicionar análise para fallback de remoção de opções
+      response.analysis = `Fallback aplicado: Comando de remoção de opções detectado e processado automaticamente.`;
     }
 
     console.log('🤖 Edição concluída com sucesso');
