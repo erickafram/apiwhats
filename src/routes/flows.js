@@ -555,4 +555,54 @@ router.patch('/:id/set-default', validateParams(schemas.idParam), async (req, re
   }
 });
 
+// Endpoint para limpar cache de fluxos
+router.post('/clear-cache', async (req, res) => {
+  try {
+    console.log('🧹 Iniciando limpeza de cache via API...');
+
+    // Importar serviços necessários
+    const { Conversation, Message } = require('../models');
+
+    // 1. Limpar conversas ativas
+    const deletedConversations = await Conversation.destroy({
+      where: {},
+      force: true
+    });
+
+    // 2. Limpar mensagens antigas (últimas 2 horas)
+    const deletedMessages = await Message.destroy({
+      where: {
+        created_at: {
+          [require('sequelize').Op.lt]: new Date(Date.now() - 2 * 60 * 60 * 1000)
+        }
+      }
+    });
+
+    // 3. Limpar cache do MaytapiFlowProcessor se disponível
+    const BotManager = require('../services/BotManager');
+    if (BotManager.maytapiFlowProcessor) {
+      BotManager.maytapiFlowProcessor.clearAllCache();
+    }
+
+    console.log(`✅ Cache limpo: ${deletedConversations} conversas, ${deletedMessages} mensagens`);
+
+    res.json({
+      success: true,
+      message: 'Cache limpo com sucesso',
+      data: {
+        conversationsDeleted: deletedConversations,
+        messagesDeleted: deletedMessages
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao limpar cache:', error);
+    res.status(500).json({
+      error: 'Erro ao limpar cache',
+      code: 'CACHE_CLEAR_ERROR',
+      details: error.message
+    });
+  }
+});
+
 module.exports = router;

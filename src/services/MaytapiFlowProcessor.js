@@ -16,6 +16,14 @@ class MaytapiFlowProcessor {
     console.log(`🧹 Estado limpo para usuário: ${phoneNumber}`);
   }
 
+  // Método para limpar TODOS os caches
+  clearAllCache() {
+    this.userStates.clear();
+    this.userVariables.clear();
+    this.messageCache.clear();
+    console.log('🧹 TODOS os caches do MaytapiFlowProcessor foram limpos');
+  }
+
   async processMessage(botId, phoneNumber, messageContent, messageType = 'text') {
     try {
       // Comando especial para limpar estado
