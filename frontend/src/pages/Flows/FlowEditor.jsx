@@ -84,6 +84,8 @@ const FlowEditor = () => {
   const [flow, setFlow] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(true)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
 
   // Estados do editor
   const [nodes, setNodes, onNodesChange] = useNodesState([])
@@ -119,6 +121,39 @@ const FlowEditor = () => {
       loadFlow()
     }
   }, [id])
+
+  // Auto-save quando nodes ou edges mudarem
+  useEffect(() => {
+    if (flow && autoSaveEnabled && (nodes.length > 0 || edges.length > 0)) {
+      setHasUnsavedChanges(true)
+
+      const autoSaveTimer = setTimeout(async () => {
+        if (hasUnsavedChanges) {
+          await saveFlow(false) // Salvar sem mostrar toast
+          setHasUnsavedChanges(false)
+          // Mostrar notificação discreta de auto-save
+          toast.success('💾 Auto-save realizado', {
+            duration: 2000,
+            position: 'bottom-right',
+            style: {
+              background: '#4caf50',
+              color: 'white',
+              fontSize: '0.875rem'
+            }
+          })
+        }
+      }, 2000) // Auto-save após 2 segundos de inatividade
+
+      return () => clearTimeout(autoSaveTimer)
+    }
+  }, [nodes, edges, autoSaveEnabled, flow])
+
+  // Detectar mudanças para mostrar indicador
+  useEffect(() => {
+    if (flow) {
+      setHasUnsavedChanges(true)
+    }
+  }, [nodes, edges])
 
   const loadFlow = async () => {
     try {
@@ -309,7 +344,7 @@ const FlowEditor = () => {
     setEdges((eds) => eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId))
   }
 
-  const saveFlow = async () => {
+  const saveFlow = async (showToast = true) => {
     try {
       setSaving(true)
 
@@ -337,11 +372,30 @@ const FlowEditor = () => {
       }
 
       await flowsAPI.update(id, updatedFlowData)
-      toast.success('Fluxo salvo com sucesso!')
+
+      // Limpar cache do backend para aplicar mudanças imediatamente
+      try {
+        await fetch('/api/flows/clear-cache', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          }
+        })
+        console.log('✅ Cache do backend limpo')
+      } catch (cacheError) {
+        console.warn('⚠️ Não foi possível limpar cache:', cacheError)
+      }
+
+      if (showToast) {
+        toast.success('Fluxo salvo e aplicado no WhatsApp!')
+      }
 
     } catch (error) {
       console.error('Erro ao salvar fluxo:', error)
-      toast.error('Erro ao salvar fluxo')
+      if (showToast) {
+        toast.error('Erro ao salvar fluxo')
+      }
     } finally {
       setSaving(false)
     }
@@ -490,103 +544,213 @@ const FlowEditor = () => {
 
   return (
     <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Toolbar */}
-      <Paper elevation={1}>
-        <Toolbar>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            Editor: {flow.name}
-          </Typography>
+      {/* Toolbar Melhorado */}
+      <Paper elevation={2} sx={{ borderBottom: '1px solid #e0e0e0' }}>
+        <Toolbar sx={{ minHeight: '64px !important', px: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
+            <Typography variant="h5" sx={{ fontWeight: 600, color: '#1976d2' }}>
+              {flow.name}
+            </Typography>
 
-          <Button
-            startIcon={<PreviewIcon />}
-            onClick={() => setPreviewDialogOpen(true)}
-            sx={{ mr: 1 }}
-          >
-            Visualizar
-          </Button>
+            {/* Indicador de Status */}
+            <Box sx={{ ml: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+              {hasUnsavedChanges && !saving && (
+                <Chip
+                  label="Não salvo"
+                  size="small"
+                  color="warning"
+                  variant="outlined"
+                />
+              )}
+              {saving && (
+                <Chip
+                  label="Salvando..."
+                  size="small"
+                  color="info"
+                  icon={<CircularProgress size={12} />}
+                />
+              )}
+              {!hasUnsavedChanges && !saving && (
+                <Chip
+                  label="Salvo"
+                  size="small"
+                  color="success"
+                  variant="outlined"
+                />
+              )}
+            </Box>
+          </Box>
 
-          <Button
-            startIcon={<PlayIcon />}
-            onClick={testFlow}
-            color="success"
-            sx={{ mr: 1 }}
-          >
-            Testar
-          </Button>
+          {/* Controles */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {/* Auto-save Toggle */}
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={autoSaveEnabled}
+                  onChange={(e) => setAutoSaveEnabled(e.target.checked)}
+                  size="small"
+                />
+              }
+              label="Auto-save"
+              sx={{ mr: 2, '& .MuiFormControlLabel-label': { fontSize: '0.875rem' } }}
+            />
 
-          <Button
-            startIcon={<SaveIcon />}
-            onClick={saveFlow}
-            variant="contained"
-            disabled={saving}
-            sx={{ mr: 1 }}
-          >
-            {saving ? 'Salvando...' : 'Salvar'}
-          </Button>
+            <Button
+              startIcon={<PreviewIcon />}
+              onClick={() => setPreviewDialogOpen(true)}
+              variant="outlined"
+              size="small"
+              sx={{ mr: 1 }}
+            >
+              Visualizar
+            </Button>
 
-          <Button
-            onClick={() => navigate('/flows')}
-            color="inherit"
-          >
-            Voltar
-          </Button>
+            <Button
+              startIcon={<PlayIcon />}
+              onClick={testFlow}
+              variant="outlined"
+              color="success"
+              size="small"
+              sx={{ mr: 1 }}
+            >
+              Testar
+            </Button>
+
+            <Button
+              startIcon={<SaveIcon />}
+              onClick={() => saveFlow(true)}
+              variant="contained"
+              disabled={saving}
+              size="small"
+              sx={{
+                mr: 1,
+                background: 'linear-gradient(45deg, #1976d2 30%, #42a5f5 90%)',
+                '&:hover': {
+                  background: 'linear-gradient(45deg, #1565c0 30%, #1976d2 90%)',
+                }
+              }}
+            >
+              {saving ? 'Salvando...' : 'Salvar Agora'}
+            </Button>
+
+            <Button
+              onClick={() => navigate('/flows')}
+              color="inherit"
+              size="small"
+            >
+              Voltar
+            </Button>
+          </Box>
         </Toolbar>
       </Paper>
 
-      {/* Abas */}
-      <Paper elevation={1}>
-        <Tabs value={currentTab} onChange={handleTabChange}>
-          <Tab label="Editor Visual" icon={<FlowIcon />} />
-          <Tab label="Editar por Código" icon={<CodeIcon />} />
+      {/* Abas Melhoradas */}
+      <Paper elevation={1} sx={{ borderBottom: '1px solid #e0e0e0' }}>
+        <Tabs
+          value={currentTab}
+          onChange={handleTabChange}
+          sx={{
+            '& .MuiTab-root': {
+              minHeight: '48px',
+              textTransform: 'none',
+              fontSize: '0.95rem',
+              fontWeight: 500
+            }
+          }}
+        >
+          <Tab
+            label="Editor Visual"
+            icon={<SettingsIcon />}
+            iconPosition="start"
+            sx={{ px: 3 }}
+          />
+          <Tab
+            label="Editar por Código"
+            icon={<CodeIcon />}
+            iconPosition="start"
+            sx={{ px: 3 }}
+          />
         </Tabs>
       </Paper>
 
       {/* Conteúdo das Abas */}
       {currentTab === 0 && (
         <Box sx={{ display: 'flex', flex: 1 }}>
-        {/* Sidebar com tipos de nós */}
+        {/* Sidebar Melhorada */}
         <Drawer
           variant="persistent"
           anchor="left"
           open={drawerOpen}
           sx={{
-            width: 280,
+            width: 320,
             flexShrink: 0,
             '& .MuiDrawer-paper': {
-              width: 280,
+              width: 320,
               boxSizing: 'border-box',
-              position: 'relative'
+              position: 'relative',
+              borderRight: '1px solid #e0e0e0',
+              background: 'linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%)'
             }
           }}
         >
-          <Box sx={{ p: 2 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6">Componentes</Typography>
-              <IconButton onClick={() => setDrawerOpen(false)}>
-                <CloseIcon />
+          <Box sx={{ p: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <Typography variant="h6" sx={{ fontWeight: 600, color: '#1976d2' }}>
+                🧩 Componentes
+              </Typography>
+              <IconButton
+                onClick={() => setDrawerOpen(false)}
+                size="small"
+                sx={{
+                  bgcolor: '#f5f5f5',
+                  '&:hover': { bgcolor: '#e0e0e0' }
+                }}
+              >
+                <CloseIcon fontSize="small" />
               </IconButton>
             </Box>
 
-            <List>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Arraste ou clique para adicionar componentes ao fluxo
+            </Typography>
+
+            <List sx={{ p: 0 }}>
               {nodeTypes.map((nodeType) => (
                 <ListItem
                   key={nodeType.type}
                   button
                   onClick={() => addNewNode(nodeType.type)}
                   sx={{
-                    border: 1,
-                    borderColor: 'divider',
-                    borderRadius: 1,
-                    mb: 1,
+                    border: '2px solid transparent',
+                    borderRadius: 2,
+                    mb: 1.5,
+                    p: 1.5,
+                    background: 'white',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                    transition: 'all 0.2s ease',
                     '&:hover': {
-                      backgroundColor: nodeType.color + '20'
+                      borderColor: nodeType.color,
+                      backgroundColor: nodeType.color + '08',
+                      transform: 'translateY(-1px)',
+                      boxShadow: '0 4px 8px rgba(0,0,0,0.15)'
                     }
                   }}
                 >
-                  <ListItemIcon sx={{ color: nodeType.color }}>
+                  <ListItemIcon sx={{
+                    color: nodeType.color,
+                    minWidth: 40,
+                    '& svg': { fontSize: '1.5rem' }
+                  }}>
                     {nodeType.icon}
                   </ListItemIcon>
-                  <ListItemText primary={nodeType.label} />
+                  <ListItemText
+                    primary={nodeType.label}
+                    primaryTypographyProps={{
+                      fontWeight: 500,
+                      fontSize: '0.95rem'
+                    }}
+                  />
                 </ListItem>
               ))}
             </List>
@@ -629,17 +793,27 @@ const FlowEditor = () => {
           </Box>
         </Drawer>
 
-        {/* Área principal do editor */}
-        <Box sx={{ flex: 1, position: 'relative' }}>
+        {/* Área Principal do Editor Melhorada */}
+        <Box sx={{
+          flex: 1,
+          position: 'relative',
+          background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+          borderRadius: drawerOpen ? '0' : '8px 0 0 0'
+        }}>
           {!drawerOpen && (
             <IconButton
               onClick={() => setDrawerOpen(true)}
               sx={{
                 position: 'absolute',
-                top: 10,
-                left: 10,
+                top: 16,
+                left: 16,
                 zIndex: 1000,
-                backgroundColor: 'background.paper'
+                backgroundColor: 'white',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                '&:hover': {
+                  backgroundColor: '#f5f5f5',
+                  transform: 'scale(1.05)'
+                }
               }}
             >
               <AddIcon />
@@ -655,23 +829,77 @@ const FlowEditor = () => {
             onNodeClick={onNodeClick}
             fitView
             attributionPosition="bottom-left"
+            style={{
+              background: 'transparent',
+              borderRadius: drawerOpen ? '0' : '8px 0 0 0'
+            }}
+            defaultEdgeOptions={{
+              type: 'smoothstep',
+              markerEnd: {
+                type: MarkerType.ArrowClosed,
+                color: '#1976d2',
+              },
+              style: {
+                strokeWidth: 2,
+                stroke: '#1976d2',
+              },
+            }}
           >
-            <Controls />
-            <MiniMap />
-            <Background variant="dots" gap={12} size={1} />
+            <Controls
+              style={{
+                background: 'white',
+                border: '1px solid #e0e0e0',
+                borderRadius: '8px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+              }}
+            />
+            <MiniMap
+              style={{
+                background: 'white',
+                border: '1px solid #e0e0e0',
+                borderRadius: '8px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+              }}
+              nodeColor="#1976d2"
+              maskColor="rgba(25, 118, 210, 0.1)"
+            />
+            <Background
+              variant="dots"
+              gap={20}
+              size={1.5}
+              color="#e0e0e0"
+            />
 
             <Panel position="top-right">
-              <Box sx={{ display: 'flex', gap: 1 }}>
+              <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
                 {selectedNode && (
-                  <Button
-                    startIcon={<DeleteIcon />}
-                    onClick={() => deleteNode(selectedNode.id)}
-                    color="error"
-                    variant="outlined"
-                    size="small"
-                  >
-                    Excluir Nó
-                  </Button>
+                  <>
+                    <Button
+                      startIcon={<SettingsIcon />}
+                      onClick={() => setNodeDialogOpen(true)}
+                      variant="contained"
+                      size="small"
+                      sx={{
+                        background: 'linear-gradient(45deg, #1976d2 30%, #42a5f5 90%)',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                      }}
+                    >
+                      Editar
+                    </Button>
+                    <Button
+                      startIcon={<DeleteIcon />}
+                      onClick={() => deleteNode(selectedNode.id)}
+                      color="error"
+                      variant="outlined"
+                      size="small"
+                      sx={{
+                        bgcolor: 'white',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                      }}
+                    >
+                      Excluir
+                    </Button>
+                  </>
                 )}
               </Box>
             </Panel>
