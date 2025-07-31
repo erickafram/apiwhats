@@ -224,7 +224,7 @@ npm run setup            # Configuração inicial completa
 {
   "ai_config": {
     "enabled": true,
-    "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+    "model": "deepseek-ai/DeepSeek-V3",
     "temperature": 0.7,
     "max_tokens": 1000,
     "system_prompt": "Você é um assistente virtual útil e amigável."

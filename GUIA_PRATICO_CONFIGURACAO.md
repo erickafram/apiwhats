@@ -38,7 +38,7 @@ Na seção **"Configurações de IA"**:
 ```json
 {
   "ai_enabled": true,
-  "ai_model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+  "ai_model": "deepseek-ai/DeepSeek-V3",
   "welcome_message": "Olá! 👋 Sou seu assistente virtual inteligente. Como posso ajudá-lo hoje?",
   "ai_prompt": "Você é um assistente virtual prestativo e amigável. Responda de forma clara, educada e profissional. Use emojis moderadamente para tornar a conversa mais amigável.",
   "fallback_message": "Desculpe, não entendi sua mensagem. Pode reformular sua pergunta?",

@@ -43,7 +43,7 @@ async function createUserAndBot() {
       description: 'Bot criado para demonstrar a funcionalidade completa do sistema',
       ai_config: {
         enabled: true,
-        model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+        model: 'deepseek-ai/DeepSeek-V3',
         temperature: 0.7,
         max_tokens: 1000,
         system_prompt: 'Você é um assistente virtual especializado em atendimento ao cliente. Seja sempre educado, prestativo e profissional. Responda em português brasileiro.'

@@ -40,7 +40,7 @@ module.exports = {
         description: 'Bot demonstrativo para atendimento ao cliente',
         ai_config: JSON.stringify({
           enabled: true,
-          model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+          model: 'deepseek-ai/DeepSeek-V3',
           temperature: 0.7,
           max_tokens: 1000,
           system_prompt: 'Você é um assistente virtual de atendimento ao cliente. Seja sempre educado, prestativo e profissional. Responda em português brasileiro.'

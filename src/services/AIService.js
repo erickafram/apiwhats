@@ -4,7 +4,7 @@ class AIService {
   constructor() {
     this.apiUrl = process.env.TOGETHER_API_URL || 'https://api.together.xyz/v1/chat/completions';
     this.apiToken = process.env.TOGETHER_API_TOKEN;
-    this.defaultModel = process.env.TOGETHER_MODEL || 'meta-llama/Llama-3.3-70B-Instruct-Turbo';
+    this.defaultModel = process.env.TOGETHER_MODEL || 'deepseek-ai/DeepSeek-V3';
     
     if (!this.apiToken) {
       console.warn('TOGETHER_API_TOKEN não configurado. Funcionalidades de IA estarão desabilitadas.');

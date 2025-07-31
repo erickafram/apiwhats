@@ -19,7 +19,7 @@ async function createMaytapiFlows() {
         is_active: true,
         ai_config: {
           enabled: true,
-          model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+          model: 'deepseek-ai/DeepSeek-V3',
           temperature: 0.7
         }
       });

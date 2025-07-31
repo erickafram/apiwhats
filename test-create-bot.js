@@ -23,7 +23,7 @@ async function testCreateBot() {
       description: 'Bot criado para demonstrar a funcionalidade de criação',
       ai_config: {
         enabled: true,
-        model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+        model: 'deepseek-ai/DeepSeek-V3',
         temperature: 0.8,
         max_tokens: 1500,
         system_prompt: 'Você é um assistente virtual especializado em atendimento ao cliente. Seja sempre educado, prestativo e profissional. Responda em português brasileiro de forma clara e objetiva.'

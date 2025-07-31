@@ -100,7 +100,7 @@ const schemas = {
     description: Joi.string().max(500).allow(''),
     ai_config: Joi.object({
       enabled: Joi.boolean().default(true),
-      model: Joi.string().default('meta-llama/Llama-3.3-70B-Instruct-Turbo'),
+      model: Joi.string().default('deepseek-ai/DeepSeek-V3'),
       temperature: Joi.number().min(0).max(2).default(0.7),
       max_tokens: Joi.number().min(1).max(4000).default(1000),
       system_prompt: Joi.string().max(2000).default('Você é um assistente virtual útil e amigável.')

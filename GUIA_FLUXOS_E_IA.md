@@ -40,7 +40,7 @@ No formulário do bot, configure:
 ```json
 {
   "ai_enabled": true,
-  "ai_model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+  "ai_model": "deepseek-ai/DeepSeek-V3",
   "ai_prompt": "Você é um assistente virtual prestativo. Responda de forma amigável e profissional.",
   "welcome_message": "Olá! 👋 Sou seu assistente virtual. Como posso ajudá-lo hoje?",
   "fallback_message": "Desculpe, não entendi. Pode reformular sua pergunta?"

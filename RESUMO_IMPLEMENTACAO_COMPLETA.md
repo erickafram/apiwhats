@@ -91,14 +91,14 @@ USE_MAYTAPI=true
 
 # IA Together.xyz
 TOGETHER_API_TOKEN=8f2666a67bee6b36fbc09d507c0b2e4e4059ae3c3a78672448eefaf248cd673b
-TOGETHER_MODEL=meta-llama/Llama-3.3-70B-Instruct-Turbo
+TOGETHER_MODEL=deepseek-ai/DeepSeek-V3
 ```
 
 ### **Configuração de Bot com IA**
 ```json
 {
   "ai_enabled": true,
-  "ai_model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+  "ai_model": "deepseek-ai/DeepSeek-V3",
   "welcome_message": "Olá! 👋 Sou seu assistente virtual inteligente.",
   "ai_prompt": "Você é um assistente virtual prestativo e amigável.",
   "use_context": true,

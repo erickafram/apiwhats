@@ -52,13 +52,13 @@ async function setupBotWithAI() {
       settings: {
         welcome_message: 'Olá! 👋 Sou seu assistente virtual inteligente. Como posso ajudá-lo hoje?',
         ai_enabled: true,
-        ai_model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+        ai_model: 'deepseek-ai/DeepSeek-V3',
         ai_prompt: 'Você é um assistente virtual prestativo e amigável. Responda de forma clara, educada e profissional. Use emojis moderadamente para tornar a conversa mais amigável.',
         fallback_message: 'Desculpe, não entendi sua mensagem. Pode reformular sua pergunta?'
       },
       ai_config: {
         enabled: true,
-        model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+        model: 'deepseek-ai/DeepSeek-V3',
         temperature: 0.7,
         max_tokens: 150,
         system_prompt: 'Você é um assistente virtual da empresa. Seja sempre educado, prestativo e profissional.',
