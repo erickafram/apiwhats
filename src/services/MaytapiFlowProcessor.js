@@ -24,6 +24,37 @@ class MaytapiFlowProcessor {
     console.log('🧹 TODOS os caches do MaytapiFlowProcessor foram limpos');
   }
 
+  // Método auxiliar para fazer parse e normalizar flow_data
+  parseFlowData(flow) {
+    let flowData;
+
+    // Parse flow_data se for string
+    if (typeof flow.flow_data === 'string') {
+      try {
+        flowData = JSON.parse(flow.flow_data);
+      } catch (error) {
+        console.log(`❌ Erro ao fazer parse do flow_data do fluxo "${flow.name}":`, error.message);
+        flowData = {};
+      }
+    } else {
+      flowData = flow.flow_data || {};
+    }
+
+    // Suportar tanto estrutura antiga (array) quanto nova (objeto)
+    let nodes;
+    if (Array.isArray(flowData.nodes)) {
+      // Estrutura antiga: nodes é array
+      nodes = flowData.nodes;
+    } else if (typeof flowData.nodes === 'object' && flowData.nodes !== null) {
+      // Estrutura nova: nodes é objeto, converter para array
+      nodes = Object.values(flowData.nodes);
+    } else {
+      nodes = [];
+    }
+
+    return { flowData, nodes };
+  }
+
   async processMessage(botId, phoneNumber, messageContent, messageType = 'text') {
     try {
       // Comando especial para limpar estado
@@ -151,11 +182,14 @@ Digite o número da opção desejada:`;
   async executeFlow(flow, conversation, messageContent, messageType) {
     try {
       const phoneNumber = conversation.phoneNumber;
-      const flowData = flow.flow_data || {};
-      const nodes = flowData.nodes || [];
+
+      // Usar função auxiliar para parse do fluxo
+      const { flowData, nodes } = this.parseFlowData(flow);
+
+      console.log(`🔍 Fluxo ${flow.name}: ${nodes.length} nós encontrados`);
 
       // Obter estado atual do usuário
-      let userState = this.userStates.get(phoneNumber) || { 
+      let userState = this.userStates.get(phoneNumber) || {
         currentNode: 'start',
         step: 0,
         waitingInput: false
@@ -396,10 +430,11 @@ Digite o número da opção desejada:`;
   }
 
   async continueFlow(botId, phoneNumber, userState, flow) {
-    const flowData = flow.flow_data || {};
-    const nodes = flowData.nodes || [];
+    // Usar função auxiliar para parse do fluxo
+    const { flowData, nodes } = this.parseFlowData(flow);
+
     const nextNode = nodes.find(n => n.id === userState.currentNode);
-    
+
     if (nextNode) {
       return await this.processNode(nextNode, { botId, phoneNumber }, '', userState, this.userVariables.get(phoneNumber) || {}, flow);
     }
