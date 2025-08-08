@@ -48,13 +48,19 @@ class WhapiService {
       const status = await this.getConnectionStatus();
       console.log(`📱 Status da conexão:`, status);
 
-      // Se conseguimos obter os settings, consideramos como conectado
-      // mesmo que /me não funcione (erro 404/500 é comum no Whapi)
-      const isConnected = channelInfo.settings && (
-        status.status === 'authenticated' || 
-        status.status === 'ready' || 
-        channelInfo.settings.status !== 'error'
-      );
+      // Se conseguimos obter os settings E o status é ready/authenticated, consideramos conectado
+      const isConnected = channelInfo.settings && 
+        channelInfo.settings.status !== 'error' && (
+          status.status === 'authenticated' || 
+          status.status === 'ready'
+        );
+
+      console.log(`🔧 DEBUG isConnected:`, {
+        hasSettings: !!channelInfo.settings,
+        settingsStatus: channelInfo.settings?.status,
+        statusStatus: status.status,
+        isConnected
+      });
 
       // Atualizar informações da conexão
       this.connections.set(botId, {
