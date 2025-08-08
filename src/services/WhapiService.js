@@ -499,13 +499,10 @@ class WhapiService {
             });
           }
 
-          await global.botManager.processMessage(botId, conversation, {
-            content,
-            type: messageType,
-            timestamp: new Date(),
-            metadata: message,
-            phoneNumber: phoneNumber // Adicionar phoneNumber para evitar erro de null
-          });
+          // Atualizar conversation_id na mensagem salva
+          await savedMessage.update({ conversation_id: conversation.id });
+
+          await global.botManager.processMessage(botId, conversation, savedMessage);
 
           console.log(`🤖 Mensagem processada com BotManager para bot ${botId}`);
         } catch (processError) {
