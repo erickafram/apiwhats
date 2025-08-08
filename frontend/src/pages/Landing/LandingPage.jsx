@@ -262,7 +262,7 @@ const LandingPage = () => {
             />
             <Typography variant="body2" sx={{ color: '#25D366', fontWeight: 600 }}>
               🚀 Nova IA GPT-4 Turbo Disponível
-            </Typography>
+          </Typography>
           </Box>
           
           <Typography 
@@ -666,7 +666,7 @@ const LandingPage = () => {
                       }}
                     >
                       {plan.buttonText}
-                    </Button>
+            </Button>
                   </CardContent>
                 </Card>
               </Grid>
@@ -739,7 +739,7 @@ const LandingPage = () => {
               }}
             >
               Tecnologia de Ponta
-            </Typography>
+          </Typography>
             <Typography 
               variant="h5" 
               color="text.secondary"
@@ -884,7 +884,7 @@ const LandingPage = () => {
               }}
             >
               Resultados Reais
-            </Typography>
+          </Typography>
             <Typography 
               variant="h5" 
               color="text.secondary"
@@ -1232,13 +1232,13 @@ const LandingPage = () => {
           </Typography>
           
           <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3, flexWrap: 'wrap' }}>
-            <Button 
-              variant="contained" 
-              size="large" 
-              component={RouterLink} 
-              to="/register"
+          <Button 
+            variant="contained" 
+            size="large" 
+            component={RouterLink} 
+            to="/register"
               startIcon={<Star />}
-              sx={{ 
+            sx={{ 
                 bgcolor: 'white', 
                 color: '#25D366',
                 fontWeight: 'bold',
@@ -1261,11 +1261,11 @@ const LandingPage = () => {
               size="large" 
               startIcon={<Phone />}
               sx={{ 
-                color: 'white', 
+              color: 'white',
                 borderColor: 'white',
-                fontWeight: 'bold',
+              fontWeight: 'bold',
                 py: 2,
-                px: 4,
+              px: 4,
                 fontSize: '1.1rem',
                 '&:hover': {
                   bgcolor: 'rgba(255,255,255,0.1)',
@@ -1276,7 +1276,7 @@ const LandingPage = () => {
               }}
             >
               (11) 99999-9999
-            </Button>
+          </Button>
           </Box>
           
           <Box sx={{ mt: 6, display: 'flex', justifyContent: 'center', gap: 4, flexWrap: 'wrap' }}>
@@ -1403,13 +1403,13 @@ const LandingPage = () => {
                   <Email sx={{ color: '#25D366' }} />
                   <Typography sx={{ opacity: 0.8 }}>
                     contato@chatbotpro.com.br
-                  </Typography>
+              </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                   <Phone sx={{ color: '#25D366' }} />
                   <Typography sx={{ opacity: 0.8 }}>
                     (11) 99999-9999
-                  </Typography>
+              </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                   <WhatsApp sx={{ color: '#25D366' }} />
@@ -1426,7 +1426,7 @@ const LandingPage = () => {
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
             <Typography variant="body2" sx={{ opacity: 0.6 }}>
               © {new Date().getFullYear()} ChatBot Pro. Todos os direitos reservados.
-            </Typography>
+          </Typography>
             <Box sx={{ display: 'flex', gap: 3 }}>
               <MuiLink href="#" sx={{ color: 'rgba(255,255,255,0.6)', textDecoration: 'none', fontSize: '0.875rem', '&:hover': { color: '#25D366' } }}>
                 Termos de Uso
