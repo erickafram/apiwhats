@@ -22,13 +22,16 @@ module.exports = (sequelize, DataTypes) => {
         'start',
         'ai_response',
         'fixed_response',
+        'message', // Alias para fixed_response
         'condition',
         'input_capture',
+        'input', // Alias para input_capture
         'action',
         'end',
         'delay',
         'webhook',
-        'transfer_human'
+        'transfer_human',
+        'ai' // Alias para ai_response
       ),
       allowNull: false
     },

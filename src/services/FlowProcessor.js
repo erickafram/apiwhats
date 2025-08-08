@@ -6,13 +6,16 @@ class FlowProcessor {
       'start': this.processStartNode.bind(this),
       'ai_response': this.processAIResponseNode.bind(this),
       'fixed_response': this.processFixedResponseNode.bind(this),
+      'message': this.processMessageNode.bind(this), // Alias para fixed_response
       'condition': this.processConditionNode.bind(this),
       'input_capture': this.processInputCaptureNode.bind(this),
+      'input': this.processInputCaptureNode.bind(this), // Alias para input_capture
       'action': this.processActionNode.bind(this),
       'end': this.processEndNode.bind(this),
       'delay': this.processDelayNode.bind(this),
       'webhook': this.processWebhookNode.bind(this),
-      'transfer_human': this.processTransferHumanNode.bind(this)
+      'transfer_human': this.processTransferHumanNode.bind(this),
+      'ai': this.processAIResponseNode.bind(this) // Alias para ai_response
     };
   }
 
@@ -217,6 +220,21 @@ class FlowProcessor {
       nextNodeId,
       completed: !nextNodeId
     };
+  }
+
+  // Alias para processFixedResponseNode - compatibilidade com fluxos antigos
+  async processMessageNode({ bot, flow, conversation, message, node }) {
+    // Adaptar estrutura do nó legacy 'message' para formato esperado
+    const adaptedNode = {
+      ...node,
+      data: {
+        message: node.content || node.data?.content || node.data?.message || 'Resposta automática',
+        delay: node.data?.delay || 1000,
+        typing_indicator: node.data?.typing_indicator !== false
+      }
+    };
+
+    return await this.processFixedResponseNode({ bot, flow, conversation, message, node: adaptedNode });
   }
 
   async processAIResponseNode({ bot, flow, conversation, message, node, aiService }) {
