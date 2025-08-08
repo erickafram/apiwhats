@@ -22,13 +22,13 @@ async function completeProductionFix() {
       const handleNoFlowRegex = /async handleNoFlow\(botId, phoneNumber, messageContent\) \{[\s\S]*?\n  \}/;
       
       const newHandleNoFlow = `async handleNoFlow(botId, phoneNumber, messageContent) {
-    console.log(\`🤖 Nenhum fluxo ativo para bot \${botId}, usando resposta inteligente\`);
+    console.log(`🤖 Nenhum fluxo ativo para bot ${botId}, usando resposta inteligente`);
     
     // Respostas específicas para comandos comuns
     const lowerContent = messageContent.toLowerCase().trim();
     
     if (lowerContent === 'menu' || lowerContent === 'início' || lowerContent === 'start') {
-      const menuMessage = \`👋 Olá! Bem-vindo à Auto Mecânica!
+      const menuMessage = `👋 Olá! Bem-vindo à Auto Mecânica!
 
 🔧 Como posso ajudá-lo hoje?
 
@@ -38,25 +38,25 @@ async function completeProductionFix() {
 4️⃣ Falar com atendente
 5️⃣ Nossa localização
 
-Digite o número da opção desejada ou descreva o que precisa!\`;
+Digite o número da opção desejada ou descreva o que precisa!`;
       
       await this.sendDirectMessage(phoneNumber, menuMessage);
       return { success: true, usedMenu: true };
     }
     
     if (lowerContent.includes('ola') || lowerContent.includes('oi') || lowerContent.includes('bom dia') || lowerContent.includes('boa tarde') || lowerContent.includes('boa noite')) {
-      const welcomeMessage = \`👋 Olá! Tudo bem?
+      const welcomeMessage = `👋 Olá! Tudo bem?
 
 Sou o assistente virtual da Auto Mecânica!
 
-Digite "menu" para ver nossas opções ou me conte como posso ajudar você hoje! 🚗\`;
+Digite "menu" para ver nossas opções ou me conte como posso ajudar você hoje! 🚗`;
       
       await this.sendDirectMessage(phoneNumber, welcomeMessage);
       return { success: true, usedGreeting: true };
     }
     
     if (lowerContent.includes('ajuda') || lowerContent.includes('help') || lowerContent.includes('suporte')) {
-      const helpMessage = \`🆘 Central de Ajuda
+      const helpMessage = `🆘 Central de Ajuda
 
 Comandos disponíveis:
 • "menu" - Ver opções principais
@@ -65,7 +65,7 @@ Comandos disponíveis:
 • "serviços" - O que fazemos
 • "orçamento" - Solicitar preço
 
-Ou fale conosco diretamente: (11) 99999-9999\`;
+Ou fale conosco diretamente: (11) 99999-9999`;
       
       await this.sendDirectMessage(phoneNumber, helpMessage);
       return { success: true, usedHelp: true };
@@ -80,7 +80,7 @@ Ou fale conosco diretamente: (11) 99999-9999\`;
         message: messageContent,
         context: [],
         config: {
-          system_prompt: \`Você é o assistente virtual da Auto Mecânica Silva. Seja prestativo, amigável e profissional. 
+          system_prompt: `Você é o assistente virtual da Auto Mecânica Silva. Seja prestativo, amigável e profissional. 
 
 Informações da empresa:
 - Auto Mecânica Silva
@@ -94,7 +94,7 @@ Se não souber responder algo específico, oriente o cliente a:
 2. Ligar para (11) 99999-9999
 3. Usar "contato" para ver informações completas
 
-Sempre termine sugerindo o comando "menu" se apropriado.\`,
+Sempre termine sugerindo o comando "menu" se apropriado.`,
           temperature: 0.7,
           max_tokens: 200
         }
@@ -106,11 +106,11 @@ Sempre termine sugerindo o comando "menu" se apropriado.\`,
       }
       
     } catch (aiError) {
-      console.log(\`⚠️ IA indisponível: \${aiError.message}\`);
+      console.log(`⚠️ IA indisponível: ${aiError.message}`);
     }
     
     // Fallback final - resposta padrão inteligente
-    const smartDefault = \`🤔 Interessante! Vou te ajudar com isso.
+    const smartDefault = `🤔 Interessante! Vou te ajudar com isso.
 
 Para um atendimento mais específico:
 
@@ -118,7 +118,7 @@ Para um atendimento mais específico:
 📞 Ligue (11) 99999-9999 - Falar direto conosco
 📍 Digite "localização" - Como chegar aqui
 
-Ou me conte mais detalhes sobre o que você precisa! 🚗\`;
+Ou me conte mais detalhes sobre o que você precisa! 🚗`;
     
     await this.sendDirectMessage(phoneNumber, smartDefault);
     return { success: true, usedDefault: true };
@@ -177,7 +177,7 @@ Ou me conte mais detalhes sobre o que você precisa! 🚗\`;
           {
             id: 'welcome',
             type: 'message',
-            content: \`👋 Olá! Bem-vindo à Auto Mecânica Silva!
+            content: `👋 Olá! Bem-vindo à Auto Mecânica Silva!
 
 🔧 Como posso ajudá-lo hoje?
 
@@ -187,7 +187,7 @@ Ou me conte mais detalhes sobre o que você precisa! 🚗\`;
 4️⃣ Contato/Localização
 5️⃣ Falar com atendente
 
-Digite o número da opção desejada:\`,
+Digite o número da opção desejada:`,
             position: { x: 100, y: 200 },
             next: 'menu_input'
           },
@@ -214,7 +214,7 @@ Digite o número da opção desejada:\`,
           {
             id: 'servicos',
             type: 'message',
-            content: \`🔧 Nossos Serviços:
+            content: `🔧 Nossos Serviços:
 
 ✅ Troca de óleo e filtros
 ✅ Revisão preventiva completa  
@@ -228,14 +228,14 @@ Digite o número da opção desejada:\`,
 💰 Orçamento gratuito!
 📞 (11) 99999-9999
 
-Digite "menu" para voltar às opções.\`,
+Digite "menu" para voltar às opções.`,
             position: { x: 300, y: 300 },
             next: 'end'
           },
           {
             id: 'orcamento',
             type: 'message',
-            content: \`💰 Orçamento Gratuito!
+            content: `💰 Orçamento Gratuito!
 
 Para um orçamento preciso, preciso saber:
 
@@ -250,14 +250,14 @@ Para um orçamento preciso, preciso saber:
 Segunda a Sexta: 8h às 18h
 Sábado: 8h às 12h
 
-Digite "menu" para voltar às opções.\`,
+Digite "menu" para voltar às opções.`,
             position: { x: 500, y: 300 },
             next: 'end'
           },
           {
             id: 'agendamento',
             type: 'message',
-            content: \`📅 Agendamento de Horário
+            content: `📅 Agendamento de Horário
 
 ⏰ Horários disponíveis:
 Segunda a Sexta: 8h às 18h
@@ -273,14 +273,14 @@ Sábado: 8h às 12h
 • Documentos do veículo
 • Chave reserva (se tiver)
 
-Digite "menu" para voltar às opções.\`,
+Digite "menu" para voltar às opções.`,
             position: { x: 700, y: 300 },
             next: 'end'
           },
           {
             id: 'contato',
             type: 'message',
-            content: \`📞 Nossos Contatos:
+            content: `📞 Nossos Contatos:
 
 🏢 Auto Mecânica Silva
 📱 WhatsApp: (11) 99999-9999
@@ -300,14 +300,14 @@ Domingo: Fechado
 🚗 Estacionamento gratuito
 🚌 Próximo ao metrô
 
-Digite "menu" para voltar às opções.\`,
+Digite "menu" para voltar às opções.`,
             position: { x: 900, y: 300 },
             next: 'end'
           },
           {
             id: 'atendente',
             type: 'message',
-            content: \`👨‍🔧 Falar com Atendente
+            content: `👨‍🔧 Falar com Atendente
 
 Será um prazer atendê-lo pessoalmente!
 
@@ -320,14 +320,14 @@ Sábado: 8h às 12h
 
 🚀 Resposta rápida garantida!
 
-Digite "menu" para voltar às opções.\`,
+Digite "menu" para voltar às opções.`,
             position: { x: 1100, y: 300 },
             next: 'end'
           },
           {
             id: 'opcao_invalida',
             type: 'message',
-            content: \`❌ Opção inválida!
+            content: `❌ Opção inválida!
 
 Por favor, digite apenas o número da opção (1, 2, 3, 4 ou 5).
 
