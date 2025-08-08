@@ -157,13 +157,16 @@ class FlowProcessor {
       await this.sendMessage(bot.id, conversation.user_phone, startMessage);
       
       await Message.create({
+        bot_id: bot.id,
         conversation_id: conversation.id,
-        direction: 'out',
+        sender_phone: conversation.user_phone,
+        direction: 'outgoing',
         content: startMessage,
-        media_type: 'text',
-        status: 'sent',
-        processed: true,
-        node_id: node.id
+        message_type: 'text',
+        metadata: {
+          node_id: node.id,
+          system_message: true
+        }
       });
     }
 
@@ -193,13 +196,16 @@ class FlowProcessor {
     await this.sendMessage(bot.id, conversation.user_phone, responseMessage);
     
     await Message.create({
+      bot_id: bot.id,
       conversation_id: conversation.id,
-      direction: 'out',
+      sender_phone: conversation.user_phone,
+      direction: 'outgoing',
       content: responseMessage,
-      media_type: 'text',
-      status: 'sent',
-      processed: true,
-      node_id: node.id
+      message_type: 'text',
+      metadata: {
+        node_id: node.id,
+        system_message: true
+      }
     });
 
     // Buscar próximo nó
@@ -252,14 +258,14 @@ class FlowProcessor {
       await this.sendMessage(bot.id, conversation.user_phone, responseContent);
       
       await Message.create({
+        bot_id: bot.id,
         conversation_id: conversation.id,
-        direction: 'out',
+        sender_phone: conversation.user_phone,
+        direction: 'outgoing',
         content: responseContent,
-        media_type: 'text',
-        status: 'sent',
-        processed: true,
-        node_id: node.id,
+        message_type: 'text',
         metadata: {
+          node_id: node.id,
           ai_generated: aiGenerated,
           confidence_score: aiResponse?.confidence || null,
           model: aiConfig.model
@@ -293,14 +299,14 @@ class FlowProcessor {
       await this.sendMessage(bot.id, conversation.user_phone, fallbackMessage);
       
       await Message.create({
+        bot_id: bot.id,
         conversation_id: conversation.id,
-        direction: 'out',
+        sender_phone: conversation.user_phone,
+        direction: 'outgoing',
         content: fallbackMessage,
-        media_type: 'text',
-        status: 'sent',
-        processed: true,
-        node_id: node.id,
+        message_type: 'text',
         metadata: {
+          node_id: node.id,
           ai_generated: false,
           error: error.message
         }
@@ -449,13 +455,16 @@ class FlowProcessor {
       await this.sendMessage(bot.id, conversation.user_phone, retryMessage);
       
       await Message.create({
+        bot_id: bot.id,
         conversation_id: conversation.id,
-        direction: 'out',
+        sender_phone: conversation.user_phone,
+        direction: 'outgoing',
         content: retryMessage,
-        media_type: 'text',
-        status: 'sent',
-        processed: true,
-        node_id: node.id
+        message_type: 'text',
+        metadata: {
+          node_id: node.id,
+          retry_message: true
+        }
       });
 
       // Permanecer no mesmo nó
@@ -527,13 +536,16 @@ class FlowProcessor {
       await this.sendMessage(bot.id, conversation.user_phone, endMessage);
       
       await Message.create({
+        bot_id: bot.id,
         conversation_id: conversation.id,
-        direction: 'out',
+        sender_phone: conversation.user_phone,
+        direction: 'outgoing',
         content: endMessage,
-        media_type: 'text',
-        status: 'sent',
-        processed: true,
-        node_id: node.id
+        message_type: 'text',
+        metadata: {
+          node_id: node.id,
+          end_message: true
+        }
       });
     }
 
@@ -644,14 +656,14 @@ class FlowProcessor {
         await this.sendMessage(bot.id, conversation.user_phone, on_success_message);
 
         await Message.create({
+          bot_id: bot.id,
           conversation_id: conversation.id,
-          direction: 'out',
+          sender_phone: conversation.user_phone,
+          direction: 'outgoing',
           content: on_success_message,
-          media_type: 'text',
-          status: 'sent',
-          processed: true,
-          node_id: node.id,
+          message_type: 'text',
           metadata: {
+            node_id: node.id,
             webhook_response: true,
             webhook_request_id: result.request_id
           }
@@ -683,14 +695,14 @@ class FlowProcessor {
         await this.sendMessage(bot.id, conversation.user_phone, on_error_message);
 
         await Message.create({
+          bot_id: bot.id,
           conversation_id: conversation.id,
-          direction: 'out',
+          sender_phone: conversation.user_phone,
+          direction: 'outgoing',
           content: on_error_message,
-          media_type: 'text',
-          status: 'sent',
-          processed: true,
-          node_id: node.id,
+          message_type: 'text',
           metadata: {
+            node_id: node.id,
             webhook_error: true,
             error_message: error.message
           }
@@ -764,13 +776,16 @@ class FlowProcessor {
       await this.sendMessage(bot.id, conversation.user_phone, transferMessage);
 
       await Message.create({
+        bot_id: bot.id,
         conversation_id: conversation.id,
-        direction: 'out',
+        sender_phone: conversation.user_phone,
+        direction: 'outgoing',
         content: transferMessage,
-        media_type: 'text',
-        status: 'sent',
-        processed: true,
-        node_id: node.id
+        message_type: 'text',
+        metadata: {
+          node_id: node.id,
+          transfer_message: true
+        }
       });
 
       // Adicionar à fila se o serviço estiver disponível
@@ -825,14 +840,14 @@ class FlowProcessor {
       await this.sendMessage(bot.id, conversation.user_phone, errorMessage);
 
       await Message.create({
+        bot_id: bot.id,
         conversation_id: conversation.id,
-        direction: 'out',
+        sender_phone: conversation.user_phone,
+        direction: 'outgoing',
         content: errorMessage,
-        media_type: 'text',
-        status: 'sent',
-        processed: true,
-        node_id: node.id,
+        message_type: 'text',
         metadata: {
+          node_id: node.id,
           transfer_error: true,
           error_message: error.message
         }
