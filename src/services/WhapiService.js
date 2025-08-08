@@ -465,7 +465,7 @@ class WhapiService {
       console.log(`📨 Mensagem recebida para bot ${botId} de ${phoneNumber}: ${content}`);
 
       // Salvar mensagem
-      await this.saveMessage(botId, phoneNumber, content, 'incoming', {
+      const savedMessage = await this.saveMessage(botId, phoneNumber, content, 'incoming', {
         type: messageType,
         metadata: message
       });
@@ -498,9 +498,6 @@ class WhapiService {
               last_activity_at: new Date()
             });
           }
-
-          // Atualizar conversation_id na mensagem salva
-          await savedMessage.update({ conversation_id: conversation.id });
 
           await global.botManager.processMessage(botId, conversation, savedMessage);
 
