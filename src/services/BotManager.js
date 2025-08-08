@@ -278,12 +278,12 @@ class BotManager {
       );
 
       await Message.create({
+        bot_id: botId,
         conversation_id: conversation.id,
-        direction: 'out',
+        sender_phone: conversation.user_phone,
+        direction: 'outgoing',
         content: errorMessage,
-        media_type: 'text',
-        status: 'sent',
-        processed: true,
+        message_type: 'text',
         metadata: {
           system_message: true,
           error_message: true

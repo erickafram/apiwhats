@@ -354,15 +354,23 @@ class WhapiService {
   // Processar webhook de mensagem recebida
   async processIncomingMessage(webhookData) {
     try {
-      const { messages } = webhookData;
-      
-      if (!messages || !Array.isArray(messages)) {
-        console.log('⚠️ Formato de webhook inválido');
-        return;
+      // Processar mensagens
+      if (webhookData.messages && Array.isArray(webhookData.messages)) {
+        console.log(`📨 Processando ${webhookData.messages.length} mensagem(s) recebida(s)`);
+        for (const message of webhookData.messages) {
+          await this.processMessage(message);
+        }
       }
-
-      for (const message of messages) {
-        await this.processMessage(message);
+      
+      // Processar status (opcional - apenas para logs)
+      else if (webhookData.statuses && Array.isArray(webhookData.statuses)) {
+        console.log(`📊 Status recebido: ${webhookData.statuses[0]?.status} para ${webhookData.statuses[0]?.recipient_id}`);
+        // Não precisa processar status, apenas log
+      }
+      
+      // Formato desconhecido
+      else {
+        console.log('⚠️ Formato de webhook desconhecido:', JSON.stringify(webhookData, null, 2));
       }
 
     } catch (error) {
@@ -433,7 +441,8 @@ class WhapiService {
             content,
             type: messageType,
             timestamp: new Date(),
-            metadata: message
+            metadata: message,
+            phoneNumber: phoneNumber // Adicionar phoneNumber para evitar erro de null
           });
 
           console.log(`🤖 Mensagem processada com BotManager para bot ${botId}`);
