@@ -406,14 +406,50 @@ class UltraMsgService {
 
       const bot = botConnection.bot;
 
+      // Buscar ou criar conversa
+      const { Conversation, Message } = require('../models');
+      let conversation = await Conversation.findOne({
+        where: {
+          bot_id: bot.id,
+          user_phone: userPhone,
+        },
+      });
+
+      if (!conversation) {
+        conversation = await Conversation.create({
+          bot_id: bot.id,
+          user_phone: userPhone,
+          status: 'active',
+          last_activity_at: new Date(),
+        });
+        this.io.emit('new_conversation', conversation);
+      } else {
+        await conversation.update({ last_activity_at: new Date() });
+      }
+
+      // Salvar mensagem
+      const savedMessage = await Message.create({
+        conversation_id: conversation.id,
+        direction: 'in',
+        content: messageContent,
+        media_type: messageType,
+        timestamp: new Date(),
+        message_id: messageData.id,
+        status: 'received',
+      });
+
+      this.io.emit('new_message', { 
+        conversationId: conversation.id, 
+        message: { 
+          content: messageContent, 
+          direction: 'in', 
+          timestamp: new Date() 
+        } 
+      });
+
       // Processar mensagem através do BotManager
       if (global.botManager) {
-        await global.botManager.processMessage(bot.id, userPhone, {
-          content: messageContent,
-          type: messageType,
-          id: messageData.id,
-          timestamp: new Date()
-        });
+        await global.botManager.processMessage(bot.id, conversation, savedMessage);
       }
 
     } catch (error) {
