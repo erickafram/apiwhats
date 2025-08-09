@@ -427,19 +427,33 @@ class UltraMsgService {
         await conversation.update({ last_activity_at: new Date() });
       }
 
-      // Salvar mensagem
-      const savedMessage = await Message.create({
-        bot_id: bot.id, // ✅ Adicionado campo obrigatório
-        conversation_id: conversation.id,
-        sender_phone: userPhone, // ✅ Adicionado campo obrigatório
-        direction: 'incoming', // ✅ Corrigido para enum válido
-        content: messageContent,
-        message_type: messageType === 'chat' ? 'text' : messageType, // ✅ Mapear tipos
-        media_type: messageType === 'chat' ? 'text' : messageType,
-        whatsapp_message_id: messageData.id, // ✅ Campo correto para ID WhatsApp
-        timestamp: new Date(),
-        status: 'delivered', // ✅ Usar valor válido do ENUM
+      // Verificar se mensagem já existe para evitar duplicatas
+      const existingMessage = await Message.findOne({
+        where: {
+          whatsapp_message_id: messageData.id
+        }
       });
+
+      let savedMessage;
+      if (existingMessage) {
+        console.log('📝 Mensagem já existe no banco, pulando duplicata:', messageData.id);
+        savedMessage = existingMessage;
+      } else {
+        // Salvar mensagem
+        savedMessage = await Message.create({
+          bot_id: bot.id, // ✅ Adicionado campo obrigatório
+          conversation_id: conversation.id,
+          sender_phone: userPhone, // ✅ Adicionado campo obrigatório
+          direction: 'incoming', // ✅ Corrigido para enum válido
+          content: messageContent,
+          message_type: messageType === 'chat' ? 'text' : messageType, // ✅ Mapear tipos
+          media_type: messageType === 'chat' ? 'text' : messageType,
+          whatsapp_message_id: messageData.id, // ✅ Campo correto para ID WhatsApp
+          timestamp: new Date(),
+          status: 'delivered', // ✅ Usar valor válido do ENUM
+        });
+        console.log('💾 Nova mensagem salva no banco:', messageData.id);
+      }
 
       this.io.emit('new_message', { 
         conversationId: conversation.id, 
@@ -450,9 +464,13 @@ class UltraMsgService {
         } 
       });
 
-      // Processar mensagem através do BotManager
-      if (global.botManager) {
+      // Processar mensagem através do BotManager apenas se for nova
+      if (!existingMessage && global.botManager) {
         await global.botManager.processMessage(bot.id, conversation, savedMessage);
+      } else if (existingMessage) {
+        console.log('🔄 Mensagem duplicada, pulando processamento do fluxo');
+      } else {
+        console.warn('BotManager não inicializado. Não é possível processar fluxo.');
       }
 
     } catch (error) {
