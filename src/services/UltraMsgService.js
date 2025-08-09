@@ -270,6 +270,10 @@ class UltraMsgService {
 
       // Limpar número de telefone
       const cleanPhone = this.cleanPhoneNumber(to);
+      if (!cleanPhone) {
+        console.error('❌ Erro: número de telefone inválido para envio');
+        return { success: false, error: 'Número de telefone inválido' };
+      }
 
       let response;
 
@@ -395,15 +399,40 @@ class UltraMsgService {
 
       const bot = botConnection.bot;
 
+      // Buscar ou criar conversa
+      const { Conversation, Message } = require('../models');
+      let conversation = await Conversation.findOne({
+        where: {
+          bot_id: bot.id,
+          user_phone: userPhone
+        }
+      });
+
+      if (!conversation) {
+        conversation = await Conversation.create({
+          bot_id: bot.id,
+          user_phone: userPhone,
+          status: 'active',
+          context: {},
+          metadata: {}
+        });
+      }
+
+      // Criar mensagem
+      const message = await Message.create({
+        conversation_id: conversation.id,
+        direction: 'in',
+        content: messageContent,
+        message_type: messageType,
+        metadata: {
+          ultramsg_id: messageData.id,
+          timestamp: messageData.time
+        }
+      });
+
       // Processar mensagem através do BotManager
       if (global.botManager) {
-        await global.botManager.processMessage(bot.id, {
-          userPhone: userPhone,
-          message: messageContent,
-          messageType: messageType,
-          messageId: messageData.id,
-          timestamp: new Date()
-        });
+        await global.botManager.processMessage(bot.id, conversation, message);
       }
 
     } catch (error) {
@@ -429,6 +458,11 @@ class UltraMsgService {
 
   // Limpar número de telefone
   cleanPhoneNumber(phone) {
+    if (!phone || typeof phone !== 'string') {
+      console.error('❌ Número de telefone inválido:', phone);
+      return null;
+    }
+    
     // Remover caracteres especiais e espaços
     let clean = phone.replace(/[^\d]/g, '');
     
