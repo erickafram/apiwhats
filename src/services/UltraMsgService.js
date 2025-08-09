@@ -270,6 +270,11 @@ class UltraMsgService {
 
       // Limpar número de telefone
       const cleanPhone = this.cleanPhoneNumber(to);
+      
+      // Verificar se o número foi limpo corretamente
+      if (!cleanPhone) {
+        throw new Error(`Número de telefone inválido: ${to}`);
+      }
 
       let response;
 
@@ -397,11 +402,10 @@ class UltraMsgService {
 
       // Processar mensagem através do BotManager
       if (global.botManager) {
-        await global.botManager.processMessage(bot.id, {
-          userPhone: userPhone,
-          message: messageContent,
-          messageType: messageType,
-          messageId: messageData.id,
+        await global.botManager.processMessage(bot.id, userPhone, {
+          content: messageContent,
+          type: messageType,
+          id: messageData.id,
           timestamp: new Date()
         });
       }
@@ -429,6 +433,12 @@ class UltraMsgService {
 
   // Limpar número de telefone
   cleanPhoneNumber(phone) {
+    // Verificar se phone existe
+    if (!phone || typeof phone !== 'string') {
+      console.error('❌ Número de telefone inválido:', phone);
+      return null;
+    }
+    
     // Remover caracteres especiais e espaços
     let clean = phone.replace(/[^\d]/g, '');
     
