@@ -141,28 +141,47 @@ class BotManager {
     try {
       const { flows } = botConfig;
       
+      console.log('🔍 DEBUG determineFlow:', {
+        botId: botConfig.bot.id,
+        messageContent: message.content,
+        flowsCount: flows ? flows.length : 0,
+        conversationFlowId: conversation.current_flow_id
+      });
+      
       if (!flows || flows.length === 0) {
+        console.log('❌ Nenhum fluxo encontrado para o bot');
         return null;
       }
+
+      // Log dos fluxos disponíveis
+      flows.forEach(flow => {
+        console.log(`📋 Fluxo disponível: ID=${flow.id}, Nome="${flow.name}", Ativo=${flow.is_active}, Padrão=${flow.is_default}, Keywords=${JSON.stringify(flow.trigger_keywords)}`);
+      });
 
       // Se a conversa já tem um fluxo ativo, continuar com ele
       if (conversation.current_flow_id) {
         const currentFlow = flows.find(f => f.id === conversation.current_flow_id);
         if (currentFlow && currentFlow.is_active) {
+          console.log(`✅ Continuando fluxo ativo: ${currentFlow.name}`);
           return currentFlow;
         }
       }
 
       // Buscar fluxo baseado em palavras-chave
       const messageText = message.content.toLowerCase();
+      console.log(`🔍 Buscando fluxo para mensagem: "${messageText}"`);
       
       for (const flow of flows) {
         if (flow.trigger_keywords && flow.trigger_keywords.length > 0) {
-          const hasKeyword = flow.trigger_keywords.some(keyword => 
-            messageText.includes(keyword.toLowerCase())
-          );
+          console.log(`🔍 Verificando keywords do fluxo "${flow.name}":`, flow.trigger_keywords);
+          const hasKeyword = flow.trigger_keywords.some(keyword => {
+            const match = messageText.includes(keyword.toLowerCase());
+            console.log(`  - "${keyword}" em "${messageText}": ${match}`);
+            return match;
+          });
           
           if (hasKeyword) {
+            console.log(`✅ Fluxo encontrado por keyword: ${flow.name}`);
             return flow;
           }
         }
@@ -171,11 +190,19 @@ class BotManager {
       // Usar fluxo padrão se disponível
       const defaultFlow = flows.find(f => f.is_default && f.is_active);
       if (defaultFlow) {
+        console.log(`✅ Usando fluxo padrão: ${defaultFlow.name}`);
         return defaultFlow;
       }
 
       // Usar primeiro fluxo ativo
-      return flows.find(f => f.is_active) || null;
+      const firstActiveFlow = flows.find(f => f.is_active);
+      if (firstActiveFlow) {
+        console.log(`✅ Usando primeiro fluxo ativo: ${firstActiveFlow.name}`);
+        return firstActiveFlow;
+      }
+
+      console.log('❌ Nenhum fluxo adequado encontrado');
+      return null;
 
     } catch (error) {
       console.error('Erro ao determinar fluxo:', error);
