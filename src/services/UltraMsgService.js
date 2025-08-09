@@ -397,8 +397,7 @@ class UltraMsgService {
 
       // Processar mensagem através do BotManager
       if (global.botManager) {
-        await global.botManager.processMessage({
-          botId: bot.id,
+        await global.botManager.processMessage(bot.id, {
           userPhone: userPhone,
           message: messageContent,
           messageType: messageType,
