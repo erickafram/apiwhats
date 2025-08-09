@@ -438,7 +438,7 @@ class UltraMsgService {
         media_type: messageType === 'chat' ? 'text' : messageType,
         whatsapp_message_id: messageData.id, // ✅ Campo correto para ID WhatsApp
         timestamp: new Date(),
-        status: 'received',
+        status: 'delivered', // ✅ Usar valor válido do ENUM
       });
 
       this.io.emit('new_message', { 
