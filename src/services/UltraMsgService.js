@@ -429,12 +429,15 @@ class UltraMsgService {
 
       // Salvar mensagem
       const savedMessage = await Message.create({
+        bot_id: bot.id, // ✅ Adicionado campo obrigatório
         conversation_id: conversation.id,
-        direction: 'in',
+        sender_phone: userPhone, // ✅ Adicionado campo obrigatório
+        direction: 'incoming', // ✅ Corrigido para enum válido
         content: messageContent,
-        media_type: messageType,
+        message_type: messageType === 'chat' ? 'text' : messageType, // ✅ Mapear tipos
+        media_type: messageType === 'chat' ? 'text' : messageType,
+        whatsapp_message_id: messageData.id, // ✅ Campo correto para ID WhatsApp
         timestamp: new Date(),
-        message_id: messageData.id,
         status: 'received',
       });
 
