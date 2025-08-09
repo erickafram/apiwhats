@@ -206,14 +206,11 @@ class BotManager {
 
       if (aiResponse) {
         // Enviar resposta
-        const service = global.ultraMsgService || global.whapiService || global.maytapiService || global.whatsappService;
-        if (service && service.sendMessage) {
-          await service.sendMessage(
-            bot.id,
-            conversation.user_phone,
-            aiResponse.content
-          );
-        }
+        await global.whatsappService.sendMessage(
+          bot.id,
+          conversation.user_phone,
+          aiResponse.content
+        );
 
         // Salvar mensagem de resposta
         await Message.create({
@@ -258,14 +255,11 @@ class BotManager {
     try {
       const defaultMessage = 'Olá! Como posso ajudá-lo?';
       
-      const service = global.ultraMsgService || global.whapiService || global.maytapiService || global.whatsappService;
-      if (service && service.sendMessage) {
-        await service.sendMessage(
-          botId,
-          conversation.user_phone,
-          defaultMessage
-        );
-      }
+      await global.whatsappService.sendMessage(
+        botId,
+        conversation.user_phone,
+        defaultMessage
+      );
 
       await Message.create({
         conversation_id: conversation.id,
@@ -285,15 +279,11 @@ class BotManager {
     try {
       const errorMessage = 'Desculpe, ocorreu um erro. Tente novamente em alguns instantes.';
       
-      // Usar o serviço disponível
-      const service = global.ultraMsgService || global.whapiService || global.maytapiService || global.whatsappService;
-      if (service && service.sendMessage) {
-        await service.sendMessage(
-          botId,
-          conversation.user_phone,
-          errorMessage
-        );
-      }
+      await global.whatsappService.sendMessage(
+        botId,
+        conversation.user_phone,
+        errorMessage
+      );
 
       await Message.create({
         bot_id: botId,
