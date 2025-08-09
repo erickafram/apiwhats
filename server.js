@@ -55,6 +55,7 @@ const conversationRoutes = require('./src/routes/conversations');
 const analyticsRoutes = require('./src/routes/analytics');
 const maytapiRoutes = require('./src/routes/maytapi');
 const whapiRoutes = require('./src/routes/whapi');
+const ultraMsgRoutes = require('./src/routes/ultramsg');
 
 // Usar rotas
 app.use('/api/auth', authRoutes);
@@ -66,6 +67,7 @@ app.use('/api/conversations', conversationRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/maytapi', maytapiRoutes);
 app.use('/api/whapi', whapiRoutes);
+app.use('/api/ultramsg', ultraMsgRoutes);
 
 // Rota de health check
 app.get('/health', (req, res) => {
@@ -111,21 +113,33 @@ db.sequelize.sync({ force: false }).then(async () => {
   const WhatsAppSimulator = require('./src/services/WhatsAppSimulator');
   const MaytapiService = require('./src/services/MaytapiService');
   const WhapiService = require('./src/services/WhapiService');
+  const UltraMsgService = require('./src/services/UltraMsgService');
   const BotManager = require('./src/services/BotManager');
   const QueueService = require('./src/services/QueueService');
 
   // Verificar qual serviço usar
   const useWhapi = process.env.USE_WHAPI === 'true';
   const useMaytapi = process.env.USE_MAYTAPI === 'true';
+  const useUltraMsg = process.env.USE_ULTRAMSG === 'true';
   const useSimulator = process.env.USE_WHATSAPP_SIMULATOR === 'true' || false;
 
   console.log('🔧 Configuração de serviços:');
   console.log('USE_WHAPI:', useWhapi);
   console.log('USE_MAYTAPI:', useMaytapi);
+  console.log('USE_ULTRAMSG:', useUltraMsg);
   console.log('USE_WHATSAPP_SIMULATOR:', useSimulator);
 
   // Instanciar serviços globais
-  if (useWhapi) {
+  if (useUltraMsg) {
+    console.log('🚀 Iniciando UltraMsg WhatsApp Service (RÁPIDO)');
+    try {
+      global.ultraMsgService = new UltraMsgService(io);
+      global.whatsappService = global.ultraMsgService; // Compatibilidade
+      console.log('✅ UltraMsgService inicializado com sucesso');
+    } catch (error) {
+      console.error('❌ Erro ao inicializar UltraMsgService:', error);
+    }
+  } else if (useWhapi) {
     console.log('🚀 Iniciando Whapi.cloud WhatsApp Service');
     try {
       global.whapiService = new WhapiService(io);
@@ -160,7 +174,9 @@ db.sequelize.sync({ force: false }).then(async () => {
     console.log('✅ Serviços inicializados com sucesso');
     
     // Verificar quais serviços estão disponíveis
-    if (global.whapiService) {
+    if (global.ultraMsgService) {
+      console.log('✅ UltraMsgService está disponível globalmente');
+    } else if (global.whapiService) {
       console.log('✅ WhapiService está disponível globalmente');
     } else if (global.maytapiService) {
       console.log('✅ MaytapiService está disponível globalmente');

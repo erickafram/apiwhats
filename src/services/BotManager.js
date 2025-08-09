@@ -32,8 +32,16 @@ class BotManager {
           lastActivity: new Date()
         });
 
+        // Conectar bot automaticamente se usar UltraMsg
+        if (global.ultraMsgService && process.env.USE_ULTRAMSG === 'true') {
+          try {
+            await global.ultraMsgService.connectBot(bot.id);
+          } catch (error) {
+            console.error(`❌ Erro ao conectar bot ${bot.id} automaticamente via UltraMsg:`, error.message);
+          }
+        }
         // Conectar bot automaticamente se usar Maytapi
-        if (global.maytapiService && process.env.USE_MAYTAPI === 'true') {
+        else if (global.maytapiService && process.env.USE_MAYTAPI === 'true') {
           try {
             await global.maytapiService.connectBot(bot.id);
           } catch (error) {

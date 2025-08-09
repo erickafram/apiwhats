@@ -25,7 +25,7 @@ router.get('/', async (req, res) => {
       order: [[sort, order]]
     });
 
-    // Buscar flows separadamente para cada bot (se necessário)
+    // Buscar flows e status de conexão para cada bot
     const botsWithFlows = await Promise.all(
       bots.map(async (bot) => {
         try {
@@ -33,15 +33,71 @@ router.get('/', async (req, res) => {
             where: { bot_id: bot.id, is_active: true }
           });
 
+          // Verificar status de conexão real
+          let connectionInfo = { 
+            connected: bot.is_connected, 
+            status: bot.connection_status,
+            service: 'unknown'
+          };
+
+          // Verificar status nos serviços ativos
+          if (global.ultraMsgService && process.env.USE_ULTRAMSG === 'true') {
+            connectionInfo = global.ultraMsgService.getConnectionInfo(bot.id);
+            connectionInfo.service = 'UltraMsg';
+            
+            // Se não tem conexão salva, verificar status da instância
+            if (!connectionInfo.connected) {
+              try {
+                const instanceStatus = await global.ultraMsgService.getInstanceStatus();
+                if (instanceStatus.status === 'authenticated') {
+                  connectionInfo.connected = true;
+                  connectionInfo.status = 'authenticated';
+                  connectionInfo.phoneNumber = instanceStatus.phoneNumber;
+                  
+                  // Atualizar no banco
+                  await bot.update({
+                    is_connected: true,
+                    connection_status: 'authenticated',
+                    phone_number: instanceStatus.phoneNumber
+                  });
+                }
+              } catch (error) {
+                // Ignorar erro silenciosamente para não atrapalhar a listagem
+              }
+            }
+          } else if (global.whapiService && process.env.USE_WHAPI === 'true') {
+            connectionInfo = global.whapiService.getConnectionInfo ? 
+              global.whapiService.getConnectionInfo(bot.id) : connectionInfo;
+            connectionInfo.service = 'Whapi';
+          } else if (global.maytapiService && process.env.USE_MAYTAPI === 'true') {
+            connectionInfo = global.maytapiService.getConnectionInfo ? 
+              global.maytapiService.getConnectionInfo(bot.id) : connectionInfo;
+            connectionInfo.service = 'Maytapi';
+          }
+
           return {
             ...bot.toJSON(),
-            flow_count: flowCount
+            flow_count: flowCount,
+            connection_info: {
+              connected: connectionInfo.connected,
+              status: connectionInfo.status,
+              service: connectionInfo.service,
+              phoneNumber: connectionInfo.phoneNumber || bot.phone_number,
+              instanceId: connectionInfo.instanceId || null
+            }
           };
         } catch (flowError) {
-          console.warn(`Erro ao buscar flows para bot ${bot.id}:`, flowError.message);
+          console.warn(`Erro ao buscar dados para bot ${bot.id}:`, flowError.message);
           return {
             ...bot.toJSON(),
-            flow_count: 0
+            flow_count: 0,
+            connection_info: {
+              connected: bot.is_connected,
+              status: bot.connection_status,
+              service: 'unknown',
+              phoneNumber: bot.phone_number,
+              instanceId: null
+            }
           };
         }
       })
@@ -231,20 +287,53 @@ router.post('/:id/connect', validateParams(schemas.idParam), async (req, res) =>
       });
     }
 
-    // Usar o serviço global do WhatsApp
-    const result = await global.whatsappService.connectBot(bot.id);
+    // Verificar qual serviço está ativo e conectar
+    let result;
+    let serviceUsed = 'unknown';
+
+    if (global.ultraMsgService && process.env.USE_ULTRAMSG === 'true') {
+      console.log(`🚀 Conectando bot ${bot.id} via UltraMsg`);
+      result = await global.ultraMsgService.connectBot(bot.id);
+      serviceUsed = 'UltraMsg';
+    } else if (global.whapiService && process.env.USE_WHAPI === 'true') {
+      console.log(`🚀 Conectando bot ${bot.id} via Whapi`);
+      result = await global.whapiService.connectBot(bot.id);
+      serviceUsed = 'Whapi';
+    } else if (global.maytapiService && process.env.USE_MAYTAPI === 'true') {
+      console.log(`🚀 Conectando bot ${bot.id} via Maytapi`);
+      result = await global.maytapiService.connectBot(bot.id);
+      serviceUsed = 'Maytapi';
+    } else if (global.whatsappService) {
+      console.log(`🚀 Conectando bot ${bot.id} via serviço padrão`);
+      result = await global.whatsappService.connectBot(bot.id);
+      serviceUsed = 'WhatsApp';
+    } else {
+      throw new Error('Nenhum serviço WhatsApp disponível');
+    }
+
+    // Atualizar bot no banco com as informações de conexão
+    await bot.update({
+      is_connected: result.connected || false,
+      connection_status: result.status || 'connecting',
+      phone_number: result.phoneNumber || null,
+      qr_code: result.qrCode || null,
+      last_seen: new Date()
+    });
 
     res.json({
-      message: result.message || 'Processo de conexão iniciado',
+      message: `Conectando via ${serviceUsed}`,
+      service: serviceUsed,
+      connected: result.connected || false,
       qrCode: result.qrCode || null,
-      status: result.status,
-      phone: result.phone || null
+      status: result.status || 'connecting',
+      phoneNumber: result.phoneNumber || null,
+      instanceId: result.instanceId || null
     });
   } catch (error) {
     console.error('Erro ao conectar bot:', error);
     res.status(500).json({
-      error: 'Erro interno do servidor',
-      code: 'INTERNAL_ERROR'
+      error: error.message || 'Erro interno do servidor',
+      code: 'CONNECTION_ERROR'
     });
   }
 });
@@ -406,24 +495,51 @@ router.get('/:id/connection-status', validateParams(schemas.idParam), async (req
       });
     }
 
-    // Verificar status no serviço WhatsApp/Maytapi
-    let connectionInfo = { connected: false, status: 'disconnected' };
+    // Verificar status nos diferentes serviços
+    let connectionInfo = { connected: false, status: 'disconnected', service: 'none' };
 
-    if (global.whatsappService && global.whatsappService.getConnectionInfo) {
+    if (global.ultraMsgService && process.env.USE_ULTRAMSG === 'true') {
+      console.log(`🔍 Verificando status via UltraMsg para bot ${bot.id}`);
+      connectionInfo = global.ultraMsgService.getConnectionInfo(bot.id);
+      connectionInfo.service = 'UltraMsg';
+      
+      // Verificar status real da instância UltraMsg
+      try {
+        const instanceStatus = await global.ultraMsgService.getInstanceStatus();
+        if (instanceStatus.status === 'authenticated') {
+          connectionInfo.connected = true;
+          connectionInfo.status = 'authenticated';
+          connectionInfo.phoneNumber = instanceStatus.phoneNumber;
+        }
+      } catch (error) {
+        console.warn('Erro ao verificar status da instância UltraMsg:', error.message);
+      }
+    } else if (global.whapiService && process.env.USE_WHAPI === 'true') {
+      connectionInfo = global.whapiService.getConnectionInfo(bot.id);
+      connectionInfo.service = 'Whapi';
+    } else if (global.maytapiService && process.env.USE_MAYTAPI === 'true') {
+      connectionInfo = global.maytapiService.getConnectionInfo(bot.id);
+      connectionInfo.service = 'Maytapi';
+    } else if (global.whatsappService && global.whatsappService.getConnectionInfo) {
       connectionInfo = global.whatsappService.getConnectionInfo(bot.id);
+      connectionInfo.service = 'WhatsApp';
     }
 
     // Atualizar status no banco de dados
     await bot.update({
       is_connected: connectionInfo.connected,
-      connection_status: connectionInfo.status || 'unknown'
+      connection_status: connectionInfo.status || 'unknown',
+      phone_number: connectionInfo.phoneNumber || bot.phone_number,
+      last_seen: new Date()
     });
 
     res.json({
       botId: bot.id,
       connected: connectionInfo.connected,
       status: connectionInfo.status || 'unknown',
-      phoneId: connectionInfo.phoneId || null,
+      service: connectionInfo.service,
+      phoneNumber: connectionInfo.phoneNumber || null,
+      instanceId: connectionInfo.instanceId || null,
       lastChecked: new Date().toISOString()
     });
   } catch (error) {

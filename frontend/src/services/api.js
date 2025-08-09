@@ -158,6 +158,19 @@ export const analyticsAPI = {
   getFlowAnalytics: (id, params = {}) => api.get(`/analytics/flow/${id}`, { params }),
 }
 
+export const ultraMsgAPI = {
+  getStatus: () => api.get('/ultramsg/status'),
+  connectBot: (botId) => api.post(`/ultramsg/connect/${botId}`),
+  disconnectBot: (botId) => api.post(`/ultramsg/disconnect/${botId}`),
+  getQRCode: (botId) => api.get(`/ultramsg/qr-code/${botId}`),
+  sendMessage: (data) => api.post('/ultramsg/send-message', data),
+  checkNumber: (data) => api.post('/ultramsg/check-number', data),
+  getAccountInfo: () => api.get('/ultramsg/account-info'),
+  getChats: () => api.get('/ultramsg/chats'),
+  setupWebhook: () => api.post('/ultramsg/setup-webhook'),
+  test: () => api.get('/ultramsg/test'),
+}
+
 export const maytapiAPI = {
   getConnections: () => api.get('/maytapi/connections'),
   connectBot: (botId) => api.post(`/maytapi/connect/${botId}`),
