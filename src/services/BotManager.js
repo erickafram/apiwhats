@@ -206,11 +206,16 @@ class BotManager {
 
       if (aiResponse) {
         // Enviar resposta
-        await global.whatsappService.sendMessage(
-          bot.id,
-          conversation.user_phone,
-          aiResponse.content
-        );
+        // Usar o serviço ativo (UltraMsg, Whapi, etc.)
+        if (global.ultraMsgService) {
+          await global.ultraMsgService.sendMessage(bot.id, conversation.user_phone, aiResponse.content);
+        } else if (global.whapiService) {
+          await global.whapiService.sendMessage(bot.id, conversation.user_phone, aiResponse.content);
+        } else if (global.whatsappService) {
+          await global.whatsappService.sendMessage(bot.id, conversation.user_phone, aiResponse.content);
+        } else {
+          throw new Error('Nenhum serviço WhatsApp disponível');
+        }
 
         // Salvar mensagem de resposta
         await Message.create({
@@ -255,11 +260,16 @@ class BotManager {
     try {
       const defaultMessage = 'Olá! Como posso ajudá-lo?';
       
-      await global.whatsappService.sendMessage(
-        botId,
-        conversation.user_phone,
-        defaultMessage
-      );
+      // Usar o serviço ativo (UltraMsg, Whapi, etc.)
+      if (global.ultraMsgService) {
+        await global.ultraMsgService.sendMessage(botId, conversation.user_phone, defaultMessage);
+      } else if (global.whapiService) {
+        await global.whapiService.sendMessage(botId, conversation.user_phone, defaultMessage);
+      } else if (global.whatsappService) {
+        await global.whatsappService.sendMessage(botId, conversation.user_phone, defaultMessage);
+      } else {
+        throw new Error('Nenhum serviço WhatsApp disponível');
+      }
 
       await Message.create({
         conversation_id: conversation.id,
@@ -279,11 +289,16 @@ class BotManager {
     try {
       const errorMessage = 'Desculpe, ocorreu um erro. Tente novamente em alguns instantes.';
       
-      await global.whatsappService.sendMessage(
-        botId,
-        conversation.user_phone,
-        errorMessage
-      );
+      // Usar o serviço ativo (UltraMsg, Whapi, etc.)
+      if (global.ultraMsgService) {
+        await global.ultraMsgService.sendMessage(botId, conversation.user_phone, errorMessage);
+      } else if (global.whapiService) {
+        await global.whapiService.sendMessage(botId, conversation.user_phone, errorMessage);
+      } else if (global.whatsappService) {
+        await global.whatsappService.sendMessage(botId, conversation.user_phone, errorMessage);
+      } else {
+        throw new Error('Nenhum serviço WhatsApp disponível');
+      }
 
       await Message.create({
         bot_id: botId,

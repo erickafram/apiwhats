@@ -882,7 +882,16 @@ class FlowProcessor {
 
   async sendMessage(botId, userPhone, content, mediaType = 'text') {
     try {
-      await global.whatsappService.sendMessage(botId, userPhone, content, mediaType);
+      // Usar o serviço ativo (UltraMsg, Whapi, etc.)
+      if (global.ultraMsgService) {
+        await global.ultraMsgService.sendMessage(botId, userPhone, content, mediaType);
+      } else if (global.whapiService) {
+        await global.whapiService.sendMessage(botId, userPhone, content, mediaType);
+      } else if (global.whatsappService) {
+        await global.whatsappService.sendMessage(botId, userPhone, content, mediaType);
+      } else {
+        throw new Error('Nenhum serviço WhatsApp disponível');
+      }
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error);
       throw error;
