@@ -1,0 +1,377 @@
+{
+  "name": "Sistema de Passagens de Ônibus",
+  "description": "Fluxo completo para consulta e compra de passagens de ônibus com integração WhatsApp",
+  "version": "2.0.0",
+  "is_active": true,
+  "is_default": true,
+  "trigger_keywords": ["oi", "olá", "menu", "passagem", "onibus", "viagem", "start", "começar", "iniciar"],
+  "trigger_conditions": {
+    "type": "any",
+    "intents": [],
+    "keywords": [],
+    "time_conditions": null,
+    "custom_conditions": null
+  },
+  "priority": 100,
+  "flow_data": {
+    "nodes": [
+      {
+        "id": "start",
+        "type": "start",
+        "position": {"x": 0, "y": 0},
+        "next": "welcome",
+        "content": "",
+        "conditions": []
+      },
+      {
+        "id": "welcome",
+        "type": "message",
+        "position": {"x": 0, "y": 150},
+        "next": "menu_input",
+        "content": "🚌 *BEM-VINDO À VIAÇÃO EXPRESSA!*\n\n🎯 *O que você gostaria de fazer?*\n\n1️⃣ 🎫 Comprar Passagem\n2️⃣ 🕐 Consultar Horários\n3️⃣ 📍 Destinos Disponíveis\n4️⃣ 💰 Consultar Preços\n5️⃣ 📞 Falar com Atendente\n6️⃣ ℹ️ Informações da Empresa\n\n*Digite o número da opção:*",
+        "variable": "",
+        "conditions": []
+      },
+      {
+        "id": "menu_input",
+        "type": "input",
+        "position": {"x": 0, "y": 300},
+        "next": "menu_condition",
+        "content": "",
+        "variable": "opcao_menu",
+        "conditions": []
+      },
+      {
+        "id": "menu_condition",
+        "type": "condition",
+        "position": {"x": 0, "y": 450},
+        "next": "comprar_origem",
+        "content": "",
+        "variable": null,
+        "conditions": [
+          {"variable": "opcao_menu", "operator": "equals", "value": "1", "next": "comprar_origem"},
+          {"variable": "opcao_menu", "operator": "equals", "value": "2", "next": "consultar_horarios"},
+          {"variable": "opcao_menu", "operator": "equals", "value": "3", "next": "mostrar_destinos"},
+          {"variable": "opcao_menu", "operator": "equals", "value": "4", "next": "consultar_precos"},
+          {"variable": "opcao_menu", "operator": "equals", "value": "5", "next": "transferir_atendente"},
+          {"variable": "opcao_menu", "operator": "equals", "value": "6", "next": "info_empresa"},
+          {"variable": "opcao_menu", "operator": "default", "value": "", "next": "opcao_invalida"}
+        ]
+      },
+      {
+        "id": "comprar_origem",
+        "type": "message",
+        "position": {"x": -400, "y": 600},
+        "next": "input_origem",
+        "content": "🗺️ *COMPRA DE PASSAGEM*\n\n📍 *Digite a cidade de ORIGEM:*\n\n💡 *Exemplos:*\n• São Paulo\n• Rio de Janeiro\n• Belo Horizonte\n• Brasília\n• Salvador\n\n*Digite apenas o nome da cidade:*",
+        "variable": "",
+        "conditions": []
+      },
+      {
+        "id": "input_origem",
+        "type": "input",
+        "position": {"x": -400, "y": 750},
+        "next": "comprar_destino",
+        "content": "",
+        "variable": "cidade_origem",
+        "conditions": []
+      },
+      {
+        "id": "comprar_destino",
+        "type": "message",
+        "position": {"x": -400, "y": 900},
+        "next": "input_destino",
+        "content": "🎯 *Perfeito!* Origem: *${cidade_origem}*\n\n📍 *Agora digite a cidade de DESTINO:*\n\n💡 *Principais destinos:*\n• São Paulo\n• Rio de Janeiro\n• Belo Horizonte\n• Brasília\n• Salvador\n• Goiânia\n• Curitiba\n\n*Digite o destino:*",
+        "variable": "",
+        "conditions": []
+      },
+      {
+        "id": "input_destino",
+        "type": "input",
+        "position": {"x": -400, "y": 1050},
+        "next": "comprar_data",
+        "content": "",
+        "variable": "cidade_destino",
+        "conditions": []
+      },
+      {
+        "id": "comprar_data",
+        "type": "message",
+        "position": {"x": -400, "y": 1200},
+        "next": "input_data",
+        "content": "📅 *Rota selecionada:*\n🚌 ${cidade_origem} ➜ ${cidade_destino}\n\n*Digite a data da viagem:*\n\n📋 *Formato: DD/MM/AAAA*\n💡 *Exemplos:*\n• 15/08/2025\n• 20/08/2025\n• 25/08/2025\n\n⚠️ *Mínimo: hoje*\n⚠️ *Máximo: 60 dias*",
+        "variable": "",
+        "conditions": []
+      },
+      {
+        "id": "input_data",
+        "type": "input",
+        "position": {"x": -400, "y": 1350},
+        "next": "mostrar_passagens",
+        "content": "",
+        "variable": "data_viagem",
+        "conditions": []
+      },
+      {
+        "id": "mostrar_passagens",
+        "type": "message",
+        "position": {"x": -400, "y": 1500},
+        "next": "input_escolha_passagem",
+        "content": "🎫 *PASSAGENS DISPONÍVEIS*\n\n🚌 *Rota:* ${cidade_origem} ➜ ${cidade_destino}\n📅 *Data:* ${data_viagem}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n*1️⃣ EXECUTIVO - 06:00*\n💺 45 lugares disponíveis\n💰 R$ 85,00\n⏱️ Duração: 6h30min\n\n*2️⃣ CONVENCIONAL - 09:00*\n💺 23 lugares disponíveis\n💰 R$ 65,00\n⏱️ Duração: 7h15min\n\n*3️⃣ EXECUTIVO - 14:00*\n💺 31 lugares disponíveis\n💰 R$ 85,00\n⏱️ Duração: 6h30min\n\n*4️⃣ LEITO - 22:00*\n💺 12 lugares disponíveis\n💰 R$ 120,00\n⏱️ Duração: 8h00min\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n*Digite o número da passagem escolhida:*",
+        "variable": "",
+        "conditions": []
+      },
+      {
+        "id": "input_escolha_passagem",
+        "type": "input",
+        "position": {"x": -400, "y": 1650},
+        "next": "confirmar_compra",
+        "content": "",
+        "variable": "passagem_escolhida",
+        "conditions": []
+      },
+      {
+        "id": "confirmar_compra",
+        "type": "message",
+        "position": {"x": -400, "y": 1800},
+        "next": "input_confirmacao",
+        "content": "✅ *CONFIRMAÇÃO DA COMPRA*\n\n🎫 *Resumo da Passagem:*\n📍 ${cidade_origem} ➜ ${cidade_destino}\n📅 ${data_viagem}\n🚌 Passagem #${passagem_escolhida}\n\n💳 *Formas de Pagamento:*\n• PIX (5% desconto)\n• Cartão de Crédito (até 3x)\n• Cartão de Débito\n\n*Digite SIM para confirmar a compra:*\n*Digite NÃO para cancelar*\n*Digite MENU para voltar ao início*",
+        "variable": "",
+        "conditions": []
+      },
+      {
+        "id": "input_confirmacao",
+        "type": "input",
+        "position": {"x": -400, "y": 1950},
+        "next": "processar_confirmacao",
+        "content": "",
+        "variable": "confirmacao",
+        "conditions": []
+      },
+      {
+        "id": "processar_confirmacao",
+        "type": "condition",
+        "position": {"x": -400, "y": 2100},
+        "next": "finalizar_compra",
+        "content": "",
+        "variable": null,
+        "conditions": [
+          {"variable": "confirmacao", "operator": "equals", "value": "sim", "next": "finalizar_compra"},
+          {"variable": "confirmacao", "operator": "equals", "value": "SIM", "next": "finalizar_compra"},
+          {"variable": "confirmacao", "operator": "equals", "value": "menu", "next": "welcome"},
+          {"variable": "confirmacao", "operator": "equals", "value": "MENU", "next": "welcome"},
+          {"variable": "confirmacao", "operator": "default", "value": "", "next": "compra_cancelada"}
+        ]
+      },
+      {
+        "id": "finalizar_compra",
+        "type": "message",
+        "position": {"x": -600, "y": 2250},
+        "next": "transferir_pagamento",
+        "content": "🎉 *COMPRA CONFIRMADA!*\n\n✅ *Sua passagem foi reservada:*\n🎫 Código: #PASS${passagem_escolhida}${data_viagem}\n📍 ${cidade_origem} ➜ ${cidade_destino}\n📅 ${data_viagem}\n\n👨‍💼 *Transferindo para atendente...*\n\nEm instantes você será conectado com um operador para:\n• Finalizar pagamento\n• Escolher assento\n• Receber bilhete por email\n• Tirar dúvidas\n\n⏱️ *Aguarde um momento...*",
+        "variable": "",
+        "conditions": []
+      },
+      {
+        "id": "transferir_pagamento",
+        "type": "action",
+        "position": {"x": -600, "y": 2400},
+        "next": "end",
+        "content": "",
+        "action": "transfer_to_human",
+        "variable": "",
+        "conditions": []
+      },
+      {
+        "id": "compra_cancelada",
+        "type": "message",
+        "position": {"x": -200, "y": 2250},
+        "next": "voltar_menu_cancelamento",
+        "content": "❌ *Compra cancelada*\n\n🔄 Sem problemas! Sua passagem não foi reservada.\n\n*O que você gostaria de fazer?*\n\n1️⃣ Voltar ao menu principal\n2️⃣ Tentar nova busca\n3️⃣ Falar com atendente\n\n*Digite sua opção:*",
+        "variable": "",
+        "conditions": []
+      },
+      {
+        "id": "voltar_menu_cancelamento",
+        "type": "input",
+        "position": {"x": -200, "y": 2400},
+        "next": "processar_pos_cancelamento",
+        "content": "",
+        "variable": "opcao_pos_cancelamento",
+        "conditions": []
+      },
+      {
+        "id": "processar_pos_cancelamento",
+        "type": "condition",
+        "position": {"x": -200, "y": 2550},
+        "next": "welcome",
+        "content": "",
+        "variable": null,
+        "conditions": [
+          {"variable": "opcao_pos_cancelamento", "operator": "equals", "value": "1", "next": "welcome"},
+          {"variable": "opcao_pos_cancelamento", "operator": "equals", "value": "2", "next": "comprar_origem"},
+          {"variable": "opcao_pos_cancelamento", "operator": "equals", "value": "3", "next": "transferir_atendente"},
+          {"variable": "opcao_pos_cancelamento", "operator": "default", "value": "", "next": "welcome"}
+        ]
+      },
+      {
+        "id": "consultar_horarios",
+        "type": "message",
+        "position": {"x": 200, "y": 600},
+        "next": "voltar_menu_horarios",
+        "content": "🕐 *HORÁRIOS DE PARTIDA*\n\n🚌 *PRINCIPAIS ROTAS:*\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n*📍 SÃO PAULO → RIO DE JANEIRO*\n🕕 06:00 • 🕘 09:00 • 🕐 13:00 • 🕕 18:00 • 🕘 21:00\n\n*📍 RIO DE JANEIRO → BELO HORIZONTE*\n🕖 07:00 • 🕑 14:00 • 🕗 20:00\n\n*📍 SÃO PAULO → SALVADOR*\n🕖 19:00 • 🕘 22:00 (Leito)\n\n*📍 BRASÍLIA → GOIÂNIA*\n🕗 08:00 • 🕒 15:00 • 🕘 21:00\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n💡 *Para horários específicos, digite 1 para comprar passagem*\n\n*Digite MENU para voltar*",
+        "variable": "",
+        "conditions": []
+      },
+      {
+        "id": "voltar_menu_horarios",
+        "type": "input",
+        "position": {"x": 200, "y": 750},
+        "next": "welcome",
+        "content": "",
+        "variable": "voltar_horarios",
+        "conditions": []
+      },
+      {
+        "id": "mostrar_destinos",
+        "type": "message",
+        "position": {"x": 400, "y": 600},
+        "next": "voltar_menu_destinos",
+        "content": "📍 *DESTINOS DISPONÍVEIS*\n\n🌟 *DESTINOS PRINCIPAIS:*\n\n🏙️ *REGIÃO SUDESTE*\n• São Paulo (SP)\n• Rio de Janeiro (RJ)\n• Belo Horizonte (MG)\n• Vitória (ES)\n\n🌆 *REGIÃO CENTRO-OESTE*\n• Brasília (DF)\n• Goiânia (GO)\n• Campo Grande (MS)\n• Cuiabá (MT)\n\n🏖️ *REGIÃO NORDESTE*\n• Salvador (BA)\n• Recife (PE)\n• Fortaleza (CE)\n• Natal (RN)\n\n❄️ *REGIÃO SUL*\n• Curitiba (PR)\n• Florianópolis (SC)\n• Porto Alegre (RS)\n\n💡 *Para consultar passagens, digite 1*\n\n*Digite MENU para voltar*",
+        "variable": "",
+        "conditions": []
+      },
+      {
+        "id": "voltar_menu_destinos",
+        "type": "input",
+        "position": {"x": 400, "y": 750},
+        "next": "welcome",
+        "content": "",
+        "variable": "voltar_destinos",
+        "conditions": []
+      },
+      {
+        "id": "consultar_precos",
+        "type": "message",
+        "position": {"x": 600, "y": 600},
+        "next": "voltar_menu_precos",
+        "content": "💰 *TABELA DE PREÇOS*\n\n🎫 *TIPOS DE PASSAGEM:*\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n*🚌 CONVENCIONAL*\n💺 Poltronas reclináveis\n💰 R$ 45 - R$ 80\n\n*🚌 EXECUTIVO*\n💺 Poltronas amplas + ar\n💰 R$ 65 - R$ 120\n\n*🛏️ LEITO*\n💺 Cama individual\n💰 R$ 90 - R$ 180\n\n*🌟 PREMIUM*\n💺 Suite privada\n💰 R$ 150 - R$ 300\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n💳 *FORMAS DE PAGAMENTO:*\n• PIX (5% desconto)\n• Cartão (até 3x sem juros)\n• Dinheiro (nas lojas)\n\n💡 *Preços variam por distância*\n\n*Digite MENU para voltar*",
+        "variable": "",
+        "conditions": []
+      },
+      {
+        "id": "voltar_menu_precos",
+        "type": "input",
+        "position": {"x": 600, "y": 750},
+        "next": "welcome",
+        "content": "",
+        "variable": "voltar_precos",
+        "conditions": []
+      },
+      {
+        "id": "transferir_atendente",
+        "type": "message",
+        "position": {"x": 800, "y": 600},
+        "next": "acao_transferir_atendente",
+        "content": "👨‍💼 *TRANSFERINDO PARA ATENDENTE*\n\n✅ *Você será conectado com nossa equipe especializada!*\n\n⏱️ *Horário de atendimento:*\n🕕 Segunda a Sexta: 06:00 às 22:00\n🕘 Sábados: 08:00 às 18:00\n🕘 Domingos: 10:00 às 16:00\n\n📞 *O que nosso atendente pode fazer:*\n• Finalizar compras\n• Alterar/cancelar passagens\n• Informações especiais\n• Suporte técnico\n\n🔄 *Conectando... aguarde um momento*",
+        "variable": "",
+        "conditions": []
+      },
+      {
+        "id": "acao_transferir_atendente",
+        "type": "action",
+        "position": {"x": 800, "y": 750},
+        "next": "end",
+        "content": "",
+        "action": "transfer_to_human",
+        "variable": "",
+        "conditions": []
+      },
+      {
+        "id": "info_empresa",
+        "type": "message",
+        "position": {"x": 1000, "y": 600},
+        "next": "voltar_menu_info",
+        "content": "🏢 *VIAÇÃO EXPRESSA - INFORMAÇÕES*\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n*📞 CONTATOS*\n• Central: 0800-123-4567\n• WhatsApp: (11) 99999-8888\n• Email: contato@viacaoexpressa.com.br\n\n*🏪 RODOVIÁRIA PRINCIPAL*\n📍 Av. Principal, 1000 - Centro\n🏙️ São Paulo - SP\n📮 CEP: 01234-567\n\n*🕐 HORÁRIOS DE FUNCIONAMENTO*\n📅 Seg-Sex: 05:00 às 23:00\n📅 Sábados: 06:00 às 22:00\n📅 Domingos: 07:00 às 21:00\n\n*🎫 POLÍTICA DE BAGAGEM*\n✅ 1 bagagem de mão (10kg)\n✅ 1 bagagem despachada (23kg)\n❌ Itens proibidos: consulte site\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n*Digite MENU para voltar*",
+        "variable": "",
+        "conditions": []
+      },
+      {
+        "id": "voltar_menu_info",
+        "type": "input",
+        "position": {"x": 1000, "y": 750},
+        "next": "welcome",
+        "content": "",
+        "variable": "voltar_info",
+        "conditions": []
+      },
+      {
+        "id": "opcao_invalida",
+        "type": "message",
+        "position": {"x": 0, "y": 750},
+        "next": "welcome",
+        "content": "❌ *Opção inválida!*\n\n🔍 *Digite apenas o número da opção desejada:*\n• 1 = Comprar Passagem\n• 2 = Consultar Horários\n• 3 = Destinos\n• 4 = Preços\n• 5 = Atendente\n• 6 = Informações\n\n🔄 *Voltando ao menu...*",
+        "variable": "",
+        "conditions": []
+      },
+      {
+        "id": "end",
+        "type": "end",
+        "position": {"x": 0, "y": 2700},
+        "next": null,
+        "content": "",
+        "variable": "",
+        "conditions": []
+      }
+    ],
+    "edges": [
+      {"id": "start-welcome", "source": "start", "target": "welcome", "type": "smoothstep"},
+      {"id": "welcome-menu_input", "source": "welcome", "target": "menu_input", "type": "smoothstep"},
+      {"id": "menu_input-menu_condition", "source": "menu_input", "target": "menu_condition", "type": "smoothstep"},
+      {"id": "menu_condition-comprar_origem-1", "source": "menu_condition", "target": "comprar_origem", "type": "smoothstep", "label": "1"},
+      {"id": "menu_condition-consultar_horarios-2", "source": "menu_condition", "target": "consultar_horarios", "type": "smoothstep", "label": "2"},
+      {"id": "menu_condition-mostrar_destinos-3", "source": "menu_condition", "target": "mostrar_destinos", "type": "smoothstep", "label": "3"},
+      {"id": "menu_condition-consultar_precos-4", "source": "menu_condition", "target": "consultar_precos", "type": "smoothstep", "label": "4"},
+      {"id": "menu_condition-transferir_atendente-5", "source": "menu_condition", "target": "transferir_atendente", "type": "smoothstep", "label": "5"},
+      {"id": "menu_condition-info_empresa-6", "source": "menu_condition", "target": "info_empresa", "type": "smoothstep", "label": "6"},
+      {"id": "menu_condition-opcao_invalida-default", "source": "menu_condition", "target": "opcao_invalida", "type": "smoothstep", "label": "inválida"},
+      {"id": "comprar_origem-input_origem", "source": "comprar_origem", "target": "input_origem", "type": "smoothstep"},
+      {"id": "input_origem-comprar_destino", "source": "input_origem", "target": "comprar_destino", "type": "smoothstep"},
+      {"id": "comprar_destino-input_destino", "source": "comprar_destino", "target": "input_destino", "type": "smoothstep"},
+      {"id": "input_destino-comprar_data", "source": "input_destino", "target": "comprar_data", "type": "smoothstep"},
+      {"id": "comprar_data-input_data", "source": "comprar_data", "target": "input_data", "type": "smoothstep"},
+      {"id": "input_data-mostrar_passagens", "source": "input_data", "target": "mostrar_passagens", "type": "smoothstep"},
+      {"id": "mostrar_passagens-input_escolha_passagem", "source": "mostrar_passagens", "target": "input_escolha_passagem", "type": "smoothstep"},
+      {"id": "input_escolha_passagem-confirmar_compra", "source": "input_escolha_passagem", "target": "confirmar_compra", "type": "smoothstep"},
+      {"id": "confirmar_compra-input_confirmacao", "source": "confirmar_compra", "target": "input_confirmacao", "type": "smoothstep"},
+      {"id": "input_confirmacao-processar_confirmacao", "source": "input_confirmacao", "target": "processar_confirmacao", "type": "smoothstep"},
+      {"id": "processar_confirmacao-finalizar_compra-sim", "source": "processar_confirmacao", "target": "finalizar_compra", "type": "smoothstep", "label": "SIM"},
+      {"id": "processar_confirmacao-welcome-menu", "source": "processar_confirmacao", "target": "welcome", "type": "smoothstep", "label": "MENU"},
+      {"id": "processar_confirmacao-compra_cancelada-default", "source": "processar_confirmacao", "target": "compra_cancelada", "type": "smoothstep", "label": "cancelar"},
+      {"id": "finalizar_compra-transferir_pagamento", "source": "finalizar_compra", "target": "transferir_pagamento", "type": "smoothstep"},
+      {"id": "transferir_pagamento-end", "source": "transferir_pagamento", "target": "end", "type": "smoothstep"},
+      {"id": "compra_cancelada-voltar_menu_cancelamento", "source": "compra_cancelada", "target": "voltar_menu_cancelamento", "type": "smoothstep"},
+      {"id": "voltar_menu_cancelamento-processar_pos_cancelamento", "source": "voltar_menu_cancelamento", "target": "processar_pos_cancelamento", "type": "smoothstep"},
+      {"id": "processar_pos_cancelamento-welcome-1", "source": "processar_pos_cancelamento", "target": "welcome", "type": "smoothstep", "label": "1"},
+      {"id": "processar_pos_cancelamento-comprar_origem-2", "source": "processar_pos_cancelamento", "target": "comprar_origem", "type": "smoothstep", "label": "2"},
+      {"id": "processar_pos_cancelamento-transferir_atendente-3", "source": "processar_pos_cancelamento", "target": "transferir_atendente", "type": "smoothstep", "label": "3"},
+      {"id": "consultar_horarios-voltar_menu_horarios", "source": "consultar_horarios", "target": "voltar_menu_horarios", "type": "smoothstep"},
+      {"id": "voltar_menu_horarios-welcome", "source": "voltar_menu_horarios", "target": "welcome", "type": "smoothstep"},
+      {"id": "mostrar_destinos-voltar_menu_destinos", "source": "mostrar_destinos", "target": "voltar_menu_destinos", "type": "smoothstep"},
+      {"id": "voltar_menu_destinos-welcome", "source": "voltar_menu_destinos", "target": "welcome", "type": "smoothstep"},
+      {"id": "consultar_precos-voltar_menu_precos", "source": "consultar_precos", "target": "voltar_menu_precos", "type": "smoothstep"},
+      {"id": "voltar_menu_precos-welcome", "source": "voltar_menu_precos", "target": "welcome", "type": "smoothstep"},
+      {"id": "transferir_atendente-acao_transferir_atendente", "source": "transferir_atendente", "target": "acao_transferir_atendente", "type": "smoothstep"},
+      {"id": "acao_transferir_atendente-end", "source": "acao_transferir_atendente", "target": "end", "type": "smoothstep"},
+      {"id": "info_empresa-voltar_menu_info", "source": "info_empresa", "target": "voltar_menu_info", "type": "smoothstep"},
+      {"id": "voltar_menu_info-welcome", "source": "voltar_menu_info", "target": "welcome", "type": "smoothstep"},
+      {"id": "opcao_invalida-welcome", "source": "opcao_invalida", "target": "welcome", "type": "smoothstep"}
+    ]
+  },
+  "statistics": {
+    "total_executions": 0,
+    "successful_completions": 0,
+    "average_completion_time": 0,
+    "last_execution": null
+  }
+}
