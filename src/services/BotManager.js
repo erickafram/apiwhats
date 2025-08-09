@@ -83,10 +83,13 @@ class BotManager {
       const flow = await this.determineFlow(botConfig, conversation, message);
       
       if (!flow) {
-        // Se não há fluxo, usar IA diretamente
-        await this.handleWithAI(botConfig, conversation, message);
+        console.log('❌ Nenhum fluxo encontrado - enviando mensagem padrão');
+        // Se não há fluxo, enviar mensagem padrão (sem IA para evitar duplicação)
+        await this.sendDefaultMessage(botConfig.bot.id, conversation);
         return;
       }
+
+      console.log(`✅ Fluxo selecionado: ${flow.name} (ID: ${flow.id})`);
 
       // Processar através do fluxo
       const result = await this.flowProcessor.processMessage({
@@ -285,7 +288,7 @@ class BotManager {
 
   async sendDefaultMessage(botId, conversation) {
     try {
-      const defaultMessage = 'Olá! Como posso ajudá-lo?';
+      const defaultMessage = '👋 Olá! Digite *menu* para ver as opções disponíveis ou *oi* para começar!';
       
       // Usar o serviço ativo (UltraMsg, Whapi, etc.)
       if (global.ultraMsgService) {
