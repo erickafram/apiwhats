@@ -3,9 +3,9 @@ const mysql = require('mysql2/promise');
 // Configuração do banco de PRODUÇÃO
 const dbConfig = {
   host: 'localhost',
-  user: 'root',
-  password: '', // Ajustar se necessário
-  database: 'whatsapp_chatbot'
+  user: 'chatbot',
+  password: '@@2025@@Ekb', // Ajustar se necessário
+  database: 'chatbot'
 };
 
 async function verificarFluxos() {
