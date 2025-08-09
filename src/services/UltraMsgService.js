@@ -391,6 +391,12 @@ class UltraMsgService {
       const messageContent = messageData.body;
       const messageType = messageData.type || 'text';
 
+      // Verificar se o número foi processado corretamente
+      if (!userPhone) {
+        console.error('❌ Não foi possível processar o número de telefone:', messageData.from);
+        return;
+      }
+
       // Encontrar bot correspondente (assumindo que temos apenas um bot ativo por instância)
       const botConnection = Array.from(this.connections.values())[0];
       if (!botConnection || !botConnection.bot) {
@@ -432,26 +438,40 @@ class UltraMsgService {
   }
 
   // Limpar número de telefone
-  cleanPhoneNumber(phone) {
+    cleanPhoneNumber(phone) {
     // Verificar se phone existe
     if (!phone || typeof phone !== 'string') {
       console.error('❌ Número de telefone inválido:', phone);
       return null;
     }
     
-    // Remover caracteres especiais e espaços
-    let clean = phone.replace(/[^\d]/g, '');
+    console.log('🔧 Processando número:', phone);
+    
+    // Para UltraMsg, o número já vem no formato correto (556392410056@c.us)
+    // Só precisamos garantir que está no formato certo
+    let clean = phone;
+    
+    // Se já tem @c.us, está no formato UltraMsg correto
+    if (clean.includes('@c.us')) {
+      console.log('✅ Número UltraMsg válido:', clean);
+      return clean;
+    }
+    
+    // Se não tem @, adicionar
+    // Remover caracteres especiais exceto @
+    clean = phone.replace(/[^\d@.]/g, '');
     
     // Se não começar com código do país, adicionar Brasil (55)
     if (!clean.startsWith('55') && clean.length <= 11) {
       clean = '55' + clean;
     }
     
-    // Adicionar @ se necessário para UltraMsg
+    // Adicionar @c.us se necessário
     if (!clean.includes('@')) {
       clean = clean + '@c.us';
     }
-
+    
+    console.log('✅ Número processado:', clean);
     return clean;
   }
 
