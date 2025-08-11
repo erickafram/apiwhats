@@ -12,12 +12,8 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: [
-      "http://localhost:3000",
-      "https://chatbotwhats.online"
-    ],
-    methods: ["GET", "POST"],
-    credentials: true
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    methods: ["GET", "POST"]
   }
 });
 
@@ -27,10 +23,7 @@ global.io = io;
 // Middleware de segurança
 app.use(helmet());
 app.use(cors({
-  origin: [
-    "http://localhost:3000",
-    "https://chatbotwhats.online"
-  ],
+  origin: process.env.FRONTEND_URL || "http://localhost:3000",
   credentials: true
 }));
 
@@ -66,7 +59,6 @@ const analyticsRoutes = require('./src/routes/analytics');
 const maytapiRoutes = require('./src/routes/maytapi');
 const whapiRoutes = require('./src/routes/whapi');
 const ultraMsgRoutes = require('./src/routes/ultramsg');
-// const quickMessagesRoutes = require('./src/routes/quick-messages'); // Temporariamente desabilitado
 
 // Usar rotas
 app.use('/api/auth', authRoutes);
@@ -79,34 +71,6 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/maytapi', maytapiRoutes);
 app.use('/api/whapi', whapiRoutes);
 app.use('/api/ultramsg', ultraMsgRoutes);
-// app.use('/api/quick-messages', quickMessagesRoutes); // Temporariamente desabilitado
-
-// ✅ TEMPORÁRIO: Rota simples para quick-messages até resolver o problema
-app.get('/api/quick-messages/categories', (req, res) => {
-  const categories = [
-    { value: 'geral', label: 'Geral' },
-    { value: 'saudacoes', label: 'Saudações' },
-    { value: 'despedidas', label: 'Despedidas' },
-    { value: 'informacoes', label: 'Informações' },
-    { value: 'suporte', label: 'Suporte' },
-    { value: 'vendas', label: 'Vendas' },
-    { value: 'agendamento', label: 'Agendamento' },
-    { value: 'pagamento', label: 'Pagamento' },
-    { value: 'outros', label: 'Outros' }
-  ];
-  res.json({ success: true, data: { categories } });
-});
-
-app.get('/api/quick-messages', (req, res) => {
-  res.json({ 
-    success: true, 
-    data: { 
-      quick_messages: [], 
-      total: 0, 
-      message: 'Funcionalidade temporariamente indisponível'
-    } 
-  });
-});
 
 // Rota de health check
 app.get('/health', (req, res) => {

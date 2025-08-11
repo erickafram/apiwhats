@@ -46,12 +46,10 @@ import {
   MoreVert,
   Notifications,
   CheckCircle,
-  Warning,
-  QuickreplyOutlined
+  Warning
 } from '@mui/icons-material'
 import { conversationsAPI } from '../../services/api'
 import { useConversations } from '../../hooks/useConversations.jsx'
-import QuickMessageSelector from '../../components/QuickMessageSelector.jsx'
 
 // Adicionar estilos CSS para animação
 const pulseAnimation = `
@@ -77,7 +75,6 @@ const Conversations = () => {
   const [lastConversationCount, setLastConversationCount] = useState(0)
   const [newConversationAlert, setNewConversationAlert] = useState(false)
   const [lastMessageCount, setLastMessageCount] = useState(0)
-  const [quickMessageSelectorOpen, setQuickMessageSelectorOpen] = useState(false)
 
   // Usar o hook global de conversas
   const { refreshConversations, transferredCount: globalTransferredCount, unattendedCount: globalUnattendedCount } = useConversations()
@@ -98,19 +95,13 @@ const Conversations = () => {
   const loadConversations = async () => {
     try {
       setLoading(true)
-      // Buscar conversas transferidas, ativas sem mensagens do operador, e completadas recentemente
-      const [transferredResponse, activeResponse, completedResponse] = await Promise.all([
+      // Buscar conversas transferidas e também as completadas recentemente
+      const [transferredResponse, completedResponse] = await Promise.all([
         conversationsAPI.getAll({
           status: 'transferred',
           sort: 'priority',
           order: 'DESC',
           limit: 50
-        }),
-        conversationsAPI.getAll({
-          status: 'active',
-          sort: 'priority', 
-          order: 'DESC',
-          limit: 20
         }),
         conversationsAPI.getAll({
           status: 'completed',
@@ -120,17 +111,10 @@ const Conversations = () => {
         })
       ])
       
-      // Filtrar conversas ativas que ainda precisam de atenção do operador
-      const activeConversations = activeResponse.data.conversations.filter(conv => {
-        // Incluir apenas conversas ativas que não tiveram resposta do operador
-        return !conv.metadata?.first_operator_response || conv.metadata?.operator_viewing
-      })
-
       const response = {
         data: {
           conversations: [
             ...transferredResponse.data.conversations,
-            ...activeConversations,
             ...completedResponse.data.conversations
           ]
         }
@@ -197,12 +181,12 @@ const Conversations = () => {
 
   const takeOverConversation = async (conversation) => {
     try {
-      // Não mudar o status ainda, apenas marcar como visualizada
       await conversationsAPI.update(conversation.id, {
+        status: 'active',
         metadata: {
           ...conversation.metadata,
-          operator_viewing: true,
-          operator_viewing_at: new Date(),
+          operator_assigned: true,
+          operator_assigned_at: new Date(),
           awaiting_human: false
         }
       })
@@ -221,25 +205,6 @@ const Conversations = () => {
     
     try {
       setSending(true)
-      
-      // Se é a primeira mensagem do operador, mudar status para active
-      if (selectedConversation.status === 'transferred') {
-        await conversationsAPI.update(selectedConversation.id, {
-          status: 'active',
-          metadata: {
-            ...selectedConversation.metadata,
-            operator_assigned: true,
-            operator_assigned_at: new Date(),
-            first_operator_response: new Date()
-          }
-        })
-        // Atualizar o estado local
-        setSelectedConversation({
-          ...selectedConversation,
-          status: 'active'
-        })
-      }
-      
       await conversationsAPI.sendMessage(selectedConversation.id, {
         content: newMessage,
         message_type: 'text'
@@ -256,19 +221,6 @@ const Conversations = () => {
     } finally {
       setSending(false)
     }
-  }
-
-  const handleQuickMessageSelect = (messageContent) => {
-    setNewMessage(messageContent)
-    // Focar no campo de texto após selecionar a mensagem
-    setTimeout(() => {
-      const textField = document.querySelector('textarea[placeholder="Digite sua mensagem..."]')
-      if (textField) {
-        textField.focus()
-        // Posicionar cursor no final
-        textField.setSelectionRange(messageContent.length, messageContent.length)
-      }
-    }, 100)
   }
 
   const endConversation = async () => {
@@ -288,39 +240,6 @@ const Conversations = () => {
       loadConversations()
     } catch (error) {
       console.error('Erro ao encerrar conversa:', error)
-    }
-  }
-
-  const closeConversationDialog = async () => {
-    if (!selectedConversation) {
-      setDialogOpen(false)
-      return
-    }
-
-    try {
-      // Se a conversa ainda está como transferred (operador não enviou mensagem)
-      // devolver para a fila
-      if (selectedConversation.status === 'transferred') {
-        await conversationsAPI.update(selectedConversation.id, {
-          metadata: {
-            ...selectedConversation.metadata,
-            operator_viewing: false,
-            operator_viewing_at: null,
-            awaiting_human: true
-          }
-        })
-      }
-      
-      setDialogOpen(false)
-      setSelectedConversation(null)
-      setMessages([])
-      setNewMessage('')
-      loadConversations()
-    } catch (error) {
-      console.error('Erro ao fechar conversa:', error)
-      // Mesmo com erro, fechar o dialog
-      setDialogOpen(false)
-      setSelectedConversation(null)
     }
   }
 
@@ -370,12 +289,12 @@ const Conversations = () => {
 
   useEffect(() => {
     loadConversations()
-    // Atualizar a cada 30 segundos para conversas (menos frequente para não incomodar)
+    // Atualizar a cada 10 segundos para conversas, mas sem piscar
     const interval = setInterval(() => {
       if (!dialogOpen) { // Só atualiza se o chat não estiver aberto
         loadConversations()
       }
-    }, 30000) // Aumentado para 30 segundos
+    }, 10000)
     return () => clearInterval(interval)
   }, [dialogOpen])
 
@@ -577,19 +496,9 @@ const Conversations = () => {
                       startIcon={<Chat />}
                       onClick={() => takeOverConversation(conversation)}
                       fullWidth
-                      color={conversation.metadata?.operator_viewing ? 'secondary' : 'primary'}
+                      color={conversation.metadata?.operator_assigned ? 'secondary' : 'primary'}
                     >
-                      {conversation.metadata?.operator_viewing ? 'Continuar Conversa' : 'Visualizar Conversa'}
-                    </Button>
-                  ) : conversation.status === 'active' ? (
-                    <Button
-                      variant="contained"
-                      startIcon={<Chat />}
-                      onClick={() => takeOverConversation(conversation)}
-                      fullWidth
-                      color="warning"
-                    >
-                      {conversation.metadata?.first_operator_response ? 'Continuar Conversa' : 'Assumir Conversa'}
+                      {conversation.metadata?.operator_assigned ? 'Continuar Conversa' : 'Assumir Conversa'}
                     </Button>
                   ) : conversation.status === 'completed' ? (
                     <Button
@@ -621,7 +530,7 @@ const Conversations = () => {
       {/* Dialog para chat */}
       <Dialog
         open={dialogOpen}
-        onClose={closeConversationDialog}
+        onClose={() => setDialogOpen(false)}
         maxWidth="md"
         fullWidth
         PaperProps={{ sx: { height: '80vh' } }}
@@ -721,16 +630,6 @@ const Conversations = () => {
           </Box>
 
           <Stack direction="row" spacing={1} alignItems="flex-end">
-            <Tooltip title="Mensagens Prontas">
-              <IconButton
-                color="secondary"
-                onClick={() => setQuickMessageSelectorOpen(true)}
-                size="large"
-                sx={{ flexShrink: 0 }}
-              >
-                <QuickreplyOutlined />
-              </IconButton>
-            </Tooltip>
             <TextField
               fullWidth
               multiline
@@ -762,7 +661,7 @@ const Conversations = () => {
 
         <DialogActions>
           <Button 
-            onClick={closeConversationDialog}
+            onClick={() => setDialogOpen(false)}
             color="inherit"
           >
             Fechar Chat
@@ -777,18 +676,6 @@ const Conversations = () => {
           </Button>
         </DialogActions>
       </Dialog>
-
-      {/* Seletor de mensagens prontas */}
-      <QuickMessageSelector
-        open={quickMessageSelectorOpen}
-        onClose={() => setQuickMessageSelectorOpen(false)}
-        onSelectMessage={handleQuickMessageSelect}
-        onManageMessages={() => {
-          // Aqui você pode navegar para uma página de gerenciamento de mensagens
-          // ou abrir outro dialog para gerenciar
-          console.log('Navegar para gerenciar mensagens')
-        }}
-      />
     </Box>
   )
 }
