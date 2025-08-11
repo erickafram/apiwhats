@@ -1112,11 +1112,13 @@ class FlowProcessor {
         sender_phone: conversation.user_phone,
         direction: 'outgoing',
         content: messageText,
-        message_type: 'interactive',
+        message_type: 'text', // Usar 'text' ao invés de 'interactive' por compatibilidade
+        media_type: 'text',
         metadata: {
           node_id: node.id,
           buttons: buttons,
-          system_message: true
+          system_message: true,
+          interactive: true // Flag para identificar como interativo
         }
       });
 

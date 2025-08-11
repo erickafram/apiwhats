@@ -470,8 +470,8 @@ class UltraMsgService {
           sender_phone: userPhone, // ✅ Adicionado campo obrigatório
           direction: 'incoming', // ✅ Corrigido para enum válido
           content: messageContent,
-          message_type: messageType === 'chat' ? 'text' : messageType, // ✅ Mapear tipos
-          media_type: messageType === 'chat' ? 'text' : messageType,
+          message_type: messageType === 'chat' ? 'text' : (messageType === 'interactive' ? 'text' : messageType), // ✅ Mapear tipos
+          media_type: messageType === 'chat' ? 'text' : (messageType === 'interactive' ? 'text' : messageType),
           whatsapp_message_id: messageData.id, // ✅ Campo correto para ID WhatsApp
           timestamp: new Date(),
           status: 'delivered', // ✅ Usar valor válido do ENUM
@@ -695,12 +695,13 @@ class UltraMsgService {
         footer: messageData.footer || ''
       };
 
-      const response = await axios.post(`${this.apiUrl}/${this.instanceId}/messages/button`, payload, {
-        headers: this.getHeaders()
-      });
-
-      console.log(`✅ Mensagem interativa enviada com sucesso:`, response.data);
-      return response.data;
+      // UltraMsg não suporta botões nativamente - usar fallback direto
+      console.log('⚠️ UltraMsg não suporta botões interativos nativamente, usando fallback');
+      const fallbackText = this.createFallbackMessage(messageData);
+      const response = await this.sendTextMessage(cleanPhone, fallbackText);
+      
+      console.log(`✅ Mensagem enviada com fallback para texto numerado`);
+      return response;
 
     } catch (error) {
       console.error(`❌ Erro ao enviar mensagem interativa:`, error.response?.data || error.message);
