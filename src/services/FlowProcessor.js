@@ -722,7 +722,62 @@ class FlowProcessor {
   }
 
   async processActionNode({ bot, flow, conversation, message, node }) {
-    // Implementação básica - pode ser expandida
+    const config = node.data || {};
+    const action = config.action || node.action;
+    
+    console.log(`🎬 DEBUG processActionNode: nodeId=${node.id}, action=${JSON.stringify(action)}`);
+    
+    // Verificar se é uma transferência para operador
+    if (action?.type === 'transfer_to_human' || node.id.includes('transferir') || node.id.includes('atendente')) {
+      console.log('👨‍💼 Transferindo para operador humano...');
+      
+      // Alterar status da conversa para 'transferred'
+      await conversation.update({
+        status: 'transferred',
+        priority: 1, // Alta prioridade para transferências
+        metadata: {
+          ...conversation.metadata,
+          transfer_reason: action?.reason || 'Solicitação do cliente',
+          transfer_timestamp: new Date(),
+          transfer_from_node: node.id,
+          awaiting_human: true
+        }
+      });
+      
+      // Registrar no histórico que foi transferida
+      conversation.addToFlowHistory(node.id, 'action_transfer');
+      await conversation.save();
+      
+      console.log(`✅ Conversa ID ${conversation.id} transferida para operador`);
+      
+      // Retornar sem próximo nó - operador assumirá daqui
+      return {
+        success: true,
+        nextNodeId: null,
+        completed: false,
+        transferred: true
+      };
+    }
+    
+    // Outras ações podem ser implementadas aqui
+    switch (action?.type) {
+      case 'save_data':
+        console.log('💾 Salvando dados:', conversation.session_data?.variables);
+        break;
+        
+      case 'send_email':
+        console.log('📧 Enviando email...');
+        break;
+        
+      case 'webhook':
+        console.log('🔗 Chamando webhook...');
+        break;
+        
+      default:
+        console.log(`⚠️ Ação padrão ou não reconhecida: ${action?.type || 'nenhuma'}`);
+    }
+    
+    // Buscar próximo nó
     const nextNodes = flow.getNextNodes(node.id);
     const nextNodeId = nextNodes.length > 0 ? nextNodes[0].id : null;
 

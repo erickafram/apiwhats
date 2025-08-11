@@ -230,23 +230,29 @@ router.post('/:id/send-message', validateParams(schemas.idParam), async (req, re
     // Criar mensagem
     const message = await Message.create({
       conversation_id: conversation.id,
-      direction: 'out',
+      bot_id: conversation.bot_id,
+      sender_phone: conversation.user_phone,
+      direction: 'outgoing',
       content,
-      media_type,
-      status: 'pending',
-      processed: true
+      message_type: media_type,
+      metadata: {
+        manual_message: true,
+        sent_by_operator: true
+      }
     });
 
-    // Enviar via WhatsApp
+    // Enviar via UltraMsg
     try {
-      await global.whatsappService.sendMessage(
-        conversation.bot_id,
-        conversation.user_phone,
-        content,
-        media_type
-      );
+      // Importar o UltraMsgService
+      const UltraMsgService = require('../services/UltraMsgService');
+      const ultraMsgService = new UltraMsgService();
       
-      await message.update({ status: 'sent' });
+      await ultraMsgService.sendMessage(conversation.bot_id, conversation.user_phone, content, media_type);
+      
+      await message.update({ 
+        status: 'sent',
+        timestamp: new Date()
+      });
     } catch (whatsappError) {
       console.error('Erro ao enviar mensagem via WhatsApp:', whatsappError);
       await message.update({ 
@@ -393,6 +399,63 @@ router.post('/:id/transfer', validateParams(schemas.idParam), async (req, res) =
     });
   } catch (error) {
     console.error('Erro ao transferir conversa:', error);
+    res.status(500).json({
+      error: 'Erro interno do servidor',
+      code: 'INTERNAL_ERROR'
+    });
+  }
+});
+
+// Atualizar conversa completa (para operadores)
+router.put('/:id', validateParams(schemas.idParam), async (req, res) => {
+  try {
+    const updateData = req.body;
+
+    // Verificar se a conversa pertence ao usuário
+    const conversation = await Conversation.findOne({
+      where: { id: req.params.id },
+      include: [
+        {
+          model: Bot,
+          as: 'bot',
+          where: { user_id: req.user.id }
+        }
+      ]
+    });
+
+    if (!conversation) {
+      return res.status(404).json({
+        error: 'Conversa não encontrada',
+        code: 'CONVERSATION_NOT_FOUND'
+      });
+    }
+
+    // Atualizar campos permitidos
+    const allowedFields = ['status', 'priority', 'tags', 'metadata'];
+    const filteredData = {};
+    
+    allowedFields.forEach(field => {
+      if (updateData[field] !== undefined) {
+        filteredData[field] = updateData[field];
+      }
+    });
+
+    // Se está marcando como completed, adicionar timestamp
+    if (filteredData.status === 'completed') {
+      filteredData.completed_at = new Date();
+    }
+
+    // Atualizar atividade
+    filteredData.last_activity_at = new Date();
+
+    await conversation.update(filteredData);
+
+    res.json({
+      message: 'Conversa atualizada com sucesso',
+      conversation: await conversation.reload()
+    });
+  } catch (error) {
+    console.error('Erro ao atualizar conversa:', error);
     res.status(500).json({
       error: 'Erro interno do servidor',
       code: 'INTERNAL_ERROR'
