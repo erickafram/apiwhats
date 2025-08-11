@@ -47,7 +47,7 @@ import {
   Notifications,
   CheckCircle,
   Warning,
-  QuickReply
+  QuickreplyOutlined
 } from '@mui/icons-material'
 import { conversationsAPI } from '../../services/api'
 import { useConversations } from '../../hooks/useConversations.jsx'
@@ -653,7 +653,7 @@ const Conversations = () => {
                 size="large"
                 sx={{ flexShrink: 0 }}
               >
-                <QuickReply />
+                <QuickreplyOutlined />
               </IconButton>
             </Tooltip>
             <TextField

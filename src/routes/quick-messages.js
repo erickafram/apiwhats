@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { QuickMessage } = require('../models');
-const auth = require('../middleware/auth');
+const { authenticateToken: auth } = require('../middleware/auth');
 
 // Função simples de validação
 const validateQuickMessage = (data, isUpdate = false) => {
