@@ -46,10 +46,12 @@ import {
   MoreVert,
   Notifications,
   CheckCircle,
-  Warning
+  Warning,
+  QuickReply
 } from '@mui/icons-material'
 import { conversationsAPI } from '../../services/api'
 import { useConversations } from '../../hooks/useConversations.jsx'
+import QuickMessageSelector from '../../components/QuickMessageSelector.jsx'
 
 // Adicionar estilos CSS para animação
 const pulseAnimation = `
@@ -75,6 +77,7 @@ const Conversations = () => {
   const [lastConversationCount, setLastConversationCount] = useState(0)
   const [newConversationAlert, setNewConversationAlert] = useState(false)
   const [lastMessageCount, setLastMessageCount] = useState(0)
+  const [quickMessageSelectorOpen, setQuickMessageSelectorOpen] = useState(false)
 
   // Usar o hook global de conversas
   const { refreshConversations, transferredCount: globalTransferredCount, unattendedCount: globalUnattendedCount } = useConversations()
@@ -221,6 +224,19 @@ const Conversations = () => {
     } finally {
       setSending(false)
     }
+  }
+
+  const handleQuickMessageSelect = (messageContent) => {
+    setNewMessage(messageContent)
+    // Focar no campo de texto após selecionar a mensagem
+    setTimeout(() => {
+      const textField = document.querySelector('textarea[placeholder="Digite sua mensagem..."]')
+      if (textField) {
+        textField.focus()
+        // Posicionar cursor no final
+        textField.setSelectionRange(messageContent.length, messageContent.length)
+      }
+    }, 100)
   }
 
   const endConversation = async () => {
@@ -630,6 +646,16 @@ const Conversations = () => {
           </Box>
 
           <Stack direction="row" spacing={1} alignItems="flex-end">
+            <Tooltip title="Mensagens Prontas">
+              <IconButton
+                color="secondary"
+                onClick={() => setQuickMessageSelectorOpen(true)}
+                size="large"
+                sx={{ flexShrink: 0 }}
+              >
+                <QuickReply />
+              </IconButton>
+            </Tooltip>
             <TextField
               fullWidth
               multiline
@@ -676,6 +702,18 @@ const Conversations = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Seletor de mensagens prontas */}
+      <QuickMessageSelector
+        open={quickMessageSelectorOpen}
+        onClose={() => setQuickMessageSelectorOpen(false)}
+        onSelectMessage={handleQuickMessageSelect}
+        onManageMessages={() => {
+          // Aqui você pode navegar para uma página de gerenciamento de mensagens
+          // ou abrir outro dialog para gerenciar
+          console.log('Navegar para gerenciar mensagens')
+        }}
+      />
     </Box>
   )
 }

@@ -59,6 +59,7 @@ const analyticsRoutes = require('./src/routes/analytics');
 const maytapiRoutes = require('./src/routes/maytapi');
 const whapiRoutes = require('./src/routes/whapi');
 const ultraMsgRoutes = require('./src/routes/ultramsg');
+const quickMessagesRoutes = require('./src/routes/quick-messages');
 
 // Usar rotas
 app.use('/api/auth', authRoutes);
@@ -71,6 +72,7 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/maytapi', maytapiRoutes);
 app.use('/api/whapi', whapiRoutes);
 app.use('/api/ultramsg', ultraMsgRoutes);
+app.use('/api/quick-messages', quickMessagesRoutes);
 
 // Rota de health check
 app.get('/health', (req, res) => {

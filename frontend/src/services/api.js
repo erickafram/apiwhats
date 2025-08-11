@@ -179,4 +179,14 @@ export const maytapiAPI = {
   sendTestMessage: (data) => api.post('/maytapi/send-test', data),
 }
 
+export const quickMessagesAPI = {
+  getAll: (params = {}) => api.get('/quick-messages', { params }),
+  getById: (id) => api.get(`/quick-messages/${id}`),
+  create: (data) => api.post('/quick-messages', data),
+  update: (id, data) => api.put(`/quick-messages/${id}`, data),
+  delete: (id) => api.delete(`/quick-messages/${id}`),
+  markAsUsed: (id) => api.post(`/quick-messages/${id}/use`),
+  getCategories: () => api.get('/quick-messages/categories'),
+}
+
 export default api
