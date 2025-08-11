@@ -67,7 +67,8 @@ class FlowProcessor {
       });
 
       // ✅ CORREÇÃO: Continuar automaticamente para nós que não esperam input do usuário
-      const autoProcessTypes = ['start', 'message', 'fixed_response', 'action', 'ai_response'];
+      // NOTA: 'input' e 'input_capture' NÃO devem estar aqui - eles esperam resposta do usuário
+      const autoProcessTypes = ['start', 'message', 'fixed_response', 'action', 'ai_response', 'condition'];
       
       while (result.nextNodeId && autoProcessTypes.includes(result.nodeType)) {
         console.log(`🔄 Continuando automaticamente para nó: ${result.nextNodeId}`);
