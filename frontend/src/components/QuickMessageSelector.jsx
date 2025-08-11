@@ -44,24 +44,64 @@ const QuickMessageSelector = ({
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(false)
   const [filteredMessages, setFilteredMessages] = useState([])
+  const [error, setError] = useState(null)
 
   // Carregar mensagens prontas
   const loadQuickMessages = async () => {
     try {
       setLoading(true)
-      const [messagesResponse, categoriesResponse] = await Promise.all([
-        quickMessagesAPI.getAll({ is_active: true }),
-        quickMessagesAPI.getCategories()
-      ])
+      setError(null)
       
-      setQuickMessages(messagesResponse.data.quick_messages || [])
-      setCategories([
+      // Categorias padrão como fallback
+      const defaultCategories = [
         { value: 'all', label: 'Todas' },
-        ...categoriesResponse.data.categories
-      ])
+        { value: 'geral', label: 'Geral' },
+        { value: 'saudacoes', label: 'Saudações' },
+        { value: 'despedidas', label: 'Despedidas' },
+        { value: 'informacoes', label: 'Informações' },
+        { value: 'suporte', label: 'Suporte' },
+        { value: 'vendas', label: 'Vendas' },
+        { value: 'agendamento', label: 'Agendamento' },
+        { value: 'pagamento', label: 'Pagamento' },
+        { value: 'outros', label: 'Outros' }
+      ]
+      
+      try {
+        const [messagesResponse, categoriesResponse] = await Promise.all([
+          quickMessagesAPI.getAll({ is_active: true }),
+          quickMessagesAPI.getCategories()
+        ])
+        
+        setQuickMessages(messagesResponse.data?.quick_messages || [])
+        
+        // Verificar se a resposta de categorias é válida
+        if (categoriesResponse.data?.categories && Array.isArray(categoriesResponse.data.categories)) {
+          setCategories([
+            { value: 'all', label: 'Todas' },
+            ...categoriesResponse.data.categories
+          ])
+        } else {
+          setCategories(defaultCategories)
+        }
+             } catch (apiError) {
+         console.error('Erro na API:', apiError)
+         setError('Servidor indisponível. Modo offline ativo.')
+         // Usar dados padrão em caso de erro da API
+         setQuickMessages([])
+         setCategories(defaultCategories)
+         toast.error('Não foi possível carregar as mensagens prontas. Usando modo offline.')
+       }
+      
     } catch (error) {
       console.error('Erro ao carregar mensagens prontas:', error)
       toast.error('Erro ao carregar mensagens prontas')
+      
+      // Fallback final
+      setQuickMessages([])
+      setCategories([
+        { value: 'all', label: 'Todas' },
+        { value: 'geral', label: 'Geral' }
+      ])
     } finally {
       setLoading(false)
     }
@@ -69,21 +109,31 @@ const QuickMessageSelector = ({
 
   // Filtrar mensagens
   useEffect(() => {
+    if (!Array.isArray(quickMessages)) {
+      setFilteredMessages([])
+      return
+    }
+
     let filtered = quickMessages
 
     // Filtrar por categoria
     if (selectedCategory !== 'all') {
-      filtered = filtered.filter(msg => msg.category === selectedCategory)
+      filtered = filtered.filter(msg => msg && msg.category === selectedCategory)
     }
 
     // Filtrar por busca
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase()
-      filtered = filtered.filter(msg => 
-        msg.title.toLowerCase().includes(query) ||
-        msg.content.toLowerCase().includes(query) ||
-        (msg.tags && msg.tags.some(tag => tag.toLowerCase().includes(query)))
-      )
+      filtered = filtered.filter(msg => {
+        if (!msg) return false
+        
+        const titleMatch = msg.title && msg.title.toLowerCase().includes(query)
+        const contentMatch = msg.content && msg.content.toLowerCase().includes(query)
+        const tagMatch = msg.tags && Array.isArray(msg.tags) && 
+          msg.tags.some(tag => typeof tag === 'string' && tag.toLowerCase().includes(query))
+        
+        return titleMatch || contentMatch || tagMatch
+      })
     }
 
     setFilteredMessages(filtered)
@@ -92,9 +142,10 @@ const QuickMessageSelector = ({
   // Carregar mensagens quando abrir o dialog
   useEffect(() => {
     if (open) {
-      loadQuickMessages()
+      setError(null)
       setSearchQuery('')
       setSelectedCategory('all')
+      loadQuickMessages()
     }
   }, [open])
 
@@ -186,6 +237,11 @@ const QuickMessageSelector = ({
 
         {/* Lista de mensagens */}
         <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
+          {error && (
+            <Alert severity="warning" sx={{ m: 2 }}>
+              {error}
+            </Alert>
+          )}
           {loading ? (
             <Box display="flex" justifyContent="center" alignItems="center" p={4}>
               <CircularProgress />
