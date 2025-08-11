@@ -11,8 +11,10 @@ router.use(authenticateToken);
 // Listar conversas
 router.get('/', validateQuery(schemas.pagination), async (req, res) => {
   try {
-    const { page, limit, sort, order, bot_id, status } = req.query;
-    const offset = (page - 1) * limit;
+    const { page = 1, limit = 10, sort = 'last_activity_at', order = 'DESC', bot_id, status } = req.query;
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 10;
+    const offset = (pageNum - 1) * limitNum;
 
     const whereClause = {};
     
@@ -47,8 +49,8 @@ router.get('/', validateQuery(schemas.pagination), async (req, res) => {
 
     const { count, rows: conversations } = await Conversation.findAndCountAll({
       where: whereClause,
-      limit: parseInt(limit),
-      offset: parseInt(offset),
+      limit: limitNum,
+      offset: offset,
       order: [[sort, order]],
       include: [
         {
@@ -78,9 +80,9 @@ router.get('/', validateQuery(schemas.pagination), async (req, res) => {
       conversations,
       pagination: {
         total: count,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        pages: Math.ceil(count / limit)
+        page: pageNum,
+        limit: limitNum,
+        pages: Math.ceil(count / limitNum)
       }
     });
   } catch (error) {
@@ -140,8 +142,10 @@ router.get('/:id', validateParams(schemas.idParam), async (req, res) => {
 // Buscar mensagens de uma conversa
 router.get('/:id/messages', validateParams(schemas.idParam), validateQuery(schemas.pagination), async (req, res) => {
   try {
-    const { page, limit } = req.query;
-    const offset = (page - 1) * limit;
+    const { page = 1, limit = 20 } = req.query;
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 20;
+    const offset = (pageNum - 1) * limitNum;
 
     // Verificar se a conversa pertence ao usuário
     const conversation = await Conversation.findOne({
@@ -165,8 +169,8 @@ router.get('/:id/messages', validateParams(schemas.idParam), validateQuery(schem
 
     const { count, rows: messages } = await Message.findAndCountAll({
       where: { conversation_id: req.params.id },
-      limit: parseInt(limit),
-      offset: parseInt(offset),
+      limit: limitNum,
+      offset: offset,
       order: [['timestamp', 'DESC']],
       include: [
         {
@@ -182,9 +186,9 @@ router.get('/:id/messages', validateParams(schemas.idParam), validateQuery(schem
       messages: messages.reverse(), // Reverter para ordem cronológica
       pagination: {
         total: count,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        pages: Math.ceil(count / limit)
+        page: pageNum,
+        limit: limitNum,
+        pages: Math.ceil(count / limitNum)
       }
     });
   } catch (error) {
