@@ -24,7 +24,13 @@ import {
   Paper,
   Stack,
   IconButton,
-  Tooltip
+  Tooltip,
+  AppBar,
+  Toolbar,
+  Snackbar,
+  Menu,
+  MenuItem,
+  Fab
 } from '@mui/material'
 import {
   Chat,
@@ -35,9 +41,23 @@ import {
   Refresh,
   Phone,
   WhatsApp,
-  Support
+  Support,
+  Close,
+  MoreVert,
+  Notifications,
+  CheckCircle,
+  Warning
 } from '@mui/icons-material'
 import { conversationsAPI } from '../../services/api'
+
+// Adicionar estilos CSS para animação
+const pulseAnimation = `
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+  }
+`
 
 const Conversations = () => {
   const [conversations, setConversations] = useState([])
@@ -47,17 +67,53 @@ const Conversations = () => {
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [sending, setSending] = useState(false)
+  const [alertOpen, setAlertOpen] = useState(false)
+  const [menuAnchor, setMenuAnchor] = useState(null)
+  const [unattendedCount, setUnattendedCount] = useState(0)
 
   const loadConversations = async () => {
     try {
       setLoading(true)
-      const response = await conversationsAPI.getAll({
-        status: 'transferred',
-        sort: 'priority',
-        order: 'DESC',
-        limit: 50
+      // Buscar conversas transferidas e também as completadas recentemente
+      const [transferredResponse, completedResponse] = await Promise.all([
+        conversationsAPI.getAll({
+          status: 'transferred',
+          sort: 'priority',
+          order: 'DESC',
+          limit: 50
+        }),
+        conversationsAPI.getAll({
+          status: 'completed',
+          sort: 'updated_at',
+          order: 'DESC',
+          limit: 10
+        })
+      ])
+      
+      const response = {
+        data: {
+          conversations: [
+            ...transferredResponse.data.conversations,
+            ...completedResponse.data.conversations
+          ]
+        }
+      }
+      const convs = response.data.conversations
+      setConversations(convs)
+      
+      // Contar conversas não atendidas (transferidas há mais de 5 minutos)
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
+      const unattended = convs.filter(conv => {
+        const transferTime = new Date(conv.metadata?.transfer_timestamp || conv.updated_at)
+        return transferTime < fiveMinutesAgo && !conv.metadata?.operator_assigned
       })
-      setConversations(response.data.conversations)
+      
+      setUnattendedCount(unattended.length)
+      
+      // Mostrar alerta se há conversas não atendidas
+      if (unattended.length > 0 && !alertOpen) {
+        setAlertOpen(true)
+      }
     } catch (error) {
       console.error('Erro ao carregar conversas:', error)
     } finally {
@@ -112,6 +168,45 @@ const Conversations = () => {
     }
   }
 
+  const endConversation = async () => {
+    if (!selectedConversation) return
+    
+    try {
+      await conversationsAPI.update(selectedConversation.id, {
+        status: 'completed',
+        metadata: {
+          ...selectedConversation.metadata,
+          completed_by_operator: true,
+          completed_at: new Date()
+        }
+      })
+      setDialogOpen(false)
+      setSelectedConversation(null)
+      loadConversations()
+    } catch (error) {
+      console.error('Erro ao encerrar conversa:', error)
+    }
+  }
+
+  const reopenConversation = async (conversation) => {
+    try {
+      await conversationsAPI.update(conversation.id, {
+        status: 'active',
+        metadata: {
+          ...conversation.metadata,
+          reopened_by_operator: true,
+          reopened_at: new Date()
+        }
+      })
+      setSelectedConversation(conversation)
+      setDialogOpen(true)
+      loadMessages(conversation.id)
+      loadConversations()
+    } catch (error) {
+      console.error('Erro ao reabrir conversa:', error)
+    }
+  }
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'transferred': return 'warning'
@@ -153,10 +248,59 @@ const Conversations = () => {
 
   return (
     <Box>
+      <style>{pulseAnimation}</style>
+      {/* Alerta de conversas não atendidas */}
+      <Snackbar
+        open={alertOpen}
+        onClose={() => setAlertOpen(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert 
+          severity="warning" 
+          onClose={() => setAlertOpen(false)}
+          action={
+            <Button color="inherit" size="small" onClick={() => setAlertOpen(false)}>
+              OK
+            </Button>
+          }
+        >
+          🚨 {unattendedCount} conversa(s) aguardando atendimento há mais de 5 minutos!
+        </Alert>
+      </Snackbar>
+
+      {/* Botão flutuante de notificação */}
+      {unattendedCount > 0 && (
+        <Fab
+          color="warning"
+          sx={{
+            position: 'fixed',
+            bottom: 16,
+            right: 16,
+            animation: 'pulse 2s infinite'
+          }}
+          onClick={() => setAlertOpen(true)}
+        >
+          <Badge badgeContent={unattendedCount} color="error">
+            <Notifications />
+          </Badge>
+        </Fab>
+      )}
+
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          💬 Central de Atendimento
-        </Typography>
+        <Box>
+          <Typography variant="h4" component="h1" gutterBottom>
+            💬 Central de Atendimento
+          </Typography>
+          {unattendedCount > 0 && (
+            <Chip
+              icon={<Warning />}
+              label={`${unattendedCount} não atendida(s)`}
+              color="warning"
+              size="small"
+              sx={{ animation: 'pulse 2s infinite' }}
+            />
+          )}
+        </Box>
         <Button
           variant="outlined"
           startIcon={<Refresh />}
@@ -244,14 +388,36 @@ const Conversations = () => {
                 </CardContent>
 
                 <CardActions>
-                  <Button
-                    variant="contained"
-                    startIcon={<Chat />}
-                    onClick={() => takeOverConversation(conversation)}
-                    fullWidth
-                  >
-                    Assumir Conversa
-                  </Button>
+                  {conversation.status === 'transferred' ? (
+                    <Button
+                      variant="contained"
+                      startIcon={<Chat />}
+                      onClick={() => takeOverConversation(conversation)}
+                      fullWidth
+                      color={conversation.metadata?.operator_assigned ? 'secondary' : 'primary'}
+                    >
+                      {conversation.metadata?.operator_assigned ? 'Continuar Conversa' : 'Assumir Conversa'}
+                    </Button>
+                  ) : conversation.status === 'completed' ? (
+                    <Button
+                      variant="outlined"
+                      startIcon={<Chat />}
+                      onClick={() => reopenConversation(conversation)}
+                      fullWidth
+                      color="success"
+                    >
+                      Reabrir Conversa
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="contained"
+                      startIcon={<Chat />}
+                      onClick={() => takeOverConversation(conversation)}
+                      fullWidth
+                    >
+                      Entrar na Conversa
+                    </Button>
+                  )}
                 </CardActions>
               </Card>
             </Grid>
@@ -269,17 +435,44 @@ const Conversations = () => {
       >
         <DialogTitle>
           {selectedConversation && (
-            <Box display="flex" alignItems="center" gap={2}>
-              <Avatar>
-                <WhatsApp />
-              </Avatar>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box display="flex" alignItems="center" gap={2}>
+                <Avatar>
+                  <WhatsApp />
+                </Avatar>
+                <Box>
+                  <Typography variant="h6">
+                    {selectedConversation.user_name || selectedConversation.user_phone}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    <Chip 
+                      label={getStatusText(selectedConversation.status)} 
+                      color={getStatusColor(selectedConversation.status)} 
+                      size="small" 
+                    />
+                    • {selectedConversation.bot?.name}
+                  </Typography>
+                </Box>
+              </Box>
               <Box>
-                <Typography variant="h6">
-                  {selectedConversation.user_name || selectedConversation.user_phone}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Conversa assumida • {selectedConversation.bot?.name}
-                </Typography>
+                <IconButton
+                  onClick={(e) => setMenuAnchor(e.currentTarget)}
+                >
+                  <MoreVert />
+                </IconButton>
+                <Menu
+                  anchorEl={menuAnchor}
+                  open={Boolean(menuAnchor)}
+                  onClose={() => setMenuAnchor(null)}
+                >
+                  <MenuItem onClick={() => {
+                    endConversation()
+                    setMenuAnchor(null)
+                  }}>
+                    <CheckCircle sx={{ mr: 1 }} />
+                    Encerrar Conversa
+                  </MenuItem>
+                </Menu>
               </Box>
             </Box>
           )}
@@ -356,8 +549,19 @@ const Conversations = () => {
         </DialogContent>
 
         <DialogActions>
-          <Button onClick={() => setDialogOpen(false)}>
-            Fechar
+          <Button 
+            onClick={() => setDialogOpen(false)}
+            color="inherit"
+          >
+            Fechar Chat
+          </Button>
+          <Button 
+            onClick={endConversation}
+            variant="contained"
+            color="success"
+            startIcon={<CheckCircle />}
+          >
+            Encerrar Conversa
           </Button>
         </DialogActions>
       </Dialog>
