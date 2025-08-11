@@ -49,6 +49,7 @@ import {
   Warning
 } from '@mui/icons-material'
 import { conversationsAPI } from '../../services/api'
+import { useConversations } from '../../hooks/useConversations.jsx'
 
 // Adicionar estilos CSS para animação
 const pulseAnimation = `
@@ -69,10 +70,12 @@ const Conversations = () => {
   const [sending, setSending] = useState(false)
   const [alertOpen, setAlertOpen] = useState(false)
   const [menuAnchor, setMenuAnchor] = useState(null)
-  const [unattendedCount, setUnattendedCount] = useState(0)
   const [messagesEndRef, setMessagesEndRef] = useState(null)
   const [lastConversationCount, setLastConversationCount] = useState(0)
   const [newConversationAlert, setNewConversationAlert] = useState(false)
+
+  // Usar o hook global de conversas
+  const { refreshConversations, transferredCount: globalTransferredCount, unattendedCount: globalUnattendedCount } = useConversations()
 
   const loadConversations = async () => {
     try {
@@ -120,19 +123,13 @@ const Conversations = () => {
       setLastConversationCount(transferredConvs.length)
       setConversations(convs)
       
-      // Contar conversas não atendidas (transferidas há mais de 5 minutos)
-      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
-      const unattended = transferredConvs.filter(conv => {
-        const transferTime = new Date(conv.metadata?.transfer_timestamp || conv.updated_at)
-        return transferTime < fiveMinutesAgo && !conv.metadata?.operator_assigned
-      })
-      
-      setUnattendedCount(unattended.length)
-      
       // Mostrar alerta se há conversas não atendidas
-      if (unattended.length > 0 && !alertOpen) {
+      if (globalUnattendedCount > 0 && !alertOpen) {
         setAlertOpen(true)
       }
+      
+      // Refresh global state
+      refreshConversations()
     } catch (error) {
       console.error('Erro ao carregar conversas:', error)
     } finally {
@@ -311,7 +308,7 @@ const Conversations = () => {
             </Button>
           }
         >
-          🚨 {unattendedCount} conversa(s) aguardando atendimento há mais de 5 minutos!
+          🚨 {globalUnattendedCount} conversa(s) aguardando atendimento há mais de 5 minutos!
         </Alert>
       </Snackbar>
 
@@ -339,7 +336,7 @@ const Conversations = () => {
       </Snackbar>
 
       {/* Botão flutuante de notificação */}
-      {unattendedCount > 0 && (
+      {globalUnattendedCount > 0 && (
         <Fab
           color="warning"
           sx={{
@@ -350,7 +347,7 @@ const Conversations = () => {
           }}
           onClick={() => setAlertOpen(true)}
         >
-          <Badge badgeContent={unattendedCount} color="error">
+          <Badge badgeContent={globalUnattendedCount} color="error">
             <Notifications />
           </Badge>
         </Fab>
@@ -361,10 +358,10 @@ const Conversations = () => {
           <Typography variant="h4" component="h1" gutterBottom>
             💬 Central de Atendimento
           </Typography>
-          {unattendedCount > 0 && (
+          {globalUnattendedCount > 0 && (
             <Chip
               icon={<Warning />}
-              label={`${unattendedCount} não atendida(s)`}
+              label={`${globalUnattendedCount} não atendida(s)`}
               color="warning"
               size="small"
               sx={{ animation: 'pulse 2s infinite' }}

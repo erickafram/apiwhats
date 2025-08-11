@@ -15,7 +15,8 @@ class FlowProcessor {
       'delay': this.processDelayNode.bind(this),
       'webhook': this.processWebhookNode.bind(this),
       'transfer_human': this.processTransferHumanNode.bind(this),
-      'ai': this.processAIResponseNode.bind(this) // Alias para ai_response
+      'ai': this.processAIResponseNode.bind(this), // Alias para ai_response
+      'interactive_buttons': this.processInteractiveButtonsNode.bind(this) // Novo tipo de nó
     };
   }
 
@@ -67,7 +68,7 @@ class FlowProcessor {
       });
 
       // ✅ CORREÇÃO: Continuar automaticamente para nós que não esperam input do usuário
-      // NOTA: 'input' e 'input_capture' NÃO devem estar aqui - eles esperam resposta do usuário
+      // NOTA: 'input', 'input_capture' e 'interactive_buttons' NÃO devem estar aqui - eles esperam resposta do usuário
       const autoProcessTypes = ['start', 'message', 'fixed_response', 'action', 'ai_response', 'condition'];
       
       while (result.nextNodeId && autoProcessTypes.includes(result.nodeType)) {
@@ -399,7 +400,14 @@ class FlowProcessor {
       for (const condition of conditions) {
         if (condition.next && condition.variable && condition.operator) {
           const variableValue = conversation.getVariable ? conversation.getVariable(condition.variable) : null;
-          const messageContent = message.content.trim();
+          let messageContent = message.content.trim();
+          
+          // ✅ NOVO: Verificar se é resposta de botão interativo
+          if (message.message_type === 'interactive' && message.metadata?.button_reply) {
+            // Se for resposta de botão, usar o ID ou título do botão
+            messageContent = message.metadata.button_reply.id || message.metadata.button_reply.title;
+            console.log(`🔘 Resposta de botão detectada: ${messageContent}`);
+          }
           
           console.log(`🔧 Verificando condição: ${condition.variable}=${variableValue} ${condition.operator} ${condition.value}, mensagem="${messageContent}"`);
           
@@ -412,6 +420,9 @@ class FlowProcessor {
               break;
             case 'contains':
               matches = messageContent.toLowerCase().includes(condition.value.toLowerCase());
+              break;
+            case 'button_id': // ✅ NOVO: Operador específico para botões
+              matches = messageContent === condition.value;
               break;
             case 'default':
               // Usar como fallback se nenhuma outra condição for atendida
@@ -1067,6 +1078,114 @@ class FlowProcessor {
       console.error('Erro ao enviar mensagem:', error);
       throw error;
     }
+  }
+
+  // ✅ NOVA FUNÇÃO: Processar nó de botões interativos
+  async processInteractiveButtonsNode({ bot, flow, conversation, message, node }) {
+    try {
+      const config = node.data || {};
+      const messageText = this.interpolateVariables(config.content || node.content, conversation);
+      const buttons = config.buttons || [];
+
+      if (!messageText) {
+        throw new Error('Conteúdo da mensagem é obrigatório para botões interativos');
+      }
+
+      if (!buttons.length || buttons.length > 3) {
+        throw new Error('Botões interativos devem ter entre 1 e 3 botões');
+      }
+
+      // Enviar mensagem com botões interativos
+      await this.sendInteractiveMessage(bot.id, conversation.user_phone, {
+        text: messageText,
+        buttons: buttons.map((btn, index) => ({
+          id: btn.id || `button_${index}`,
+          title: btn.title || btn.text || `Opção ${index + 1}`
+        })),
+        footer: config.footer || null
+      });
+
+      // Salvar mensagem no banco
+      await Message.create({
+        bot_id: bot.id,
+        conversation_id: conversation.id,
+        sender_phone: conversation.user_phone,
+        direction: 'outgoing',
+        content: messageText,
+        message_type: 'interactive',
+        metadata: {
+          node_id: node.id,
+          buttons: buttons,
+          system_message: true
+        }
+      });
+
+      // ✅ NOVO: Definir próximo nó para processar a resposta do usuário
+      // Encontrar o próximo nó (geralmente será um nó de condição)
+      const nextNodes = flow.getNextNodes ? flow.getNextNodes(node.id) : [];
+      const nextNodeId = nextNodes.length > 0 ? nextNodes[0].id : null;
+
+      // Atualizar conversa para aguardar input no próximo nó
+      if (nextNodeId) {
+        await conversation.update({
+          current_flow_id: flow.id,
+          current_node: nextNodeId
+        });
+      }
+
+      // Retornar sem processar próximo nó automaticamente - aguardar resposta do usuário
+      return {
+        success: true,
+        nextNodeId: nextNodeId,
+        completed: !nextNodeId,
+        awaitingUserInput: true
+      };
+
+    } catch (error) {
+      console.error('Erro ao processar nó de botões interativos:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  // ✅ NOVA FUNÇÃO: Enviar mensagem com botões interativos
+  async sendInteractiveMessage(botId, userPhone, messageData) {
+    try {
+      // Usar o serviço ativo que suporta botões interativos
+      if (global.ultraMsgService && global.ultraMsgService.sendInteractiveMessage) {
+        await global.ultraMsgService.sendInteractiveMessage(botId, userPhone, messageData);
+      } else if (global.whapiService && global.whapiService.sendInteractiveMessage) {
+        await global.whapiService.sendInteractiveMessage(botId, userPhone, messageData);
+      } else if (global.whatsappService && global.whatsappService.sendInteractiveMessage) {
+        await global.whatsappService.sendInteractiveMessage(botId, userPhone, messageData);
+      } else {
+        // Fallback: enviar como mensagem de texto normal com opções numeradas
+        const fallbackText = this.createFallbackButtonMessage(messageData);
+        await this.sendMessage(botId, userPhone, fallbackText);
+      }
+    } catch (error) {
+      console.error('Erro ao enviar mensagem interativa:', error);
+      throw error;
+    }
+  }
+
+  // ✅ NOVA FUNÇÃO: Criar mensagem fallback para botões
+  createFallbackButtonMessage(messageData) {
+    let text = messageData.text + '\n\n';
+    
+    messageData.buttons.forEach((button, index) => {
+      text += `${index + 1}️⃣ ${button.title}\n`;
+    });
+    
+    text += '\n*Digite o número da opção desejada:*';
+    
+    if (messageData.footer) {
+      text += `\n\n_${messageData.footer}_`;
+    }
+    
+    return text;
   }
 
   // ✅ NOVA FUNÇÃO: Interpolação de variáveis em mensagens

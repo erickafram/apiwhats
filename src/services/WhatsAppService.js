@@ -723,6 +723,64 @@ class WhatsAppService {
       throw error;
     }
   }
+
+  // ✅ NOVA FUNÇÃO: Enviar mensagem com botões interativos (Baileys)
+  async sendInteractiveMessage(botId, userPhone, messageData) {
+    try {
+      const connection = this.connections.get(botId);
+      if (!connection || !connection.socket) {
+        throw new Error(`Bot ${botId} não conectado`);
+      }
+
+      // Certificar que o telefone está no formato correto
+      const jid = userPhone.includes('@') ? userPhone : `${userPhone}@s.whatsapp.net`;
+
+      // Baileys suporte para botões interativos
+      const buttonsMessage = {
+        text: messageData.text,
+        buttons: messageData.buttons.map((btn, index) => ({
+          buttonId: btn.id || `btn_${index}`,
+          buttonText: { displayText: btn.title },
+          type: 1
+        })),
+        headerType: 1,
+        footer: messageData.footer || ''
+      };
+
+      const result = await connection.socket.sendMessage(jid, buttonsMessage);
+
+      // Pequeno delay após enviar
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      console.log(`✅ Mensagem interativa enviada para ${userPhone} via bot ${botId}`);
+      return result;
+
+    } catch (error) {
+      console.error(`❌ Erro ao enviar mensagem interativa via bot ${botId}:`, error);
+      
+      // Fallback: enviar como mensagem de texto normal
+      console.log('Tentando enviar como mensagem de texto comum...');
+      const fallbackText = this.createFallbackMessage(messageData);
+      return await this.sendMessage(botId, userPhone, fallbackText);
+    }
+  }
+
+  // ✅ NOVA FUNÇÃO: Criar mensagem fallback se botões não funcionarem
+  createFallbackMessage(messageData) {
+    let text = messageData.text + '\n\n';
+    
+    messageData.buttons.forEach((button, index) => {
+      text += `${index + 1}️⃣ ${button.title}\n`;
+    });
+    
+    text += '\n*Digite o número da opção desejada:*';
+    
+    if (messageData.footer) {
+      text += `\n\n_${messageData.footer}_`;
+    }
+    
+    return text;
+  }
 }
 
 module.exports = WhatsAppService;

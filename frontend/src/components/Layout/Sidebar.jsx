@@ -10,6 +10,7 @@ import {
   Typography,
   Divider,
   Chip,
+  Badge,
 } from '@mui/material'
 import {
   Dashboard as DashboardIcon,
@@ -22,6 +23,8 @@ import {
   Settings as SettingsIcon,
   WhatsApp as WhatsAppIcon,
 } from '@mui/icons-material'
+
+import { useConversations } from '../../hooks/useConversations.jsx'
 
 const menuItems = [
   {
@@ -71,6 +74,7 @@ const menuItems = [
 const Sidebar = ({ onItemClick }) => {
   const location = useLocation()
   const navigate = useNavigate()
+  const { transferredCount, unattendedCount } = useConversations()
 
   const handleItemClick = (path) => {
     navigate(path)
@@ -123,7 +127,28 @@ const Sidebar = ({ onItemClick }) => {
                     minWidth: 40,
                   }}
                 >
-                  <Icon />
+                  {/* Badge especial para Conversas */}
+                  {item.path === '/conversations' && transferredCount > 0 ? (
+                    <Badge 
+                      badgeContent={transferredCount} 
+                      color={unattendedCount > 0 ? "error" : "warning"}
+                      max={99}
+                      sx={{
+                        '& .MuiBadge-badge': {
+                          animation: unattendedCount > 0 ? 'pulse 2s infinite' : 'none',
+                          '@keyframes pulse': {
+                            '0%': { transform: 'scale(1)' },
+                            '50%': { transform: 'scale(1.3)' },
+                            '100%': { transform: 'scale(1)' }
+                          }
+                        }
+                      }}
+                    >
+                      <Icon />
+                    </Badge>
+                  ) : (
+                    <Icon />
+                  )}
                 </ListItemIcon>
                 <ListItemText
                   primary={item.title}
@@ -132,6 +157,7 @@ const Sidebar = ({ onItemClick }) => {
                     fontWeight: isActive ? 600 : 400,
                   }}
                 />
+                {/* Badge estático original */}
                 {item.badge && (
                   <Chip
                     label={item.badge}
@@ -141,6 +167,27 @@ const Sidebar = ({ onItemClick }) => {
                       fontSize: '0.75rem',
                       bgcolor: isActive ? 'rgba(255,255,255,0.2)' : 'secondary.main',
                       color: isActive ? 'white' : 'white',
+                    }}
+                  />
+                )}
+                {/* Badge dinâmico para conversas */}
+                {item.path === '/conversations' && transferredCount > 0 && (
+                  <Chip
+                    label={`${transferredCount}${unattendedCount > 0 ? '!' : ''}`}
+                    size="small"
+                    sx={{
+                      height: 20,
+                      fontSize: '0.75rem',
+                      bgcolor: unattendedCount > 0 
+                        ? (isActive ? 'rgba(255,0,0,0.8)' : 'error.main')
+                        : (isActive ? 'rgba(255,255,255,0.2)' : 'warning.main'),
+                      color: 'white',
+                      animation: unattendedCount > 0 ? 'pulse 2s infinite' : 'none',
+                      '@keyframes pulse': {
+                        '0%': { transform: 'scale(1)' },
+                        '50%': { transform: 'scale(1.1)' },
+                        '100%': { transform: 'scale(1)' }
+                      }
                     }}
                   />
                 )}

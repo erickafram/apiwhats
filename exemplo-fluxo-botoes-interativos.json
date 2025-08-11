@@ -1,0 +1,220 @@
+{
+  "name": "Exemplo de Botões Interativos",
+  "description": "Demonstração de como usar botões interativos no WhatsApp",
+  "version": "1.0.0",
+  "is_active": true,
+  "is_default": false,
+  "trigger_keywords": ["botoes", "interativo", "demo", "exemplo"],
+  "priority": 150,
+  "flow_data": {
+    "nodes": [
+      {
+        "id": "start",
+        "type": "start",
+        "position": {"x": 0, "y": 0},
+        "next": "welcome_buttons",
+        "content": "",
+        "conditions": []
+      },
+      {
+        "id": "welcome_buttons",
+        "type": "interactive_buttons",
+        "position": {"x": 0, "y": 150},
+        "next": "button_condition",
+        "content": "👋 *Bem-vindo ao Demo de Botões Interativos!*\n\nEscolha uma das opções abaixo:",
+        "data": {
+          "content": "👋 *Bem-vindo ao Demo de Botões Interativos!*\n\nEscolha uma das opções abaixo:",
+          "buttons": [
+            {
+              "id": "option_1",
+              "title": "🎯 Opção 1"
+            },
+            {
+              "id": "option_2", 
+              "title": "🚀 Opção 2"
+            },
+            {
+              "id": "option_3",
+              "title": "💡 Opção 3"
+            }
+          ],
+          "footer": "Selecione tocando no botão"
+        },
+        "conditions": []
+      },
+      {
+        "id": "button_condition",
+        "type": "condition",
+        "position": {"x": 0, "y": 300},
+        "next": "default_option",
+        "content": "",
+        "conditions": [
+          {
+            "variable": "user_input",
+            "operator": "button_id",
+            "value": "option_1",
+            "next": "response_1"
+          },
+          {
+            "variable": "user_input", 
+            "operator": "button_id",
+            "value": "option_2",
+            "next": "response_2"
+          },
+          {
+            "variable": "user_input",
+            "operator": "button_id", 
+            "value": "option_3",
+            "next": "response_3"
+          },
+          {
+            "variable": "user_input",
+            "operator": "equals",
+            "value": "1",
+            "next": "response_1"
+          },
+          {
+            "variable": "user_input",
+            "operator": "equals", 
+            "value": "2",
+            "next": "response_2"
+          },
+          {
+            "variable": "user_input",
+            "operator": "equals",
+            "value": "3", 
+            "next": "response_3"
+          },
+          {
+            "variable": "user_input",
+            "operator": "default",
+            "value": "",
+            "next": "default_option"
+          }
+        ]
+      },
+      {
+        "id": "response_1",
+        "type": "message",
+        "position": {"x": -300, "y": 450},
+        "next": "another_choice",
+        "content": "✅ *Excelente escolha!*\n\nVocê selecionou a *Opção 1*\n\nEsta opção mostra como os botões podem direcionar para diferentes caminhos no fluxo.",
+        "conditions": []
+      },
+      {
+        "id": "response_2", 
+        "type": "message",
+        "position": {"x": 0, "y": 450},
+        "next": "another_choice",
+        "content": "🚀 *Ótima escolha!*\n\nVocê selecionou a *Opção 2*\n\nOs botões tornam a interação mais rápida e intuitiva para os usuários.",
+        "conditions": []
+      },
+      {
+        "id": "response_3",
+        "type": "message", 
+        "position": {"x": 300, "y": 450},
+        "next": "another_choice",
+        "content": "💡 *Muito bem!*\n\nVocê selecionou a *Opção 3*\n\nEsta funcionalidade aumenta significativamente a taxa de resposta dos usuários.",
+        "conditions": []
+      },
+      {
+        "id": "default_option",
+        "type": "message",
+        "position": {"x": 600, "y": 450}, 
+        "next": "another_choice",
+        "content": "❓ *Opção não reconhecida*\n\nPor favor, use os botões disponíveis ou digite o número da opção (1, 2 ou 3).",
+        "conditions": []
+      },
+      {
+        "id": "another_choice",
+        "type": "interactive_buttons",
+        "position": {"x": 0, "y": 600},
+        "next": "final_condition",
+        "content": "🤔 *Gostaria de fazer mais alguma coisa?*",
+        "data": {
+          "content": "🤔 *Gostaria de fazer mais alguma coisa?*",
+          "buttons": [
+            {
+              "id": "restart",
+              "title": "🔄 Recomeçar"
+            },
+            {
+              "id": "menu",
+              "title": "📋 Menu Principal" 
+            }
+          ],
+          "footer": "Escolha uma opção"
+        },
+        "conditions": []
+      },
+      {
+        "id": "final_condition",
+        "type": "condition",
+        "position": {"x": 0, "y": 750},
+        "next": "end",
+        "content": "",
+        "conditions": [
+          {
+            "variable": "user_input",
+            "operator": "button_id",
+            "value": "restart", 
+            "next": "welcome_buttons"
+          },
+          {
+            "variable": "user_input",
+            "operator": "button_id",
+            "value": "menu",
+            "next": "end"
+          },
+          {
+            "variable": "user_input",
+            "operator": "equals",
+            "value": "1",
+            "next": "welcome_buttons"
+          },
+          {
+            "variable": "user_input",
+            "operator": "equals",
+            "value": "2", 
+            "next": "end"
+          },
+          {
+            "variable": "user_input",
+            "operator": "default",
+            "value": "",
+            "next": "end"
+          }
+        ]
+      },
+      {
+        "id": "end",
+        "type": "message",
+        "position": {"x": 0, "y": 900},
+        "next": null,
+        "content": "👋 *Obrigado por testar os botões interativos!*\n\nDigite *menu* para voltar ao menu principal ou *botoes* para testar novamente.",
+        "conditions": []
+      }
+    ],
+    "edges": [
+      {"id": "start-welcome_buttons", "source": "start", "target": "welcome_buttons", "type": "smoothstep"},
+      {"id": "welcome_buttons-button_condition", "source": "welcome_buttons", "target": "button_condition", "type": "smoothstep"},
+      {"id": "button_condition-response_1", "source": "button_condition", "target": "response_1", "type": "smoothstep", "label": "Opção 1"},
+      {"id": "button_condition-response_2", "source": "button_condition", "target": "response_2", "type": "smoothstep", "label": "Opção 2"},
+      {"id": "button_condition-response_3", "source": "button_condition", "target": "response_3", "type": "smoothstep", "label": "Opção 3"},
+      {"id": "button_condition-default_option", "source": "button_condition", "target": "default_option", "type": "smoothstep", "label": "Padrão"},
+      {"id": "response_1-another_choice", "source": "response_1", "target": "another_choice", "type": "smoothstep"},
+      {"id": "response_2-another_choice", "source": "response_2", "target": "another_choice", "type": "smoothstep"},
+      {"id": "response_3-another_choice", "source": "response_3", "target": "another_choice", "type": "smoothstep"},
+      {"id": "default_option-another_choice", "source": "default_option", "target": "another_choice", "type": "smoothstep"},
+      {"id": "another_choice-final_condition", "source": "another_choice", "target": "final_condition", "type": "smoothstep"},
+      {"id": "final_condition-welcome_buttons", "source": "final_condition", "target": "welcome_buttons", "type": "smoothstep", "label": "Recomeçar"},
+      {"id": "final_condition-end", "source": "final_condition", "target": "end", "type": "smoothstep", "label": "Menu/Fim"}
+    ]
+  },
+  "statistics": {
+    "total_executions": 0,
+    "successful_completions": 0,
+    "average_completion_time": 0,
+    "last_execution": null
+  }
+} 

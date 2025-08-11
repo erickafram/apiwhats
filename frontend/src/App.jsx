@@ -4,6 +4,7 @@ import { Box } from '@mui/material'
 
 // Hooks
 import { useAuth } from './hooks/useAuth.jsx'
+import { ConversationsProvider } from './hooks/useConversations.jsx'
 
 // Components
 import Layout from './components/Layout/Layout'
@@ -86,8 +87,9 @@ function App() {
           path="/*"
           element={
             <ProtectedRoute>
-              <Layout>
-                <Routes>
+              <ConversationsProvider>
+                <Layout>
+                  <Routes>
                   <Route path="/" element={<Navigate to="/dashboard" replace />} />
                   <Route path="/dashboard" element={<Dashboard />} />
                   
@@ -120,6 +122,7 @@ function App() {
                   <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Routes>
               </Layout>
+            </ConversationsProvider>
             </ProtectedRoute>
           }
         />

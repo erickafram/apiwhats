@@ -400,8 +400,20 @@ class UltraMsgService {
         return;
       }
       const userPhone = this.cleanPhoneNumber(messageData.from);
-      const messageContent = messageData.body;
-      const messageType = messageData.type || 'text';
+      let messageContent = messageData.body;
+      let messageType = messageData.type || 'text';
+      let buttonReply = null;
+
+      // ✅ NOVO: Detectar resposta de botão interativo
+      if (messageData.button_reply || messageData.interactive) {
+        messageType = 'interactive';
+        buttonReply = messageData.button_reply || messageData.interactive?.button_reply;
+        
+        if (buttonReply) {
+          messageContent = buttonReply.title || buttonReply.id || messageContent;
+          console.log(`🔘 Resposta de botão detectada: ID=${buttonReply.id}, Título=${buttonReply.title}`);
+        }
+      }
 
       // Verificar se o número foi processado corretamente
       if (!userPhone) {
@@ -463,6 +475,7 @@ class UltraMsgService {
           whatsapp_message_id: messageData.id, // ✅ Campo correto para ID WhatsApp
           timestamp: new Date(),
           status: 'delivered', // ✅ Usar valor válido do ENUM
+          metadata: buttonReply ? { button_reply: buttonReply } : null // ✅ NOVO: Metadados do botão
         });
         console.log('💾 Nova mensagem salva no banco:', messageData.id);
       }
@@ -652,6 +665,68 @@ class UltraMsgService {
       }
     }
     return connectedBots;
+  }
+
+  // ✅ NOVA FUNÇÃO: Enviar mensagem com botões interativos
+  async sendInteractiveMessage(botId, to, messageData) {
+    try {
+      console.log(`📤 Enviando mensagem interativa via UltraMsg - Bot: ${botId}, Para: ${to}`);
+
+      // Verificar rate limiting
+      await this.checkRateLimit(botId);
+
+      // Limpar número de telefone
+      const cleanPhone = this.cleanPhoneNumber(to);
+      
+      if (!cleanPhone) {
+        throw new Error(`Número de telefone inválido: ${to}`);
+      }
+
+      // UltraMsg API suporta botões através do endpoint específico
+      const payload = {
+        token: this.token,
+        to: cleanPhone,
+        body: messageData.text,
+        buttons: messageData.buttons.map(btn => ({
+          buttonId: btn.id,
+          buttonText: btn.title,
+          type: 1 // Tipo 1 = quick reply button
+        })),
+        footer: messageData.footer || ''
+      };
+
+      const response = await axios.post(`${this.apiUrl}/${this.instanceId}/messages/button`, payload, {
+        headers: this.getHeaders()
+      });
+
+      console.log(`✅ Mensagem interativa enviada com sucesso:`, response.data);
+      return response.data;
+
+    } catch (error) {
+      console.error(`❌ Erro ao enviar mensagem interativa:`, error.response?.data || error.message);
+      
+      // Se falhar, tentar enviar como mensagem de texto comum
+      console.log('Tentando enviar como mensagem de texto comum...');
+      const fallbackText = this.createFallbackMessage(messageData);
+      return await this.sendTextMessage(to, fallbackText);
+    }
+  }
+
+  // ✅ NOVA FUNÇÃO: Criar mensagem fallback se botões não funcionarem
+  createFallbackMessage(messageData) {
+    let text = messageData.text + '\n\n';
+    
+    messageData.buttons.forEach((button, index) => {
+      text += `${index + 1}️⃣ ${button.title}\n`;
+    });
+    
+    text += '\n*Digite o número da opção desejada:*';
+    
+    if (messageData.footer) {
+      text += `\n\n_${messageData.footer}_`;
+    }
+    
+    return text;
   }
 }
 

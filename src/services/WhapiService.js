@@ -511,6 +511,98 @@ class WhapiService {
       console.error('❌ Erro ao processar mensagem individual:', error);
     }
   }
+
+  // ✅ NOVA FUNÇÃO: Enviar mensagem com botões interativos (Whapi)
+  async sendInteractiveMessage(botId, to, messageData) {
+    try {
+      const connection = this.connections.get(botId);
+      if (!connection || !connection.connected) {
+        throw new Error('Bot não conectado');
+      }
+
+      // Rate limiting
+      const now = Date.now();
+      const lastTime = this.lastMessageTime.get(botId) || 0;
+      if (now - lastTime < 1000) {
+        await new Promise(resolve => setTimeout(resolve, 1000 - (now - lastTime)));
+      }
+
+      // Whapi.cloud suporte para botões interativos
+      const requestData = {
+        to: to,
+        type: 'interactive',
+        interactive: {
+          type: 'button',
+          body: {
+            text: messageData.text
+          },
+          action: {
+            buttons: messageData.buttons.map((btn, index) => ({
+              type: 'reply',
+              reply: {
+                id: btn.id || `btn_${index}`,
+                title: btn.title.substring(0, 20) // Máximo 20 caracteres
+              }
+            }))
+          }
+        }
+      };
+
+      // Adicionar footer se fornecido
+      if (messageData.footer) {
+        requestData.interactive.footer = {
+          text: messageData.footer.substring(0, 60) // Máximo 60 caracteres
+        };
+      }
+
+      const response = await axios.post(
+        `${this.apiUrl}/messages/interactive`,
+        requestData,
+        { headers: this.getHeaders() }
+      );
+
+      this.lastMessageTime.set(botId, Date.now());
+
+      if (response.data) {
+        console.log(`✅ Mensagem interativa enviada para ${to} via bot ${botId}`);
+        
+        // Salvar mensagem no banco
+        await this.saveMessage(botId, to, messageData.text, 'outgoing', { 
+          type: 'interactive',
+          buttons: messageData.buttons
+        });
+        
+        return response.data;
+      } else {
+        throw new Error('Erro ao enviar mensagem interativa');
+      }
+
+    } catch (error) {
+      console.error('❌ Erro ao enviar mensagem interativa:', error.response?.data || error.message);
+      
+      // Fallback: enviar como mensagem de texto normal
+      console.log('Tentando enviar como mensagem de texto comum...');
+      const fallbackText = this.createFallbackMessage(messageData);
+      return await this.sendMessage(botId, to, fallbackText);
+    }
+  }
+
+  // ✅ NOVA FUNÇÃO: Criar mensagem fallback se botões não funcionarem
+  createFallbackMessage(messageData) {
+    let text = messageData.text + '\n\n';
+    
+    messageData.buttons.forEach((button, index) => {
+      text += `${index + 1}️⃣ ${button.title}\n`;
+    });
+    
+    text += '\n*Digite o número da opção desejada:*';
+    
+    if (messageData.footer) {
+      text += `\n\n_${messageData.footer}_`;
+    }
+    
+    return text;
+  }
 }
 
 module.exports = WhapiService;

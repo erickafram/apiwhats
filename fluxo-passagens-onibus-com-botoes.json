@@ -1,0 +1,492 @@
+{
+  "name": "Sistema de Passagens de Ônibus - Com Botões Interativos",
+  "description": "Fluxo completo para consulta e compra de passagens de ônibus com botões interativos WhatsApp",
+  "version": "3.0.0",
+  "is_active": true,
+  "is_default": false,
+  "trigger_keywords": ["oi", "olá", "menu", "passagem", "onibus", "viagem", "start", "começar", "iniciar", "botoes"],
+  "priority": 200,
+  "flow_data": {
+    "nodes": [
+      {
+        "id": "start",
+        "type": "start",
+        "position": {"x": 0, "y": 0},
+        "next": "welcome_buttons",
+        "content": "",
+        "conditions": []
+      },
+      {
+        "id": "welcome_buttons",
+        "type": "interactive_buttons",
+        "position": {"x": 0, "y": 150},
+        "next": "menu_condition",
+        "content": "🚌 *BEM-VINDO À VIAÇÃO EXPRESSA!*\n\n🎯 *O que você gostaria de fazer?*",
+        "data": {
+          "content": "🚌 *BEM-VINDO À VIAÇÃO EXPRESSA!*\n\n🎯 *O que você gostaria de fazer?*",
+          "buttons": [
+            {
+              "id": "comprar",
+              "title": "🎫 Comprar Passagem"
+            },
+            {
+              "id": "horarios",
+              "title": "🕐 Consultar Horários"
+            },
+            {
+              "id": "mais_opcoes",
+              "title": "📋 Mais Opções"
+            }
+          ],
+          "footer": "Selecione uma opção"
+        },
+        "conditions": []
+      },
+      {
+        "id": "menu_condition",
+        "type": "condition",
+        "position": {"x": 0, "y": 300},
+        "next": "comprar_origem",
+        "content": "",
+        "conditions": [
+          {"variable": "user_input", "operator": "button_id", "value": "comprar", "next": "comprar_origem"},
+          {"variable": "user_input", "operator": "button_id", "value": "horarios", "next": "consultar_horarios"},
+          {"variable": "user_input", "operator": "button_id", "value": "mais_opcoes", "next": "mais_opcoes_buttons"},
+          {"variable": "user_input", "operator": "equals", "value": "1", "next": "comprar_origem"},
+          {"variable": "user_input", "operator": "equals", "value": "2", "next": "consultar_horarios"},
+          {"variable": "user_input", "operator": "equals", "value": "3", "next": "mais_opcoes_buttons"},
+          {"variable": "user_input", "operator": "default", "value": "", "next": "opcao_invalida"}
+        ]
+      },
+      {
+        "id": "mais_opcoes_buttons",
+        "type": "interactive_buttons",
+        "position": {"x": 400, "y": 450},
+        "next": "mais_opcoes_condition",
+        "content": "📋 *MAIS OPÇÕES*\n\nEscolha o que deseja:",
+        "data": {
+          "content": "📋 *MAIS OPÇÕES*\n\nEscolha o que deseja:",
+          "buttons": [
+            {
+              "id": "destinos",
+              "title": "📍 Destinos"
+            },
+            {
+              "id": "precos",
+              "title": "💰 Preços"
+            },
+            {
+              "id": "atendente",
+              "title": "📞 Atendente"
+            }
+          ],
+          "footer": "Selecione uma opção"
+        },
+        "conditions": []
+      },
+      {
+        "id": "mais_opcoes_condition",
+        "type": "condition",
+        "position": {"x": 400, "y": 600},
+        "next": "mostrar_destinos",
+        "content": "",
+        "conditions": [
+          {"variable": "user_input", "operator": "button_id", "value": "destinos", "next": "mostrar_destinos"},
+          {"variable": "user_input", "operator": "button_id", "value": "precos", "next": "consultar_precos"},
+          {"variable": "user_input", "operator": "button_id", "value": "atendente", "next": "transferir_atendente"},
+          {"variable": "user_input", "operator": "equals", "value": "1", "next": "mostrar_destinos"},
+          {"variable": "user_input", "operator": "equals", "value": "2", "next": "consultar_precos"},
+          {"variable": "user_input", "operator": "equals", "value": "3", "next": "transferir_atendente"},
+          {"variable": "user_input", "operator": "default", "value": "", "next": "welcome_buttons"}
+        ]
+      },
+      {
+        "id": "comprar_origem",
+        "type": "message",
+        "position": {"x": -400, "y": 450},
+        "next": "input_origem",
+        "content": "🗺️ *COMPRA DE PASSAGEM*\n\n📍 *Digite a cidade de ORIGEM:*\n\n💡 *Exemplos:*\n• São Paulo\n• Rio de Janeiro\n• Belo Horizonte\n• Brasília\n• Salvador\n\n*Digite apenas o nome da cidade:*",
+        "conditions": []
+      },
+      {
+        "id": "input_origem",
+        "type": "input",
+        "position": {"x": -400, "y": 600},
+        "next": "comprar_destino",
+        "content": "",
+        "variable": "cidade_origem",
+        "conditions": []
+      },
+      {
+        "id": "comprar_destino",
+        "type": "message",
+        "position": {"x": -400, "y": 750},
+        "next": "input_destino",
+        "content": "🎯 *Perfeito!* Origem: *${cidade_origem}*\n\n📍 *Agora digite a cidade de DESTINO:*\n\n💡 *Principais destinos:*\n• São Paulo\n• Rio de Janeiro\n• Belo Horizonte\n• Brasília\n• Salvador\n• Goiânia\n• Curitiba\n\n*Digite o destino:*",
+        "conditions": []
+      },
+      {
+        "id": "input_destino",
+        "type": "input",
+        "position": {"x": -400, "y": 900},
+        "next": "comprar_data",
+        "content": "",
+        "variable": "cidade_destino",
+        "conditions": []
+      },
+      {
+        "id": "comprar_data",
+        "type": "message",
+        "position": {"x": -400, "y": 1050},
+        "next": "input_data",
+        "content": "📅 *Rota selecionada:*\n🚌 ${cidade_origem} ➜ ${cidade_destino}\n\n*Digite a data da viagem:*\n\n📋 *Formato: DD/MM/AAAA*\n💡 *Exemplos:*\n• 15/08/2025\n• 20/08/2025\n• 25/08/2025\n\n⚠️ *Mínimo: hoje*\n⚠️ *Máximo: 60 dias*",
+        "conditions": []
+      },
+      {
+        "id": "input_data",
+        "type": "input",
+        "position": {"x": -400, "y": 1200},
+        "next": "mostrar_passagens_buttons",
+        "content": "",
+        "variable": "data_viagem",
+        "conditions": []
+      },
+      {
+        "id": "mostrar_passagens_buttons",
+        "type": "message",
+        "position": {"x": -400, "y": 1350},
+        "next": "escolha_passagem_buttons",
+        "content": "🎫 *PASSAGENS DISPONÍVEIS*\n\n🚌 *Rota:* ${cidade_origem} ➜ ${cidade_destino}\n📅 *Data:* ${data_viagem}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n*1️⃣ EXECUTIVO - 06:00*\n💺 45 lugares • 💰 R$ 85,00 • ⏱️ 6h30min\n\n*2️⃣ CONVENCIONAL - 09:00*\n💺 23 lugares • 💰 R$ 65,00 • ⏱️ 7h15min\n\n*3️⃣ LEITO - 22:00*\n💺 12 lugares • 💰 R$ 120,00 • ⏱️ 8h00min",
+        "conditions": []
+      },
+      {
+        "id": "escolha_passagem_buttons",
+        "type": "interactive_buttons",
+        "position": {"x": -400, "y": 1500},
+        "next": "passagem_condition",
+        "content": "🎫 *Selecione sua passagem:*",
+        "data": {
+          "content": "🎫 *Selecione sua passagem:*",
+          "buttons": [
+            {
+              "id": "executivo_06",
+              "title": "🚌 Executivo 06:00"
+            },
+            {
+              "id": "convencional_09",
+              "title": "🚍 Convencional 09:00"
+            },
+            {
+              "id": "leito_22",
+              "title": "🛏️ Leito 22:00"
+            }
+          ],
+          "footer": "Escolha seu horário"
+        },
+        "conditions": []
+      },
+      {
+        "id": "passagem_condition",
+        "type": "condition",
+        "position": {"x": -400, "y": 1650},
+        "next": "confirmar_compra_buttons",
+        "content": "",
+        "conditions": [
+          {"variable": "user_input", "operator": "button_id", "value": "executivo_06", "next": "confirmar_compra_buttons"},
+          {"variable": "user_input", "operator": "button_id", "value": "convencional_09", "next": "confirmar_compra_buttons"},
+          {"variable": "user_input", "operator": "button_id", "value": "leito_22", "next": "confirmar_compra_buttons"},
+          {"variable": "user_input", "operator": "equals", "value": "1", "next": "confirmar_compra_buttons"},
+          {"variable": "user_input", "operator": "equals", "value": "2", "next": "confirmar_compra_buttons"},
+          {"variable": "user_input", "operator": "equals", "value": "3", "next": "confirmar_compra_buttons"},
+          {"variable": "user_input", "operator": "default", "value": "", "next": "escolha_passagem_buttons"}
+        ]
+      },
+      {
+        "id": "confirmar_compra_buttons",
+        "type": "interactive_buttons",
+        "position": {"x": -400, "y": 1800},
+        "next": "confirmacao_condition",
+        "content": "✅ *CONFIRMAÇÃO DA COMPRA*\n\n🎫 *Resumo da Passagem:*\n📍 ${cidade_origem} ➜ ${cidade_destino}\n📅 ${data_viagem}\n\n💳 *Formas de Pagamento:*\n• PIX (5% desconto)\n• Cartão de Crédito (até 3x)\n• Cartão de Débito",
+        "data": {
+          "content": "✅ *CONFIRMAÇÃO DA COMPRA*\n\n🎫 *Resumo da Passagem:*\n📍 ${cidade_origem} ➜ ${cidade_destino}\n📅 ${data_viagem}\n\n💳 *Formas de Pagamento:*\n• PIX (5% desconto)\n• Cartão de Crédito (até 3x)\n• Cartão de Débito",
+          "buttons": [
+            {
+              "id": "confirmar_sim",
+              "title": "✅ Confirmar Compra"
+            },
+            {
+              "id": "cancelar_nao",
+              "title": "❌ Cancelar"
+            },
+            {
+              "id": "voltar_menu",
+              "title": "🔙 Voltar Menu"
+            }
+          ],
+          "footer": "Escolha uma opção"
+        },
+        "conditions": []
+      },
+      {
+        "id": "confirmacao_condition",
+        "type": "condition",
+        "position": {"x": -400, "y": 1950},
+        "next": "finalizar_compra",
+        "content": "",
+        "conditions": [
+          {"variable": "user_input", "operator": "button_id", "value": "confirmar_sim", "next": "finalizar_compra"},
+          {"variable": "user_input", "operator": "button_id", "value": "cancelar_nao", "next": "compra_cancelada"},
+          {"variable": "user_input", "operator": "button_id", "value": "voltar_menu", "next": "welcome_buttons"},
+          {"variable": "user_input", "operator": "equals", "value": "sim", "next": "finalizar_compra"},
+          {"variable": "user_input", "operator": "equals", "value": "SIM", "next": "finalizar_compra"},
+          {"variable": "user_input", "operator": "equals", "value": "1", "next": "finalizar_compra"},
+          {"variable": "user_input", "operator": "equals", "value": "menu", "next": "welcome_buttons"},
+          {"variable": "user_input", "operator": "equals", "value": "MENU", "next": "welcome_buttons"},
+          {"variable": "user_input", "operator": "equals", "value": "3", "next": "welcome_buttons"},
+          {"variable": "user_input", "operator": "default", "value": "", "next": "compra_cancelada"}
+        ]
+      },
+      {
+        "id": "finalizar_compra",
+        "type": "message",
+        "position": {"x": -600, "y": 2100},
+        "next": "transferir_pagamento",
+        "content": "🎉 *COMPRA CONFIRMADA!*\n\n✅ *Sua passagem foi reservada:*\n🎫 Código: #PASS${data_viagem}\n📍 ${cidade_origem} ➜ ${cidade_destino}\n📅 ${data_viagem}\n\n👨‍💼 *Transferindo para atendente...*\n\nEm instantes você será conectado com um operador para:\n• Finalizar pagamento\n• Escolher assento\n• Receber bilhete por email\n• Tirar dúvidas\n\n⏱️ *Aguarde um momento...*",
+        "conditions": []
+      },
+      {
+        "id": "transferir_pagamento",
+        "type": "action",
+        "position": {"x": -600, "y": 2250},
+        "next": "end",
+        "content": "",
+        "action": "transfer_to_human",
+        "conditions": []
+      },
+      {
+        "id": "compra_cancelada",
+        "type": "interactive_buttons",
+        "position": {"x": -200, "y": 2100},
+        "next": "pos_cancelamento_condition",
+        "content": "❌ *Compra cancelada*\n\n🔄 Sem problemas! Sua passagem não foi reservada.",
+        "data": {
+          "content": "❌ *Compra cancelada*\n\n🔄 Sem problemas! Sua passagem não foi reservada.\n\n*O que você gostaria de fazer?*",
+          "buttons": [
+            {
+              "id": "voltar_menu_main",
+              "title": "🔙 Menu Principal"
+            },
+            {
+              "id": "nova_busca",
+              "title": "🔍 Nova Busca"
+            },
+            {
+              "id": "falar_atendente",
+              "title": "📞 Falar Atendente"
+            }
+          ],
+          "footer": "Escolha uma opção"
+        },
+        "conditions": []
+      },
+      {
+        "id": "pos_cancelamento_condition",
+        "type": "condition",
+        "position": {"x": -200, "y": 2250},
+        "next": "welcome_buttons",
+        "content": "",
+        "conditions": [
+          {"variable": "user_input", "operator": "button_id", "value": "voltar_menu_main", "next": "welcome_buttons"},
+          {"variable": "user_input", "operator": "button_id", "value": "nova_busca", "next": "comprar_origem"},
+          {"variable": "user_input", "operator": "button_id", "value": "falar_atendente", "next": "transferir_atendente"},
+          {"variable": "user_input", "operator": "equals", "value": "1", "next": "welcome_buttons"},
+          {"variable": "user_input", "operator": "equals", "value": "2", "next": "comprar_origem"},
+          {"variable": "user_input", "operator": "equals", "value": "3", "next": "transferir_atendente"},
+          {"variable": "user_input", "operator": "default", "value": "", "next": "welcome_buttons"}
+        ]
+      },
+      {
+        "id": "consultar_horarios",
+        "type": "message",
+        "position": {"x": 200, "y": 450},
+        "next": "horarios_voltar_buttons",
+        "content": "🕐 *HORÁRIOS DE PARTIDA*\n\n🚌 *PRINCIPAIS ROTAS:*\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n*📍 SÃO PAULO → RIO DE JANEIRO*\n🕕 06:00 • 🕘 09:00 • 🕐 13:00 • 🕕 18:00 • 🕘 21:00\n\n*📍 RIO DE JANEIRO → BELO HORIZONTE*\n🕖 07:00 • 🕑 14:00 • 🕗 20:00\n\n*📍 SÃO PAULO → SALVADOR*\n🕖 19:00 • 🕘 22:00 (Leito)\n\n*📍 BRASÍLIA → GOIÂNIA*\n🕗 08:00 • 🕒 15:00 • 🕘 21:00\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n💡 *Para horários específicos, digite 1 para comprar passagem*",
+        "conditions": []
+      },
+      {
+        "id": "horarios_voltar_buttons",
+        "type": "interactive_buttons",
+        "position": {"x": 200, "y": 600},
+        "next": "horarios_voltar_condition",
+        "content": "🔄 *O que você gostaria de fazer agora?*",
+        "data": {
+          "content": "🔄 *O que você gostaria de fazer agora?*",
+          "buttons": [
+            {
+              "id": "comprar_passagem",
+              "title": "🎫 Comprar Passagem"
+            },
+            {
+              "id": "voltar_menu_horarios",
+              "title": "🔙 Menu Principal"
+            }
+          ],
+          "footer": "Escolha uma opção"
+        },
+        "conditions": []
+      },
+      {
+        "id": "horarios_voltar_condition",
+        "type": "condition",
+        "position": {"x": 200, "y": 750},
+        "next": "welcome_buttons",
+        "content": "",
+        "conditions": [
+          {"variable": "user_input", "operator": "button_id", "value": "comprar_passagem", "next": "comprar_origem"},
+          {"variable": "user_input", "operator": "button_id", "value": "voltar_menu_horarios", "next": "welcome_buttons"},
+          {"variable": "user_input", "operator": "equals", "value": "1", "next": "comprar_origem"},
+          {"variable": "user_input", "operator": "equals", "value": "2", "next": "welcome_buttons"},
+          {"variable": "user_input", "operator": "default", "value": "", "next": "welcome_buttons"}
+        ]
+      },
+      {
+        "id": "mostrar_destinos",
+        "type": "message",
+        "position": {"x": 600, "y": 750},
+        "next": "destinos_voltar_buttons",
+        "content": "📍 *DESTINOS DISPONÍVEIS*\n\n🌟 *DESTINOS PRINCIPAIS:*\n\n🏙️ *REGIÃO SUDESTE*\n• São Paulo (SP) • Rio de Janeiro (RJ)\n• Belo Horizonte (MG) • Vitória (ES)\n\n🌆 *REGIÃO CENTRO-OESTE*\n• Brasília (DF) • Goiânia (GO)\n• Campo Grande (MS) • Cuiabá (MT)\n\n🏖️ *REGIÃO NORDESTE*\n• Salvador (BA) • Recife (PE)\n• Fortaleza (CE) • Natal (RN)\n\n❄️ *REGIÃO SUL*\n• Curitiba (PR) • Florianópolis (SC)\n• Porto Alegre (RS)",
+        "conditions": []
+      },
+      {
+        "id": "destinos_voltar_buttons",
+        "type": "interactive_buttons",
+        "position": {"x": 600, "y": 900},
+        "next": "destinos_voltar_condition",
+        "content": "🎯 *Interessado em algum destino?*",
+        "data": {
+          "content": "🎯 *Interessado em algum destino?*",
+          "buttons": [
+            {
+              "id": "comprar_destino",
+              "title": "🎫 Comprar Passagem"
+            },
+            {
+              "id": "voltar_menu_destinos",
+              "title": "🔙 Menu Principal"
+            }
+          ],
+          "footer": "Escolha uma opção"
+        },
+        "conditions": []
+      },
+      {
+        "id": "destinos_voltar_condition",
+        "type": "condition",
+        "position": {"x": 600, "y": 1050},
+        "next": "welcome_buttons",
+        "content": "",
+        "conditions": [
+          {"variable": "user_input", "operator": "button_id", "value": "comprar_destino", "next": "comprar_origem"},
+          {"variable": "user_input", "operator": "button_id", "value": "voltar_menu_destinos", "next": "welcome_buttons"},
+          {"variable": "user_input", "operator": "equals", "value": "1", "next": "comprar_origem"},
+          {"variable": "user_input", "operator": "equals", "value": "2", "next": "welcome_buttons"},
+          {"variable": "user_input", "operator": "default", "value": "", "next": "welcome_buttons"}
+        ]
+      },
+      {
+        "id": "consultar_precos",
+        "type": "message",
+        "position": {"x": 800, "y": 750},
+        "next": "precos_voltar_buttons",
+        "content": "💰 *TABELA DE PREÇOS*\n\n🎫 *TIPOS DE PASSAGEM:*\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n*🚌 CONVENCIONAL*\n💺 Poltronas reclináveis\n💰 R$ 45 - R$ 80\n\n*🚌 EXECUTIVO*\n💺 Poltronas amplas + ar\n💰 R$ 65 - R$ 120\n\n*🛏️ LEITO*\n💺 Cama individual\n💰 R$ 90 - R$ 180\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n💳 *FORMAS DE PAGAMENTO:*\n• PIX (5% desconto)\n• Cartão (até 3x sem juros)\n• Dinheiro (nas lojas)",
+        "conditions": []
+      },
+      {
+        "id": "precos_voltar_buttons",
+        "type": "interactive_buttons",
+        "position": {"x": 800, "y": 900},
+        "next": "precos_voltar_condition",
+        "content": "💳 *Gostaria de comprar uma passagem?*",
+        "data": {
+          "content": "💳 *Gostaria de comprar uma passagem?*",
+          "buttons": [
+            {
+              "id": "comprar_agora",
+              "title": "🎫 Comprar Agora"
+            },
+            {
+              "id": "voltar_menu_precos",
+              "title": "🔙 Menu Principal"
+            }
+          ],
+          "footer": "Escolha uma opção"
+        },
+        "conditions": []
+      },
+      {
+        "id": "precos_voltar_condition",
+        "type": "condition",
+        "position": {"x": 800, "y": 1050},
+        "next": "welcome_buttons",
+        "content": "",
+        "conditions": [
+          {"variable": "user_input", "operator": "button_id", "value": "comprar_agora", "next": "comprar_origem"},
+          {"variable": "user_input", "operator": "button_id", "value": "voltar_menu_precos", "next": "welcome_buttons"},
+          {"variable": "user_input", "operator": "equals", "value": "1", "next": "comprar_origem"},
+          {"variable": "user_input", "operator": "equals", "value": "2", "next": "welcome_buttons"},
+          {"variable": "user_input", "operator": "default", "value": "", "next": "welcome_buttons"}
+        ]
+      },
+      {
+        "id": "transferir_atendente",
+        "type": "message",
+        "position": {"x": 1000, "y": 750},
+        "next": "acao_transferir_atendente",
+        "content": "👨‍💼 *TRANSFERINDO PARA ATENDENTE*\n\n✅ *Você será conectado com nossa equipe especializada!*\n\n⏱️ *Horário de atendimento:*\n🕕 Segunda a Sexta: 06:00 às 22:00\n🕘 Sábados: 08:00 às 18:00\n🕘 Domingos: 10:00 às 16:00\n\n📞 *O que nosso atendente pode fazer:*\n• Finalizar compras\n• Alterar/cancelar passagens\n• Informações especiais\n• Suporte técnico\n\n🔄 *Conectando... aguarde um momento*",
+        "conditions": []
+      },
+      {
+        "id": "acao_transferir_atendente",
+        "type": "action",
+        "position": {"x": 1000, "y": 900},
+        "next": "end",
+        "content": "",
+        "action": "transfer_to_human",
+        "conditions": []
+      },
+      {
+        "id": "opcao_invalida",
+        "type": "message",
+        "position": {"x": 0, "y": 750},
+        "next": "welcome_buttons",
+        "content": "❌ *Opção inválida!*\n\n🔍 *Por favor, use os botões disponíveis ou digite:*\n• 1 = Comprar Passagem\n• 2 = Consultar Horários\n• 3 = Mais Opções\n\n🔄 *Voltando ao menu...*",
+        "conditions": []
+      },
+      {
+        "id": "end",
+        "type": "end",
+        "position": {"x": 0, "y": 2700},
+        "next": null,
+        "content": "",
+        "conditions": []
+      }
+    ],
+    "edges": [
+      {"id": "start-welcome_buttons", "source": "start", "target": "welcome_buttons", "type": "smoothstep"},
+      {"id": "welcome_buttons-menu_condition", "source": "welcome_buttons", "target": "menu_condition", "type": "smoothstep"},
+      {"id": "menu_condition-comprar_origem", "source": "menu_condition", "target": "comprar_origem", "type": "smoothstep", "label": "Comprar"},
+      {"id": "menu_condition-consultar_horarios", "source": "menu_condition", "target": "consultar_horarios", "type": "smoothstep", "label": "Horários"},
+      {"id": "menu_condition-mais_opcoes_buttons", "source": "menu_condition", "target": "mais_opcoes_buttons", "type": "smoothstep", "label": "Mais Opções"},
+      {"id": "mais_opcoes_buttons-mais_opcoes_condition", "source": "mais_opcoes_buttons", "target": "mais_opcoes_condition", "type": "smoothstep"},
+      {"id": "mais_opcoes_condition-mostrar_destinos", "source": "mais_opcoes_condition", "target": "mostrar_destinos", "type": "smoothstep", "label": "Destinos"},
+      {"id": "mais_opcoes_condition-consultar_precos", "source": "mais_opcoes_condition", "target": "consultar_precos", "type": "smoothstep", "label": "Preços"},
+      {"id": "mais_opcoes_condition-transferir_atendente", "source": "mais_opcoes_condition", "target": "transferir_atendente", "type": "smoothstep", "label": "Atendente"}
+    ]
+  },
+  "statistics": {
+    "total_executions": 0,
+    "successful_completions": 0,
+    "average_completion_time": 0,
+    "last_execution": null
+  }
+} 

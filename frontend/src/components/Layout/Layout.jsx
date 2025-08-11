@@ -12,16 +12,22 @@ import {
   Divider,
   useTheme,
   useMediaQuery,
+  Badge,
+  Tooltip,
 } from '@mui/material'
 import {
   Menu as MenuIcon,
   AccountCircle,
   Logout,
   Settings as SettingsIcon,
+  Notifications,
+  NotificationsActive,
 } from '@mui/icons-material'
 
 import { useAuth } from '../../hooks/useAuth.jsx'
+import { useConversations } from '../../hooks/useConversations.jsx'
 import Sidebar from './Sidebar'
+import { useNavigate } from 'react-router-dom'
 
 const DRAWER_WIDTH = 280
 
@@ -29,6 +35,8 @@ const Layout = ({ children }) => {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const { user, logout } = useAuth()
+  const { transferredCount, unattendedCount } = useConversations()
+  const navigate = useNavigate()
 
   const [mobileOpen, setMobileOpen] = useState(false)
   const [anchorEl, setAnchorEl] = useState(null)
@@ -78,8 +86,43 @@ const Layout = ({ children }) => {
             WhatsApp Chatbot System
           </Typography>
 
-          {/* Profile Menu */}
+          {/* Notifications and Profile Menu */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {/* Sino de Notificação */}
+            <Tooltip title={
+              transferredCount > 0 
+                ? `${transferredCount} conversa(s) aguardando ${unattendedCount > 0 ? `(${unattendedCount} urgente${unattendedCount > 1 ? 's' : ''})` : ''}`
+                : 'Nenhuma conversa aguardando'
+            }>
+              <IconButton
+                size="large"
+                onClick={() => navigate('/conversations')}
+                color="inherit"
+                sx={{
+                  animation: unattendedCount > 0 ? 'pulse 2s infinite' : 'none',
+                  '@keyframes pulse': {
+                    '0%': { transform: 'scale(1)' },
+                    '50%': { transform: 'scale(1.1)' },
+                    '100%': { transform: 'scale(1)' }
+                  }
+                }}
+              >
+                <Badge 
+                  badgeContent={transferredCount} 
+                  color={unattendedCount > 0 ? "error" : "warning"}
+                  max={99}
+                >
+                  {unattendedCount > 0 ? (
+                    <NotificationsActive sx={{ color: 'orange' }} />
+                  ) : transferredCount > 0 ? (
+                    <Notifications sx={{ color: 'primary.main' }} />
+                  ) : (
+                    <Notifications />
+                  )}
+                </Badge>
+              </IconButton>
+            </Tooltip>
+
             <Typography variant="body2" sx={{ display: { xs: 'none', sm: 'block' } }}>
               {user?.name}
             </Typography>
