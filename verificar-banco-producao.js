@@ -16,21 +16,14 @@ async function verificarECorrigirFluxo() {
     console.log('✅ Fluxo encontrado:', flow.name);
     console.log('📋 Dados atuais do fluxo:', JSON.stringify(flow.flow_data, null, 2));
     
-    // Carregar fluxo correto do arquivo JSON
-    const fluxoCorreto = JSON.parse(fs.readFileSync('./fluxo-passagens-onibus.json', 'utf8'));
-    
     console.log('\n🔧 Verificando nó menu_input...');
     
     // Buscar nó menu_input no banco
     const menuInputBanco = flow.flow_data.nodes.find(n => n.id === 'menu_input');
     console.log('🏦 Nó menu_input no banco:', menuInputBanco);
     
-    // Buscar nó menu_input no arquivo
-    const menuInputArquivo = fluxoCorreto.nodes.find(n => n.id === 'menu_input');
-    console.log('📄 Nó menu_input no arquivo:', menuInputArquivo);
-    
     // Verificar se precisamos atualizar
-    if (!menuInputBanco.variable && menuInputArquivo.variable) {
+    if (!menuInputBanco.variable) {
       console.log('\n🚨 PROBLEMA ENCONTRADO: Nó menu_input sem propriedade variable!');
       console.log('🔧 Corrigindo fluxo...');
       
