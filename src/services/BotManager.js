@@ -161,19 +161,12 @@ class BotManager {
         console.log(`📋 Fluxo disponível: ID=${flow.id}, Nome="${flow.name}", Ativo=${flow.is_active}, Padrão=${flow.is_default}, Keywords=${JSON.stringify(flow.trigger_keywords)}`);
       });
 
-      // Se a conversa já tem um fluxo ativo, continuar com ele
-      if (conversation.current_flow_id) {
-        const currentFlow = flows.find(f => f.id === conversation.current_flow_id);
-        if (currentFlow && currentFlow.is_active) {
-          console.log(`✅ Continuando fluxo ativo: ${currentFlow.name}`);
-          return currentFlow;
-        }
-      }
-
-      // Buscar fluxo baseado em palavras-chave
+      // ✅ CORREÇÃO: Verificar primeiro se há keywords de reinício
       const messageText = message.content.toLowerCase();
       console.log(`🔍 Buscando fluxo para mensagem: "${messageText}"`);
       
+      // Verificar se alguma keyword de reinício foi detectada
+      let restartFlow = null;
       for (const flow of flows) {
         if (flow.trigger_keywords && flow.trigger_keywords.length > 0) {
           console.log(`🔍 Verificando keywords do fluxo "${flow.name}":`, flow.trigger_keywords);
@@ -185,8 +178,34 @@ class BotManager {
           
           if (hasKeyword) {
             console.log(`✅ Fluxo encontrado por keyword: ${flow.name}`);
-            return flow;
+            restartFlow = flow;
+            break;
           }
+        }
+      }
+
+      // Se uma keyword foi detectada, reiniciar o fluxo
+      if (restartFlow) {
+        console.log(`🔄 Reiniciando fluxo devido a keyword: ${restartFlow.name}`);
+        // Limpar estado atual para reiniciar do início
+        await conversation.update({
+          current_flow_id: restartFlow.id,
+          current_node: null,
+          session_data: {
+            ...conversation.session_data,
+            variables: {},
+            flow_history: []
+          }
+        });
+        return restartFlow;
+      }
+
+      // Se a conversa já tem um fluxo ativo e não há keyword de reinício, continuar
+      if (conversation.current_flow_id) {
+        const currentFlow = flows.find(f => f.id === conversation.current_flow_id);
+        if (currentFlow && currentFlow.is_active) {
+          console.log(`✅ Continuando fluxo ativo: ${currentFlow.name}`);
+          return currentFlow;
         }
       }
 

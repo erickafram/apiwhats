@@ -39,6 +39,34 @@ if (data.event_type !== 'message_received') {
 - `message_ack` (confirmações de leitura)
 - Outros tipos de eventos
 
+### 3. Processamento de Condições Avançadas
+**Arquivo**: `src/services/FlowProcessor.js`
+
+**O que faz**: Corrige o processamento de nós de condição que direcionam para múltiplos destinos (como o menu de passagens).
+
+**Antes**: Só funcionava com true/false
+**Agora**: Suporte para condições como:
+```json
+{"variable": "opcao_menu", "operator": "equals", "value": "1", "next": "comprar_origem"}
+```
+
+### 4. Suporte a Variáveis de Input
+**Arquivo**: `src/services/FlowProcessor.js` 
+
+**O que faz**: Corrige a captura de variáveis dos nós de input, suportando múltiplos formatos:
+- `node.variable` (formato do fluxo de passagens)
+- `config.variable_name` (formato padrão)
+- `config.variable` (formato alternativo)
+
+### 5. Interpolação de Variáveis em Mensagens
+**Arquivo**: `src/services/FlowProcessor.js`
+
+**O que faz**: Permite usar variáveis capturadas nas mensagens com o formato `${nome_variavel}`.
+
+**Exemplo**:
+- Mensagem: `"Rota: ${cidade_origem} ➜ ${cidade_destino}"`
+- Resultado: `"Rota: São Paulo ➜ Rio de Janeiro"`
+
 ## 🎯 Como o Fluxo Funciona Agora
 
 ### Fluxo Correto:
@@ -108,13 +136,17 @@ if (data.event_type !== 'message_received') {
 - [x] Logs de debug adicionados
 - [x] Teste de loop infinito corrigido
 - [x] Fluxo de passagens funcionando
+- [x] Processamento de condições avançadas corrigido
+- [x] Suporte a variáveis de input melhorado
+- [x] Interpolação de variáveis implementada
 - [ ] Teste em produção
 - [ ] Monitoramento de performance
 
 ## 🔗 Arquivos Modificados
 
 1. `src/services/UltraMsgService.js` - Filtros de mensagem adicionados
-2. `CORREÇÕES_FLUXO_ULTRAMSG.md` - Este documento
+2. `src/services/FlowProcessor.js` - Processamento de condições e variáveis melhorado
+3. `CORREÇÕES_FLUXO_ULTRAMSG.md` - Este documento
 
 ## 📞 Próximos Passos
 
