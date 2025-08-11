@@ -45,7 +45,12 @@ export const ConversationsProvider = ({ children }) => {
   // ✅ NOVA: Configurar WebSocket listeners
   useEffect(() => {
     // Conectar ao WebSocket
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+    const isProduction = window.location.hostname !== 'localhost'
+    const apiUrl = isProduction 
+      ? window.location.origin 
+      : (import.meta.env.VITE_API_URL || 'http://localhost:5000')
+    
+    console.log('🔗 Conectando WebSocket para:', apiUrl)
     const socketConnection = io(apiUrl)
     setSocket(socketConnection)
 

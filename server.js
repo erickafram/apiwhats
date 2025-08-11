@@ -10,10 +10,18 @@ require('dotenv').config();
 
 const app = express();
 const server = http.createServer(app);
+// Configurar origens permitidas para CORS
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://chatbotwhats.online",
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
 const io = socketIo(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
-    methods: ["GET", "POST"]
+    origin: allowedOrigins,
+    methods: ["GET", "POST"],
+    credentials: true
   }
 });
 
@@ -23,18 +31,24 @@ global.io = io;
 // Middleware de segurança
 app.use(helmet());
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:3000",
+  origin: allowedOrigins,
   credentials: true
 }));
 
 // Configurar trust proxy ANTES do rate limiting
 app.set('trust proxy', 1);
 
-// Rate limiting
+// Rate limiting - configuração mais permissiva para produção
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100, // máximo 100 requests por IP
-  trustProxy: true // Para CloudPanel/nginx
+  max: process.env.NODE_ENV === 'production' ? 500 : 100, // mais requests em produção
+  trustProxy: true, // Para CloudPanel/nginx
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => {
+    // Pular rate limiting para webhooks
+    return req.path.includes('/webhook');
+  }
 });
 app.use(limiter);
 
