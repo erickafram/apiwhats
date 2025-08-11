@@ -526,6 +526,12 @@ class FlowProcessor {
     const maxRetries = config.max_retries || 3;
 
     console.log(`🔧 DEBUG processInputCaptureNode: nodeId=${node.id}, variableName=${variableName}, messageContent="${message.content}"`);
+    console.log(`🔧 DEBUG node properties:`, { 
+      nodeVariable: node.variable, 
+      configVariable: config.variable, 
+      configVariableName: config.variable_name,
+      nodeKeys: Object.keys(node)
+    });
 
     // Validar entrada
     const isValid = this.validateInput(message.content, inputType, validation);
