@@ -60,6 +60,39 @@ class BotManager {
     try {
       const startTime = Date.now();
       
+      // ✅ VERIFICAR SE CONVERSA ESTÁ TRANSFERIDA PARA OPERADOR
+      if (conversation.status === 'transferred') {
+        console.log(`📞 Conversa ${conversation.id} está transferida - apenas salvando mensagem sem processar fluxo`);
+        
+        // Registrar métrica de mensagem recebida
+        await Analytics.recordMetric({
+          botId,
+          type: 'message_received',
+          conversationId: conversation.id,
+          userPhone: conversation.user_phone
+        });
+
+        // Apenas marcar mensagem como processada e sair
+        await message.update({ 
+          processed: true,
+          processing_time: Date.now() - startTime 
+        });
+
+        // Emitir evento para operadores saberem que há nova mensagem
+        this.io.emit('operator_new_message', {
+          conversationId: conversation.id,
+          message: {
+            id: message.id,
+            content: message.content,
+            direction: message.direction,
+            timestamp: message.timestamp,
+            sender_phone: message.sender_phone
+          }
+        });
+
+        return;
+      }
+      
       // Verificar se o bot está ativo
       if (!this.activeBots.has(botId)) {
         await this.loadBot(botId);

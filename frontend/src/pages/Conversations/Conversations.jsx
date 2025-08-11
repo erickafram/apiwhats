@@ -70,6 +70,9 @@ const Conversations = () => {
   const [alertOpen, setAlertOpen] = useState(false)
   const [menuAnchor, setMenuAnchor] = useState(null)
   const [unattendedCount, setUnattendedCount] = useState(0)
+  const [messagesEndRef, setMessagesEndRef] = useState(null)
+  const [lastConversationCount, setLastConversationCount] = useState(0)
+  const [newConversationAlert, setNewConversationAlert] = useState(false)
 
   const loadConversations = async () => {
     try {
@@ -99,11 +102,27 @@ const Conversations = () => {
         }
       }
       const convs = response.data.conversations
+      const transferredConvs = convs.filter(conv => conv.status === 'transferred')
+      
+      // Detectar novas conversas
+      if (lastConversationCount > 0 && transferredConvs.length > lastConversationCount) {
+        setNewConversationAlert(true)
+        // Som de notificação (se o navegador permitir)
+        try {
+          const audio = new Audio('/notification.wav') // Som simples
+          audio.volume = 0.3
+          audio.play()
+        } catch (e) {
+          // Ignorar se não conseguir tocar o som
+        }
+      }
+      
+      setLastConversationCount(transferredConvs.length)
       setConversations(convs)
       
       // Contar conversas não atendidas (transferidas há mais de 5 minutos)
       const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
-      const unattended = convs.filter(conv => {
+      const unattended = transferredConvs.filter(conv => {
         const transferTime = new Date(conv.metadata?.transfer_timestamp || conv.updated_at)
         return transferTime < fiveMinutesAgo && !conv.metadata?.operator_assigned
       })
@@ -125,6 +144,13 @@ const Conversations = () => {
     try {
       const response = await conversationsAPI.getMessages(conversationId)
       setMessages(response.data.messages || [])
+      
+      // Rolar para baixo após carregar mensagens
+      setTimeout(() => {
+        if (messagesEndRef) {
+          messagesEndRef.scrollIntoView({ behavior: 'smooth' })
+        }
+      }, 100)
     } catch (error) {
       console.error('Erro ao carregar mensagens:', error)
     }
@@ -160,7 +186,14 @@ const Conversations = () => {
         message_type: 'text'
       })
       setNewMessage('')
-      loadMessages(selectedConversation.id)
+      await loadMessages(selectedConversation.id)
+      
+      // Rolar para baixo após enviar mensagem
+      setTimeout(() => {
+        if (messagesEndRef) {
+          messagesEndRef.scrollIntoView({ behavior: 'smooth' })
+        }
+      }, 200)
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error)
     } finally {
@@ -233,10 +266,24 @@ const Conversations = () => {
 
   useEffect(() => {
     loadConversations()
-    // Atualizar a cada 30 segundos
-    const interval = setInterval(loadConversations, 30000)
+    // Atualizar a cada 10 segundos para conversas, mas sem piscar
+    const interval = setInterval(() => {
+      if (!dialogOpen) { // Só atualiza se o chat não estiver aberto
+        loadConversations()
+      }
+    }, 10000)
     return () => clearInterval(interval)
-  }, [])
+  }, [dialogOpen])
+
+  // Auto-refresh para mensagens quando chat está aberto
+  useEffect(() => {
+    if (dialogOpen && selectedConversation) {
+      const messageInterval = setInterval(() => {
+        loadMessages(selectedConversation.id)
+      }, 3000) // Atualiza mensagens a cada 3 segundos
+      return () => clearInterval(messageInterval)
+    }
+  }, [dialogOpen, selectedConversation])
 
   if (loading) {
     return (
@@ -265,6 +312,29 @@ const Conversations = () => {
           }
         >
           🚨 {unattendedCount} conversa(s) aguardando atendimento há mais de 5 minutos!
+        </Alert>
+      </Snackbar>
+
+      {/* Alerta de nova conversa */}
+      <Snackbar
+        open={newConversationAlert}
+        onClose={() => setNewConversationAlert(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        autoHideDuration={6000}
+      >
+        <Alert 
+          severity="info" 
+          onClose={() => setNewConversationAlert(false)}
+          action={
+            <Button color="inherit" size="small" onClick={() => {
+              setNewConversationAlert(false)
+              loadConversations()
+            }}>
+              VER
+            </Button>
+          }
+        >
+          🔔 Nova conversa transferida para atendimento!
         </Alert>
       </Snackbar>
 
@@ -518,6 +588,8 @@ const Conversations = () => {
                     {index < messages.length - 1 && <Divider />}
                   </React.Fragment>
                 ))}
+                {/* Elemento para rolagem automática */}
+                <div ref={setMessagesEndRef} />
               </List>
             )}
           </Box>
