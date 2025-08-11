@@ -95,8 +95,8 @@ const Conversations = () => {
   const loadConversations = async () => {
     try {
       setLoading(true)
-      // Buscar conversas transferidas e também as completadas recentemente
-      const [transferredResponse, completedResponse] = await Promise.all([
+      // Buscar conversas transferidas, ativas (com operador) e completadas
+      const [transferredResponse, activeResponse, completedResponse] = await Promise.all([
         conversationsAPI.getAll({
           status: 'transferred',
           sort: 'priority',
@@ -104,10 +104,16 @@ const Conversations = () => {
           limit: 50
         }),
         conversationsAPI.getAll({
+          status: 'active',
+          sort: 'updated_at',
+          order: 'DESC',
+          limit: 50
+        }),
+        conversationsAPI.getAll({
           status: 'completed',
           sort: 'updated_at',
           order: 'DESC',
-          limit: 10
+          limit: 100 // Aumentar para mostrar mais conversas completadas
         })
       ])
       
@@ -115,12 +121,39 @@ const Conversations = () => {
         data: {
           conversations: [
             ...transferredResponse.data.conversations,
+            ...activeResponse.data.conversations.filter(conv => 
+              conv.metadata?.operator_assigned // Apenas conversas com operador
+            ),
             ...completedResponse.data.conversations
           ]
         }
       }
-      const convs = response.data.conversations
-      const transferredConvs = convs.filter(conv => conv.status === 'transferred')
+      // Remover duplicatas (caso uma conversa apareça em múltiplas consultas)
+      const uniqueConversations = response.data.conversations.reduce((acc, conv) => {
+        const existing = acc.find(c => c.id === conv.id)
+        if (!existing) {
+          acc.push(conv)
+        }
+        return acc
+      }, [])
+      
+      // Ordenar por prioridade e status: transferidas primeiro, depois ativas, depois completadas
+      const sortedConversations = uniqueConversations.sort((a, b) => {
+        // Prioridade por status
+        const statusPriority = { 'transferred': 3, 'active': 2, 'completed': 1 }
+        const statusDiff = (statusPriority[b.status] || 0) - (statusPriority[a.status] || 0)
+        
+        if (statusDiff !== 0) return statusDiff
+        
+        // Dentro do mesmo status, ordenar por prioridade e depois por atualização
+        if (a.priority !== b.priority) {
+          return (b.priority || 0) - (a.priority || 0)
+        }
+        
+        return new Date(b.updated_at) - new Date(a.updated_at)
+      })
+      
+      const transferredConvs = sortedConversations.filter(conv => conv.status === 'transferred')
       
       // Detectar novas conversas
       if (lastConversationCount > 0 && transferredConvs.length > lastConversationCount) {
@@ -136,7 +169,7 @@ const Conversations = () => {
       }
       
       setLastConversationCount(transferredConvs.length)
-      setConversations(convs)
+      setConversations(sortedConversations)
       
       // Mostrar alerta se há conversas não atendidas
       if (globalUnattendedCount > 0 && !alertOpen) {
@@ -417,10 +450,10 @@ const Conversations = () => {
         <Paper sx={{ p: 4, textAlign: 'center' }}>
           <Support sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
           <Typography variant="h6" color="text.secondary">
-            Nenhuma conversa aguardando atendimento
+            Nenhuma conversa disponível
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            As conversas transferidas pelos bots aparecerão aqui
+            Aqui aparecerão todas as conversas: transferidas, ativas com operador e finalizadas
           </Typography>
         </Paper>
       ) : (
