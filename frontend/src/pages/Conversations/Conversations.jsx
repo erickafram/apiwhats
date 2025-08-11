@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   Box,
   Typography,
@@ -70,12 +70,27 @@ const Conversations = () => {
   const [sending, setSending] = useState(false)
   const [alertOpen, setAlertOpen] = useState(false)
   const [menuAnchor, setMenuAnchor] = useState(null)
-  const [messagesEndRef, setMessagesEndRef] = useState(null)
+  const messagesEndRef = useRef(null)
+  const messagesContainerRef = useRef(null)
   const [lastConversationCount, setLastConversationCount] = useState(0)
   const [newConversationAlert, setNewConversationAlert] = useState(false)
+  const [lastMessageCount, setLastMessageCount] = useState(0)
 
   // Usar o hook global de conversas
   const { refreshConversations, transferredCount: globalTransferredCount, unattendedCount: globalUnattendedCount } = useConversations()
+
+  // Função para scroll automático
+  const scrollToBottom = (smooth = true) => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ 
+        behavior: smooth ? 'smooth' : 'auto',
+        block: 'end'
+      })
+    } else if (messagesContainerRef.current) {
+      const container = messagesContainerRef.current
+      container.scrollTop = container.scrollHeight
+    }
+  }
 
   const loadConversations = async () => {
     try {
@@ -137,17 +152,28 @@ const Conversations = () => {
     }
   }
 
-  const loadMessages = async (conversationId) => {
+  const loadMessages = async (conversationId, isInitialLoad = false) => {
     try {
       const response = await conversationsAPI.getMessages(conversationId)
-      setMessages(response.data.messages || [])
+      const newMessages = response.data.messages || []
+      
+      // Detectar se há novas mensagens
+      const hasNewMessages = newMessages.length > lastMessageCount
+      
+      setMessages(newMessages)
+      setLastMessageCount(newMessages.length)
       
       // Rolar para baixo após carregar mensagens
       setTimeout(() => {
-        if (messagesEndRef) {
-          messagesEndRef.scrollIntoView({ behavior: 'smooth' })
-        }
+        scrollToBottom(!isInitialLoad) // Scroll instantâneo no primeiro carregamento
       }, 100)
+      
+      // Se há novas mensagens e não é o carregamento inicial, fazer scroll suave
+      if (hasNewMessages && !isInitialLoad) {
+        setTimeout(() => {
+          scrollToBottom(true)
+        }, 200)
+      }
     } catch (error) {
       console.error('Erro ao carregar mensagens:', error)
     }
@@ -166,7 +192,8 @@ const Conversations = () => {
       })
       setSelectedConversation(conversation)
       setDialogOpen(true)
-      loadMessages(conversation.id)
+      setLastMessageCount(0) // Reset contador para novo chat
+      loadMessages(conversation.id, true) // true = carregamento inicial
       loadConversations() // Refresh list
     } catch (error) {
       console.error('Erro ao assumir conversa:', error)
@@ -187,9 +214,7 @@ const Conversations = () => {
       
       // Rolar para baixo após enviar mensagem
       setTimeout(() => {
-        if (messagesEndRef) {
-          messagesEndRef.scrollIntoView({ behavior: 'smooth' })
-        }
+        scrollToBottom(true)
       }, 200)
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error)
@@ -230,7 +255,8 @@ const Conversations = () => {
       })
       setSelectedConversation(conversation)
       setDialogOpen(true)
-      loadMessages(conversation.id)
+      setLastMessageCount(0) // Reset contador para chat reaberto
+      loadMessages(conversation.id, true) // true = carregamento inicial
       loadConversations()
     } catch (error) {
       console.error('Erro ao reabrir conversa:', error)
@@ -281,6 +307,15 @@ const Conversations = () => {
       return () => clearInterval(messageInterval)
     }
   }, [dialogOpen, selectedConversation])
+
+  // Scroll automático quando as mensagens mudarem
+  useEffect(() => {
+    if (messages.length > 0 && dialogOpen) {
+      setTimeout(() => {
+        scrollToBottom(true)
+      }, 100)
+    }
+  }, [messages.length, dialogOpen])
 
   if (loading) {
     return (
@@ -546,7 +581,10 @@ const Conversations = () => {
         </DialogTitle>
 
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-          <Box sx={{ flexGrow: 1, overflow: 'auto', mb: 2 }}>
+          <Box 
+            ref={messagesContainerRef}
+            sx={{ flexGrow: 1, overflow: 'auto', mb: 2 }}
+          >
             {messages.length === 0 ? (
               <Alert severity="info">Carregando histórico da conversa...</Alert>
             ) : (
@@ -586,7 +624,7 @@ const Conversations = () => {
                   </React.Fragment>
                 ))}
                 {/* Elemento para rolagem automática */}
-                <div ref={setMessagesEndRef} />
+                <div ref={messagesEndRef} />
               </List>
             )}
           </Box>
@@ -604,6 +642,10 @@ const Conversations = () => {
                   e.preventDefault()
                   sendMessage()
                 }
+              }}
+              onFocus={() => {
+                // Scroll suave quando o usuário focar no campo de texto
+                setTimeout(() => scrollToBottom(true), 100)
               }}
             />
             <IconButton
