@@ -186,9 +186,12 @@ class FlowProcessor {
 
   async processFixedResponseNode({ bot, flow, conversation, message, node }) {
     const config = node.data || {};
-    const responseMessage = config.message || 'Resposta automática';
+    let responseMessage = config.message || 'Resposta automática';
     const delay = config.delay || 1000;
     const typingIndicator = config.typing_indicator !== false;
+
+    // ✅ Interpolação de variáveis na mensagem
+    responseMessage = this.interpolateVariables(responseMessage, conversation);
 
     // Simular digitação se configurado
     if (typingIndicator && delay > 0) {
@@ -225,10 +228,15 @@ class FlowProcessor {
   // Alias para processFixedResponseNode - compatibilidade com fluxos antigos
   async processMessageNode({ bot, flow, conversation, message, node }) {
     // Adaptar estrutura do nó legacy 'message' para formato esperado
+    let messageContent = node.content || node.data?.content || node.data?.message || 'Resposta automática';
+    
+    // ✅ Interpolação de variáveis para nós do tipo 'message'
+    messageContent = this.interpolateVariables(messageContent, conversation);
+    
     const adaptedNode = {
       ...node,
       data: {
-        message: node.content || node.data?.content || node.data?.message || 'Resposta automática',
+        message: messageContent,
         delay: node.data?.delay || 1000,
         typing_indicator: node.data?.typing_indicator !== false
       }
@@ -344,51 +352,120 @@ class FlowProcessor {
 
   async processConditionNode({ bot, flow, conversation, message, node }) {
     const config = node.data || {};
-    const conditions = config.conditions || [];
+    let conditions = config.conditions || [];
+    
+    // ✅ CORREÇÃO: Suporte para condições diretas no nó (como no fluxo de passagens)
+    if (!conditions.length && node.conditions) {
+      conditions = node.conditions;
+    }
+    
     const operator = config.operator || 'AND';
     const fallbackPath = config.fallback_path;
 
-    let conditionMet = false;
+    console.log(`🔧 DEBUG processConditionNode: node.id=${node.id}, conditions:`, conditions);
 
     try {
-      // Avaliar condições
+      // ✅ NOVO: Processar condições com destinos específicos (fluxo de passagens)
+      for (const condition of conditions) {
+        if (condition.next && condition.variable && condition.operator) {
+          const variableValue = conversation.getVariable ? conversation.getVariable(condition.variable) : null;
+          const messageContent = message.content.trim();
+          
+          console.log(`🔧 Verificando condição: ${condition.variable}=${variableValue} ${condition.operator} ${condition.value}, mensagem="${messageContent}"`);
+          
+          let matches = false;
+          
+          // Avaliar condição específica
+          switch (condition.operator) {
+            case 'equals':
+              matches = (variableValue === condition.value) || (messageContent === condition.value);
+              break;
+            case 'contains':
+              matches = messageContent.toLowerCase().includes(condition.value.toLowerCase());
+              break;
+            case 'default':
+              // Usar como fallback se nenhuma outra condição for atendida
+              break;
+            default:
+              matches = this.evaluateCondition(condition, message, conversation);
+          }
+          
+          if (matches) {
+            console.log(`✅ Condição atendida, indo para: ${condition.next}`);
+            return {
+              success: true,
+              nextNodeId: condition.next,
+              completed: false,
+              conditionResult: true
+            };
+          }
+        }
+      }
+
+      // ✅ Usar condição default se disponível
+      const defaultCondition = conditions.find(c => c.operator === 'default');
+      if (defaultCondition && defaultCondition.next) {
+        console.log(`⚠️ Usando condição default, indo para: ${defaultCondition.next}`);
+        return {
+          success: true,
+          nextNodeId: defaultCondition.next,
+          completed: false,
+          conditionResult: false
+        };
+      }
+
+      // ✅ FALLBACK: Lógica original para condições simples
       const results = await Promise.all(
         conditions.map(condition => this.evaluateCondition(condition, message, conversation))
       );
 
-      // Aplicar operador lógico
+      let conditionMet = false;
       if (operator === 'AND') {
         conditionMet = results.every(result => result);
       } else if (operator === 'OR') {
         conditionMet = results.some(result => result);
       }
 
+      // Determinar próximo nó baseado na condição
+      const nextNodes = flow.getNextNodes(node.id);
+      let nextNodeId = null;
+
+      if (conditionMet && nextNodes.length > 0) {
+        nextNodeId = nextNodes[0].id;
+      } else if (!conditionMet && nextNodes.length > 1) {
+        nextNodeId = nextNodes[1].id;
+      } else if (fallbackPath) {
+        nextNodeId = fallbackPath;
+      }
+
+      return {
+        success: true,
+        nextNodeId,
+        completed: !nextNodeId,
+        conditionResult: conditionMet
+      };
+
     } catch (error) {
-      console.error('Erro ao avaliar condições:', error);
-      conditionMet = false;
+      console.error('❌ Erro ao avaliar condições:', error);
+      
+      // Usar default como fallback em caso de erro
+      const defaultCondition = conditions.find(c => c.operator === 'default');
+      if (defaultCondition && defaultCondition.next) {
+        return {
+          success: true,
+          nextNodeId: defaultCondition.next,
+          completed: false,
+          conditionResult: false
+        };
+      }
+      
+      return {
+        success: false,
+        nextNodeId: null,
+        completed: true,
+        error: error.message
+      };
     }
-
-    // Determinar próximo nó baseado na condição
-    const nextNodes = flow.getNextNodes(node.id);
-    let nextNodeId = null;
-
-    if (conditionMet && nextNodes.length > 0) {
-      // Usar primeira saída (true path)
-      nextNodeId = nextNodes[0].id;
-    } else if (!conditionMet && nextNodes.length > 1) {
-      // Usar segunda saída (false path)
-      nextNodeId = nextNodes[1].id;
-    } else if (fallbackPath) {
-      // Usar caminho de fallback
-      nextNodeId = fallbackPath;
-    }
-
-    return {
-      success: true,
-      nextNodeId,
-      completed: !nextNodeId,
-      conditionResult: conditionMet
-    };
   }
 
   async evaluateCondition(condition, message, conversation) {
@@ -439,11 +516,14 @@ class FlowProcessor {
 
   async processInputCaptureNode({ bot, flow, conversation, message, node }) {
     const config = node.data || {};
-    const variableName = config.variable_name;
+    // ✅ CORREÇÃO: Suporte para ambos os formatos de variável
+    const variableName = config.variable_name || node.variable || config.variable;
     const inputType = config.input_type || 'text';
     const validation = config.validation || {};
     const retryMessage = config.retry_message || 'Por favor, digite uma resposta válida.';
     const maxRetries = config.max_retries || 3;
+
+    console.log(`🔧 DEBUG processInputCaptureNode: nodeId=${node.id}, variableName=${variableName}, messageContent="${message.content}"`);
 
     // Validar entrada
     const isValid = this.validateInput(message.content, inputType, validation);
@@ -896,6 +976,17 @@ class FlowProcessor {
       console.error('Erro ao enviar mensagem:', error);
       throw error;
     }
+  }
+
+  // ✅ NOVA FUNÇÃO: Interpolação de variáveis em mensagens
+  interpolateVariables(message, conversation) {
+    if (!message || typeof message !== 'string') return message;
+    
+    // Padrão para variáveis: ${nome_variavel}
+    return message.replace(/\$\{([^}]+)\}/g, (match, variableName) => {
+      const value = conversation.getVariable ? conversation.getVariable(variableName.trim()) : null;
+      return value !== null && value !== undefined ? value : match;
+    });
   }
 
   sleep(ms) {
