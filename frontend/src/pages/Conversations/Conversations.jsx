@@ -98,13 +98,19 @@ const Conversations = () => {
   const loadConversations = async () => {
     try {
       setLoading(true)
-      // Buscar conversas transferidas e também as completadas recentemente
-      const [transferredResponse, completedResponse] = await Promise.all([
+      // Buscar conversas transferidas, ativas sem mensagens do operador, e completadas recentemente
+      const [transferredResponse, activeResponse, completedResponse] = await Promise.all([
         conversationsAPI.getAll({
           status: 'transferred',
           sort: 'priority',
           order: 'DESC',
           limit: 50
+        }),
+        conversationsAPI.getAll({
+          status: 'active',
+          sort: 'priority', 
+          order: 'DESC',
+          limit: 20
         }),
         conversationsAPI.getAll({
           status: 'completed',
@@ -114,10 +120,17 @@ const Conversations = () => {
         })
       ])
       
+      // Filtrar conversas ativas que ainda precisam de atenção do operador
+      const activeConversations = activeResponse.data.conversations.filter(conv => {
+        // Incluir apenas conversas ativas que não tiveram resposta do operador
+        return !conv.metadata?.first_operator_response || conv.metadata?.operator_viewing
+      })
+
       const response = {
         data: {
           conversations: [
             ...transferredResponse.data.conversations,
+            ...activeConversations,
             ...completedResponse.data.conversations
           ]
         }
@@ -184,12 +197,12 @@ const Conversations = () => {
 
   const takeOverConversation = async (conversation) => {
     try {
+      // Não mudar o status ainda, apenas marcar como visualizada
       await conversationsAPI.update(conversation.id, {
-        status: 'active',
         metadata: {
           ...conversation.metadata,
-          operator_assigned: true,
-          operator_assigned_at: new Date(),
+          operator_viewing: true,
+          operator_viewing_at: new Date(),
           awaiting_human: false
         }
       })
@@ -208,6 +221,25 @@ const Conversations = () => {
     
     try {
       setSending(true)
+      
+      // Se é a primeira mensagem do operador, mudar status para active
+      if (selectedConversation.status === 'transferred') {
+        await conversationsAPI.update(selectedConversation.id, {
+          status: 'active',
+          metadata: {
+            ...selectedConversation.metadata,
+            operator_assigned: true,
+            operator_assigned_at: new Date(),
+            first_operator_response: new Date()
+          }
+        })
+        // Atualizar o estado local
+        setSelectedConversation({
+          ...selectedConversation,
+          status: 'active'
+        })
+      }
+      
       await conversationsAPI.sendMessage(selectedConversation.id, {
         content: newMessage,
         message_type: 'text'
@@ -256,6 +288,39 @@ const Conversations = () => {
       loadConversations()
     } catch (error) {
       console.error('Erro ao encerrar conversa:', error)
+    }
+  }
+
+  const closeConversationDialog = async () => {
+    if (!selectedConversation) {
+      setDialogOpen(false)
+      return
+    }
+
+    try {
+      // Se a conversa ainda está como transferred (operador não enviou mensagem)
+      // devolver para a fila
+      if (selectedConversation.status === 'transferred') {
+        await conversationsAPI.update(selectedConversation.id, {
+          metadata: {
+            ...selectedConversation.metadata,
+            operator_viewing: false,
+            operator_viewing_at: null,
+            awaiting_human: true
+          }
+        })
+      }
+      
+      setDialogOpen(false)
+      setSelectedConversation(null)
+      setMessages([])
+      setNewMessage('')
+      loadConversations()
+    } catch (error) {
+      console.error('Erro ao fechar conversa:', error)
+      // Mesmo com erro, fechar o dialog
+      setDialogOpen(false)
+      setSelectedConversation(null)
     }
   }
 
@@ -512,9 +577,19 @@ const Conversations = () => {
                       startIcon={<Chat />}
                       onClick={() => takeOverConversation(conversation)}
                       fullWidth
-                      color={conversation.metadata?.operator_assigned ? 'secondary' : 'primary'}
+                      color={conversation.metadata?.operator_viewing ? 'secondary' : 'primary'}
                     >
-                      {conversation.metadata?.operator_assigned ? 'Continuar Conversa' : 'Assumir Conversa'}
+                      {conversation.metadata?.operator_viewing ? 'Continuar Conversa' : 'Visualizar Conversa'}
+                    </Button>
+                  ) : conversation.status === 'active' ? (
+                    <Button
+                      variant="contained"
+                      startIcon={<Chat />}
+                      onClick={() => takeOverConversation(conversation)}
+                      fullWidth
+                      color="warning"
+                    >
+                      {conversation.metadata?.first_operator_response ? 'Continuar Conversa' : 'Assumir Conversa'}
                     </Button>
                   ) : conversation.status === 'completed' ? (
                     <Button
@@ -546,7 +621,7 @@ const Conversations = () => {
       {/* Dialog para chat */}
       <Dialog
         open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
+        onClose={closeConversationDialog}
         maxWidth="md"
         fullWidth
         PaperProps={{ sx: { height: '80vh' } }}
@@ -687,7 +762,7 @@ const Conversations = () => {
 
         <DialogActions>
           <Button 
-            onClick={() => setDialogOpen(false)}
+            onClick={closeConversationDialog}
             color="inherit"
           >
             Fechar Chat
