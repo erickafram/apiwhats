@@ -4,9 +4,9 @@ const fs = require('fs');
 // Configuração do banco
 const dbConfig = {
   host: 'localhost',
-  user: 'root',
-  password: '',
-  database: 'whatsapp_chatbot'
+  user: 'chatbot',
+  password: '@@2025@@Ekb',
+  database: 'chatbot'
 };
 
 async function atualizarFluxoComBotoes() {
