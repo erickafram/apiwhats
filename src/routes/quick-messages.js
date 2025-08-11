@@ -2,28 +2,43 @@ const express = require('express');
 const router = express.Router();
 const { QuickMessage } = require('../models');
 const auth = require('../middleware/auth');
-const { body, param, query, validationResult } = require('express-validator');
 
-// Middleware de validação de erros
-const handleValidationErrors = (req, res, next) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(422).json({
-      error: 'Dados inválidos',
-      errors: errors.array()
-    });
+// Função simples de validação
+const validateQuickMessage = (data, isUpdate = false) => {
+  const errors = [];
+  
+  if (!isUpdate || data.title !== undefined) {
+    if (!data.title || typeof data.title !== 'string' || data.title.trim().length < 2 || data.title.length > 100) {
+      errors.push({ field: 'title', message: 'Título deve ter entre 2 e 100 caracteres' });
+    }
   }
-  next();
+  
+  if (!isUpdate || data.content !== undefined) {
+    if (!data.content || typeof data.content !== 'string' || data.content.trim().length < 1 || data.content.length > 4000) {
+      errors.push({ field: 'content', message: 'Conteúdo deve ter entre 1 e 4000 caracteres' });
+    }
+  }
+  
+  if (data.category !== undefined) {
+    const validCategories = ['geral', 'saudacoes', 'despedidas', 'informacoes', 'suporte', 'vendas', 'agendamento', 'pagamento', 'outros'];
+    if (!validCategories.includes(data.category)) {
+      errors.push({ field: 'category', message: 'Categoria inválida' });
+    }
+  }
+  
+  if (data.tags !== undefined && !Array.isArray(data.tags)) {
+    errors.push({ field: 'tags', message: 'Tags deve ser um array' });
+  }
+  
+  if (data.sort_order !== undefined && (isNaN(data.sort_order) || data.sort_order < 0)) {
+    errors.push({ field: 'sort_order', message: 'Ordem deve ser um número positivo' });
+  }
+  
+  return errors;
 };
 
 // GET /api/quick-messages - Listar mensagens prontas do usuário
-router.get('/', auth, [
-  query('category').optional().isIn(['geral', 'saudacoes', 'despedidas', 'informacoes', 'suporte', 'vendas', 'agendamento', 'pagamento', 'outros']),
-  query('search').optional().isLength({ min: 1, max: 100 }),
-  query('is_active').optional().isBoolean(),
-  query('limit').optional().isInt({ min: 1, max: 100 }),
-  query('offset').optional().isInt({ min: 0 })
-], handleValidationErrors, async (req, res) => {
+router.get('/', auth, async (req, res) => {
   try {
     const { category, search, is_active, limit = 50, offset = 0 } = req.query;
     
@@ -90,13 +105,18 @@ router.get('/categories', auth, async (req, res) => {
 });
 
 // GET /api/quick-messages/:id - Obter mensagem pronta específica
-router.get('/:id', auth, [
-  param('id').isInt({ min: 1 })
-], handleValidationErrors, async (req, res) => {
+router.get('/:id', auth, async (req, res) => {
   try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id) || id < 1) {
+      return res.status(400).json({
+        error: 'ID inválido'
+      });
+    }
+
     const quickMessage = await QuickMessage.findOne({
       where: {
-        id: req.params.id,
+        id: id,
         user_id: req.user.id
       }
     });
@@ -121,15 +141,18 @@ router.get('/:id', auth, [
 });
 
 // POST /api/quick-messages - Criar nova mensagem pronta
-router.post('/', auth, [
-  body('title').notEmpty().isLength({ min: 2, max: 100 }).withMessage('Título deve ter entre 2 e 100 caracteres'),
-  body('content').notEmpty().isLength({ min: 1, max: 4000 }).withMessage('Conteúdo deve ter entre 1 e 4000 caracteres'),
-  body('category').optional().isIn(['geral', 'saudacoes', 'despedidas', 'informacoes', 'suporte', 'vendas', 'agendamento', 'pagamento', 'outros']),
-  body('tags').optional().isArray(),
-  body('sort_order').optional().isInt({ min: 0 })
-], handleValidationErrors, async (req, res) => {
+router.post('/', auth, async (req, res) => {
   try {
     const { title, content, category = 'geral', tags = [], sort_order = 0 } = req.body;
+    
+    // Validar dados
+    const validationErrors = validateQuickMessage(req.body);
+    if (validationErrors.length > 0) {
+      return res.status(422).json({
+        error: 'Dados inválidos',
+        errors: validationErrors
+      });
+    }
 
     const quickMessage = await QuickMessage.create({
       user_id: req.user.id,
@@ -155,19 +178,27 @@ router.post('/', auth, [
 });
 
 // PUT /api/quick-messages/:id - Atualizar mensagem pronta
-router.put('/:id', auth, [
-  param('id').isInt({ min: 1 }),
-  body('title').optional().isLength({ min: 2, max: 100 }),
-  body('content').optional().isLength({ min: 1, max: 4000 }),
-  body('category').optional().isIn(['geral', 'saudacoes', 'despedidas', 'informacoes', 'suporte', 'vendas', 'agendamento', 'pagamento', 'outros']),
-  body('tags').optional().isArray(),
-  body('is_active').optional().isBoolean(),
-  body('sort_order').optional().isInt({ min: 0 })
-], handleValidationErrors, async (req, res) => {
+router.put('/:id', auth, async (req, res) => {
   try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id) || id < 1) {
+      return res.status(400).json({
+        error: 'ID inválido'
+      });
+    }
+
+    // Validar dados
+    const validationErrors = validateQuickMessage(req.body, true);
+    if (validationErrors.length > 0) {
+      return res.status(422).json({
+        error: 'Dados inválidos',
+        errors: validationErrors
+      });
+    }
+
     const quickMessage = await QuickMessage.findOne({
       where: {
-        id: req.params.id,
+        id: id,
         user_id: req.user.id
       }
     });
@@ -205,13 +236,18 @@ router.put('/:id', auth, [
 });
 
 // DELETE /api/quick-messages/:id - Deletar mensagem pronta
-router.delete('/:id', auth, [
-  param('id').isInt({ min: 1 })
-], handleValidationErrors, async (req, res) => {
+router.delete('/:id', auth, async (req, res) => {
   try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id) || id < 1) {
+      return res.status(400).json({
+        error: 'ID inválido'
+      });
+    }
+
     const quickMessage = await QuickMessage.findOne({
       where: {
-        id: req.params.id,
+        id: id,
         user_id: req.user.id
       }
     });
@@ -238,13 +274,18 @@ router.delete('/:id', auth, [
 });
 
 // POST /api/quick-messages/:id/use - Marcar mensagem como usada (incrementar contador)
-router.post('/:id/use', auth, [
-  param('id').isInt({ min: 1 })
-], handleValidationErrors, async (req, res) => {
+router.post('/:id/use', auth, async (req, res) => {
   try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id) || id < 1) {
+      return res.status(400).json({
+        error: 'ID inválido'
+      });
+    }
+
     const quickMessage = await QuickMessage.findOne({
       where: {
-        id: req.params.id,
+        id: id,
         user_id: req.user.id,
         is_active: true
       }
