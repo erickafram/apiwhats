@@ -153,10 +153,10 @@ class FlowProcessor {
 
   async processStartNode({ bot, flow, conversation, message, node }) {
     const config = node.data || {};
-    const startMessage = config.message || 'Olá! Como posso ajudá-lo?';
+    const startMessage = config.message || node.content;
     
-    // Enviar mensagem de início se configurada
-    if (startMessage && !conversation.current_node) {
+    // ✅ CORREÇÃO: Só enviar mensagem se houver conteúdo configurado
+    if (startMessage && startMessage.trim()) {
       await this.sendMessage(bot.id, conversation.user_phone, startMessage);
       
       await Message.create({
@@ -176,6 +176,8 @@ class FlowProcessor {
     // Buscar próximo nó
     const nextNodes = flow.getNextNodes(node.id);
     const nextNodeId = nextNodes.length > 0 ? nextNodes[0].id : null;
+
+    console.log(`🚀 DEBUG processStartNode: nodeId=${node.id}, nextNodeId=${nextNodeId}`);
 
     return {
       success: true,
