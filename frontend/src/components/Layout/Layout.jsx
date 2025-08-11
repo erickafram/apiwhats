@@ -28,6 +28,7 @@ import { useAuth } from '../../hooks/useAuth.jsx'
 import { useConversations } from '../../hooks/useConversations.jsx'
 import Sidebar from './Sidebar'
 import { useNavigate } from 'react-router-dom'
+import { Alert, Snackbar, Slide } from '@mui/material'
 
 const DRAWER_WIDTH = 280
 
@@ -35,7 +36,7 @@ const Layout = ({ children }) => {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const { user, logout } = useAuth()
-  const { transferredCount, unattendedCount } = useConversations()
+  const { transferredCount, unattendedCount, newConversationAlert } = useConversations()
   const navigate = useNavigate()
 
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -227,6 +228,31 @@ const Layout = ({ children }) => {
           {children}
         </Box>
       </Box>
+
+      {/* ✅ NOVO: Alerta global de nova conversa */}
+      <Snackbar
+        open={newConversationAlert}
+        autoHideDuration={5000}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        TransitionComponent={Slide}
+        TransitionProps={{ direction: 'down' }}
+      >
+        <Alert 
+          severity="info" 
+          variant="filled"
+          onClick={() => navigate('/conversations')}
+          sx={{ 
+            cursor: 'pointer',
+            minWidth: 300,
+            '&:hover': {
+              transform: 'scale(1.02)',
+              transition: 'transform 0.2s'
+            }
+          }}
+        >
+          🔔 Nova atividade! Clique para ver conversas aguardando atendimento
+        </Alert>
+      </Snackbar>
     </Box>
   )
 }

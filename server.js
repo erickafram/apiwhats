@@ -17,6 +17,9 @@ const io = socketIo(server, {
   }
 });
 
+// ✅ NOVO: Tornar io acessível globalmente
+global.io = io;
+
 // Middleware de segurança
 app.use(helmet());
 app.use(cors({

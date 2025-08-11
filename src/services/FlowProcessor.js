@@ -761,6 +761,18 @@ class FlowProcessor {
       
       console.log(`✅ Conversa ID ${conversation.id} transferida para operador`);
       
+      // ✅ NOVA: Emitir evento de conversa transferida para operadores
+      if (global.io) {
+        global.io.emit('conversation_transferred', {
+          conversation: conversation,
+          timestamp: new Date(),
+          reason: action?.reason || 'Solicitação do cliente',
+          type: 'transfer'
+        });
+        
+        console.log(`🔔 Conversa transferida - Emitindo notificação: ${conversation.id}`);
+      }
+      
       // Retornar sem próximo nó - operador assumirá daqui
       return {
         success: true,

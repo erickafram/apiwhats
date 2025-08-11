@@ -446,7 +446,15 @@ class UltraMsgService {
           status: 'active',
           last_activity_at: new Date(),
         });
-        this.io.emit('new_conversation', conversation);
+        
+        // ✅ NOVA: Emitir evento de conversa criada
+        this.io.emit('new_conversation', {
+          conversation: conversation,
+          timestamp: new Date(),
+          type: 'new'
+        });
+        
+        console.log(`🔔 Nova conversa criada - Emitindo notificação: ${conversation.id}`);
       } else {
         await conversation.update({ last_activity_at: new Date() });
       }
