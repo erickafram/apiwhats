@@ -380,6 +380,12 @@ class UltraMsgService {
     try {
       console.log('📨 Processando mensagem recebida via UltraMsg:', JSON.stringify(data, null, 2));
 
+      // ✅ Filtrar eventos que não são mensagens recebidas
+      if (data.event_type !== 'message_received') {
+        console.log(`🚫 Ignorando evento tipo: ${data.event_type} (não é message_received)`);
+        return;
+      }
+
       // Verificar se é uma mensagem válida
       if (!data.data || !data.data.from || !data.data.body) {
         console.log('⚠️ Mensagem inválida ou incompleta');
@@ -387,6 +393,12 @@ class UltraMsgService {
       }
 
       const messageData = data.data;
+
+      // ✅ FILTRO CRÍTICO: Ignorar mensagens enviadas pelo próprio bot
+      if (messageData.fromMe === true || messageData.self === true) {
+        console.log('🚫 Ignorando mensagem enviada pelo próprio bot (fromMe=true)');
+        return;
+      }
       const userPhone = this.cleanPhoneNumber(messageData.from);
       const messageContent = messageData.body;
       const messageType = messageData.type || 'text';
