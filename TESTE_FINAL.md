@@ -1,65 +1,56 @@
 # 🧪 Teste Final - Sistema de Fluxo Corrigido
 
 ## 🔧 Última Correção Aplicada
-**Problema**: O sistema continuava em nós antigos quando keywords de reinício eram enviadas.
-**Solução**: Agora keywords sempre reiniciam o fluxo do início.
+**Problema**: O sistema parava no nó `start` e não continuava automaticamente para o nó `welcome`.
+**Solução**: Adicionado loop para processar automaticamente nós que não esperam input do usuário.
+
+## ✅ Correções Implementadas
+
+### 🚀 **CRÍTICA: Continuação Automática de Nós**
+```javascript
+// Processar automaticamente nós: start, message, fixed_response, action, ai_response
+while (result.nextNodeId && autoProcessTypes.includes(result.nodeType)) {
+  console.log(`🔄 Continuando automaticamente para nó: ${result.nextNodeId}`);
+  // Processa o próximo nó sem esperar nova mensagem do usuário
+}
+```
+
+### 📋 Outras Correções
+1. **Filtros UltraMsg**: Ignorar mensagens `fromMe` e eventos não relevantes
+2. **Condições Avançadas**: Suporte para condições com destinos específicos  
+3. **Variáveis de Input**: Múltiplos formatos suportados
+4. **Interpolação**: Variáveis em mensagens (${variavel})
 
 ## 📋 Comandos para Aplicar
 
-### 1. Reiniciar Aplicação
+### 1. Aplicar no Servidor
 ```bash
-pm2 restart chatbot-whats-api
-```
+# Fazer pull das alterações
+git pull origin main
 
-### 2. Verificar Status
-```bash
-pm2 status
-pm2 logs chatbot-whats-api --lines 20
+# Reiniciar PM2
+pm2 restart chatbot-whats-api
 ```
 
 ## 🧪 Sequência de Teste
 
-### Teste 1: Reinício de Fluxo
-1. **Envie**: "Olá" (ou "oi", "menu", etc.)
-2. **Deve receber**: Menu de passagens completo
-3. **Logs devem mostrar**: `🔄 Reiniciando fluxo devido a keyword`
+### Teste 1: Fluxo Completo Automático ✨
+1. **Envie**: "Olá" 
+2. **Deve receber**: Menu completo de passagens **AUTOMATICAMENTE**
+3. **Logs devem mostrar**: `🔄 Continuando automaticamente para nó: welcome`
 
-### Teste 2: Fluxo Completo
+### Teste 2: Navegação por Opções
 1. **Envie**: "1" (Comprar Passagem)
 2. **Deve receber**: Pedido da cidade de origem
 3. **Envie**: "São Paulo"
 4. **Deve receber**: Pedido da cidade de destino
-5. **Envie**: "Rio de Janeiro"
-6. **Deve receber**: Pedido da data
-7. **Continue o fluxo...**
 
-### Teste 3: Reinício Durante Fluxo
-1. **Durante qualquer passo**, envie: "menu" ou "oi"
-2. **Deve**: Reiniciar e mostrar o menu principal
+### Teste 3: Reinício de Fluxo
+1. A qualquer momento, **envie**: "menu" ou "olá"
+2. **Deve receber**: Menu principal novamente
 
-## ✅ Logs Esperados (Corretos)
+## 🎯 **Esta É A Correção Final!**
 
-```
-📨 Webhook UltraMsg recebido: message_received
-✅ Fluxo encontrado por keyword: Sistema de Passagens de Ônibus
-🔄 Reiniciando fluxo devido a keyword: Sistema de Passagens de Ônibus
-🔧 DEBUG processMessageNode: Enviando menu principal
-📤 Enviando mensagem via UltraMsg
-```
+Agora o sistema deve funcionar perfeitamente com o fluxo passando automaticamente de `start` → `welcome` → exibindo o menu completo.
 
-## 🚫 Logs que NÃO devem aparecer
-
-```
-🚫 Ignorando evento tipo: message_create
-🔧 DEBUG processInputCaptureNode: variableName=undefined
-```
-
-## 🎯 Resultado Esperado
-
-- ✅ Menu aparece imediatamente após "Olá"
-- ✅ Opções funcionam corretamente (1, 2, 3, etc.)
-- ✅ Variáveis são capturadas e exibidas
-- ✅ Reinício funciona a qualquer momento
-- ✅ Sem loops ou mensagens duplicadas
-
-**Status**: 🧪 Pronto para teste final 
+**Status**: 🟢 **PRONTO PARA TESTE** 

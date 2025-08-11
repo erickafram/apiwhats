@@ -56,8 +56,8 @@ class FlowProcessor {
         currentNodeId = startNode.id;
       }
 
-      // Processar nó atual
-      const result = await this.processNode({
+      // Processar nó atual e continuar automaticamente se necessário
+      let result = await this.processNode({
         bot,
         flow,
         conversation,
@@ -66,7 +66,34 @@ class FlowProcessor {
         aiService
       });
 
-      // Atualizar conversa com próximo nó
+      // ✅ CORREÇÃO: Continuar automaticamente para nós que não esperam input do usuário
+      const autoProcessTypes = ['start', 'message', 'fixed_response', 'action', 'ai_response'];
+      
+      while (result.nextNodeId && autoProcessTypes.includes(result.nodeType)) {
+        console.log(`🔄 Continuando automaticamente para nó: ${result.nextNodeId}`);
+        
+        // Atualizar conversa com próximo nó
+        await conversation.update({
+          current_flow_id: flow.id,
+          current_node: result.nextNodeId
+        });
+        
+        conversation.addToFlowHistory(currentNodeId, result.nodeType);
+        await conversation.save();
+        
+        // Processar próximo nó automaticamente
+        currentNodeId = result.nextNodeId;
+        result = await this.processNode({
+          bot,
+          flow,
+          conversation,
+          message,
+          nodeId: currentNodeId,
+          aiService
+        });
+      }
+
+      // Atualizar conversa com próximo nó final
       if (result.nextNodeId) {
         await conversation.update({
           current_flow_id: flow.id,
