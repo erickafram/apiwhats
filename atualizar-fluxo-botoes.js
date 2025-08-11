@@ -14,6 +14,17 @@ async function atualizarFluxoComBotoes() {
     // Ler o arquivo JSON do fluxo com botões
     const fluxoData = JSON.parse(fs.readFileSync('fluxo-passagens-onibus-com-botoes.json', 'utf8'));
     
+    console.log('🔍 Verificando dados do fluxo:');
+    console.log('- Nome:', fluxoData.name);
+    console.log('- Descrição:', fluxoData.description);
+    console.log('- Versão:', fluxoData.version);
+    console.log('- Ativo:', fluxoData.is_active);
+    console.log('- Padrão:', fluxoData.is_default);
+    console.log('- Priority:', fluxoData.priority);
+    console.log('- Keywords:', fluxoData.trigger_keywords);
+    console.log('- Flow Data existe:', !!fluxoData.flow_data);
+    console.log('- Statistics existe:', !!fluxoData.statistics);
+    
     // Conectar ao banco
     const connection = await mysql.createConnection(dbConfig);
     console.log('✅ Conectado ao banco de dados');
@@ -55,16 +66,16 @@ async function atualizarFluxoComBotoes() {
 
     const values = [
       1, // bot_id
-      fluxoData.name,
-      fluxoData.description,
-      JSON.stringify(fluxoData.flow_data),
-      fluxoData.version,
-      fluxoData.is_active ? 1 : 0,
-      fluxoData.is_default ? 1 : 0,
-      JSON.stringify(fluxoData.trigger_keywords),
-      JSON.stringify(fluxoData.trigger_conditions),
-      fluxoData.priority,
-      JSON.stringify(fluxoData.statistics)
+      fluxoData.name || 'Sistema de Passagens de Ônibus - Com Botões Interativos',
+      fluxoData.description || 'Fluxo com botões interativos para passagens de ônibus',
+      JSON.stringify(fluxoData.flow_data || {}),
+      fluxoData.version || '3.0.0',
+      fluxoData.is_active !== false ? 1 : 0,
+      fluxoData.is_default !== false ? 1 : 0,
+      JSON.stringify(fluxoData.trigger_keywords || ["oi", "olá", "menu", "passagem", "onibus", "viagem", "start", "começar", "iniciar"]),
+      JSON.stringify(fluxoData.trigger_conditions || {}),
+      fluxoData.priority || 200,
+      JSON.stringify(fluxoData.statistics || { total_executions: 0, successful_completions: 0, average_completion_time: 0, last_execution: null })
     ];
 
     const [result] = await connection.execute(insertQuery, values);
