@@ -305,12 +305,12 @@ const Conversations = () => {
 
   useEffect(() => {
     loadConversations()
-    // Atualizar a cada 10 segundos para conversas, mas sem piscar
+    // Atualizar a cada 30 segundos para conversas (menos frequente para não incomodar)
     const interval = setInterval(() => {
       if (!dialogOpen) { // Só atualiza se o chat não estiver aberto
         loadConversations()
       }
-    }, 10000)
+    }, 30000) // Aumentado para 30 segundos
     return () => clearInterval(interval)
   }, [dialogOpen])
 

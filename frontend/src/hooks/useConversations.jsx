@@ -45,7 +45,9 @@ export const ConversationsProvider = ({ children }) => {
   // ✅ NOVA: Configurar WebSocket listeners
   useEffect(() => {
     // Conectar ao WebSocket
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+    const apiUrl = window.location.hostname === 'localhost' 
+      ? 'http://localhost:5000' 
+      : 'https://chatbotwhats.online'
     const socketConnection = io(apiUrl)
     setSocket(socketConnection)
 

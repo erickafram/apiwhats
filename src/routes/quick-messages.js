@@ -90,7 +90,19 @@ router.get('/', auth, async (req, res) => {
 // GET /api/quick-messages/categories - Listar categorias disponíveis
 router.get('/categories', auth, async (req, res) => {
   try {
-    const categories = QuickMessage.getCategories();
+    // Definir categorias diretamente para evitar problemas com métodos estáticos
+    const categories = [
+      { value: 'geral', label: 'Geral' },
+      { value: 'saudacoes', label: 'Saudações' },
+      { value: 'despedidas', label: 'Despedidas' },
+      { value: 'informacoes', label: 'Informações' },
+      { value: 'suporte', label: 'Suporte' },
+      { value: 'vendas', label: 'Vendas' },
+      { value: 'agendamento', label: 'Agendamento' },
+      { value: 'pagamento', label: 'Pagamento' },
+      { value: 'outros', label: 'Outros' }
+    ];
+    
     res.json({
       success: true,
       data: { categories }
