@@ -61,6 +61,15 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
       defaultValue: []
     },
+    assigned_operator_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'users',
+        key: 'id'
+      },
+      comment: 'ID do operador responsável por esta conversa'
+    },
     metadata: {
       type: DataTypes.JSON,
       allowNull: true,
@@ -176,6 +185,11 @@ module.exports = (sequelize, DataTypes) => {
     Conversation.hasMany(models.Message, {
       foreignKey: 'conversation_id',
       as: 'messages'
+    });
+
+    Conversation.belongsTo(models.User, {
+      foreignKey: 'assigned_operator_id',
+      as: 'assigned_operator'
     });
   };
 

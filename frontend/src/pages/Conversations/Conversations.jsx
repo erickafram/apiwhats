@@ -214,15 +214,9 @@ const Conversations = () => {
 
   const takeOverConversation = async (conversation) => {
     try {
-      await conversationsAPI.update(conversation.id, {
-        status: 'active',
-        metadata: {
-          ...conversation.metadata,
-          operator_assigned: true,
-          operator_assigned_at: new Date(),
-          awaiting_human: false
-        }
-      })
+      // Usar nova rota de atribuição de operador
+      await conversationsAPI.assignOperator(conversation.id)
+      
       setSelectedConversation(conversation)
       setDialogOpen(true)
       setLastMessageCount(0) // Reset contador para novo chat
@@ -230,6 +224,25 @@ const Conversations = () => {
       loadConversations() // Refresh list
     } catch (error) {
       console.error('Erro ao assumir conversa:', error)
+      // Fallback para método antigo se a nova API não existir
+      try {
+        await conversationsAPI.update(conversation.id, {
+          status: 'active',
+          metadata: {
+            ...conversation.metadata,
+            operator_assigned: true,
+            operator_assigned_at: new Date(),
+            awaiting_human: false
+          }
+        })
+        setSelectedConversation(conversation)
+        setDialogOpen(true)
+        setLastMessageCount(0)
+        loadMessages(conversation.id, true)
+        loadConversations()
+      } catch (fallbackError) {
+        console.error('Erro no fallback:', fallbackError)
+      }
     }
   }
 
@@ -499,6 +512,12 @@ const Conversations = () => {
                     <strong>Bot:</strong> {conversation.bot?.name || 'N/A'}
                   </Typography>
 
+                  {conversation.assigned_operator && (
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                      <strong>Operador:</strong> {conversation.assigned_operator.operator_name || conversation.assigned_operator.name}
+                    </Typography>
+                  )}
+
                   <Typography variant="body2" color="text.secondary" gutterBottom>
                     <strong>Transferido em:</strong><br />
                     {formatTimestamp(conversation.metadata?.transfer_timestamp || conversation.updated_at)}
@@ -529,9 +548,9 @@ const Conversations = () => {
                       startIcon={<Chat />}
                       onClick={() => takeOverConversation(conversation)}
                       fullWidth
-                      color={conversation.metadata?.operator_assigned ? 'secondary' : 'primary'}
+                      color={conversation.assigned_operator ? 'secondary' : 'primary'}
                     >
-                      {conversation.metadata?.operator_assigned ? 'Continuar Conversa' : 'Assumir Conversa'}
+                      {conversation.assigned_operator ? 'Conversa Atribuída' : 'Assumir Conversa'}
                     </Button>
                   ) : conversation.status === 'completed' ? (
                     <Button

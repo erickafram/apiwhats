@@ -138,6 +138,16 @@ export const conversationsAPI = {
   getMessages: (id, params = {}) => api.get(`/conversations/${id}/messages`, { params }),
   sendMessage: (id, data) => api.post(`/conversations/${id}/send-message`, data),
   update: (id, data) => api.put(`/conversations/${id}`, data),
+  assignOperator: (id, operatorId = null) => api.post(`/conversations/${id}/assign-operator`, { operator_id: operatorId }),
+}
+
+export const operatorsAPI = {
+  getAll: (params = {}) => api.get('/operators', { params }),
+  getById: (id) => api.get(`/operators/${id}`),
+  create: (data) => api.post('/operators', data),
+  update: (id, data) => api.put(`/operators/${id}`, data),
+  delete: (id) => api.delete(`/operators/${id}`),
+  changePassword: (id, data) => api.put(`/operators/${id}/password`, data),
 }
 
 export const queueAPI = {

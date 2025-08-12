@@ -22,6 +22,7 @@ import Templates from './pages/Templates/Templates'
 import Conversations from './pages/Conversations/Conversations'
 import ConversationDetail from './pages/Conversations/ConversationDetail'
 import Queue from './pages/Queue/Queue'
+import Operators from './pages/Operators/Operators'
 import Analytics from './pages/Analytics/Analytics'
 import Settings from './pages/Settings/Settings'
 import LandingPage from './pages/Landing/LandingPage'
@@ -111,6 +112,9 @@ function App() {
                   
                   {/* Queue */}
                   <Route path="/queue" element={<Queue />} />
+                  
+                  {/* Operators */}
+                  <Route path="/operators" element={<Operators />} />
                   
                   {/* Analytics */}
                   <Route path="/analytics" element={<Analytics />} />

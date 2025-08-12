@@ -19,12 +19,14 @@ import {
   ViewModule as TemplateIcon,
   Chat as ConversationIcon,
   Queue as QueueIcon,
+  People as OperatorsIcon,
   Analytics as AnalyticsIcon,
   Settings as SettingsIcon,
   WhatsApp as WhatsAppIcon,
 } from '@mui/icons-material'
 
 import { useConversations } from '../../hooks/useConversations.jsx'
+import { useAuth } from '../../hooks/useAuth.jsx'
 
 const menuItems = [
   {
@@ -60,6 +62,12 @@ const menuItems = [
     badge: 'Novo',
   },
   {
+    title: 'Operadores',
+    path: '/operators',
+    icon: OperatorsIcon,
+    roles: ['admin', 'user'] // Apenas admins e usuários principais
+  },
+  {
     title: 'Analytics',
     path: '/analytics',
     icon: AnalyticsIcon,
@@ -75,6 +83,24 @@ const Sidebar = ({ onItemClick }) => {
   const location = useLocation()
   const navigate = useNavigate()
   const { transferredCount, unattendedCount } = useConversations()
+  const { user } = useAuth()
+
+  // Filtrar itens de menu baseado no role do usuário
+  const filteredMenuItems = menuItems.filter(item => {
+    if (!item.roles) return true // Item disponível para todos
+    
+    if (user?.role === 'admin') return true // Admin vê tudo
+    
+    if (user?.role === 'user' && !user?.parent_user_id) {
+      return item.roles.includes('user') // Usuário principal
+    }
+    
+    if (user?.role === 'operator') {
+      return item.roles.includes('operator') // Operador
+    }
+    
+    return item.roles.includes(user?.role)
+  })
 
   const handleItemClick = (path) => {
     navigate(path)
@@ -102,7 +128,7 @@ const Sidebar = ({ onItemClick }) => {
 
       {/* Menu Items */}
       <List sx={{ flexGrow: 1, px: 2, py: 1 }}>
-        {menuItems.map((item) => {
+        {filteredMenuItems.map((item) => {
           const Icon = item.icon
           const isActive = location.pathname === item.path || 
                           (item.path !== '/dashboard' && location.pathname.startsWith(item.path))

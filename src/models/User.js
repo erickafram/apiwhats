@@ -33,9 +33,23 @@ module.exports = (sequelize, DataTypes) => {
       }
     },
     role: {
-      type: DataTypes.ENUM('admin', 'user'),
+      type: DataTypes.ENUM('admin', 'user', 'operator'),
       defaultValue: 'user',
       allowNull: false
+    },
+    parent_user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'users',
+        key: 'id'
+      },
+      comment: 'ID do usuário principal (para operadores)'
+    },
+    operator_name: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      comment: 'Nome específico do operador para identificação'
     },
     is_active: {
       type: DataTypes.BOOLEAN,
@@ -88,6 +102,23 @@ module.exports = (sequelize, DataTypes) => {
     User.hasMany(models.Bot, {
       foreignKey: 'user_id',
       as: 'bots'
+    });
+
+    // Relação de operadores
+    User.hasMany(models.User, {
+      foreignKey: 'parent_user_id',
+      as: 'operators'
+    });
+
+    User.belongsTo(models.User, {
+      foreignKey: 'parent_user_id',
+      as: 'parent_user'
+    });
+
+    // Conversas atribuídas ao operador
+    User.hasMany(models.Conversation, {
+      foreignKey: 'assigned_operator_id',
+      as: 'assigned_conversations'
     });
   };
 

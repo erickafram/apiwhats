@@ -1,5 +1,6 @@
 const express = require('express');
-const { Conversation, Bot, Message, Flow } = require('../models');
+const { Op } = require('sequelize');
+const { Conversation, Bot, Message, Flow, User } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { validateParams, validateQuery, schemas } = require('../middleware/validation');
 
@@ -18,10 +19,16 @@ router.get('/', validateQuery(schemas.pagination), async (req, res) => {
 
     const whereClause = {};
     
+    // Determinar usuário principal (owner dos bots)
+    let mainUserId = req.user.id;
+    if (req.user.role === 'operator' && req.user.parent_user_id) {
+      mainUserId = req.user.parent_user_id;
+    }
+    
     // Filtrar por bot se fornecido
     if (bot_id) {
       const bot = await Bot.findOne({
-        where: { id: bot_id, user_id: req.user.id }
+        where: { id: bot_id, user_id: mainUserId }
       });
       
       if (!bot) {
@@ -33,9 +40,9 @@ router.get('/', validateQuery(schemas.pagination), async (req, res) => {
       
       whereClause.bot_id = bot_id;
     } else {
-      // Buscar apenas conversas dos bots do usuário
+      // Buscar apenas conversas dos bots do usuário principal
       const userBots = await Bot.findAll({
-        where: { user_id: req.user.id },
+        where: { user_id: mainUserId },
         attributes: ['id']
       });
       
@@ -46,6 +53,19 @@ router.get('/', validateQuery(schemas.pagination), async (req, res) => {
     if (status) {
       whereClause.status = status;
     }
+
+    // Controle de acesso para operadores
+    if (req.user.role === 'operator') {
+      // Operadores só veem conversas atribuídas a eles ou não atribuídas (disponíveis)
+      whereClause[Op.or] = [
+        { assigned_operator_id: req.user.id },
+        { assigned_operator_id: null, status: 'transferred' } // Conversas aguardando atribuição
+      ];
+    } else if (req.user.role === 'user') {
+      // Usuários principais veem todas as conversas dos seus bots
+      // Nenhum filtro adicional necessário
+    }
+    // Admins veem tudo (sem filtros adicionais)
 
     const { count, rows: conversations } = await Conversation.findAndCountAll({
       where: whereClause,
@@ -71,6 +91,12 @@ router.get('/', validateQuery(schemas.pagination), async (req, res) => {
           attributes: ['id', 'content', 'direction', 'timestamp'],
           limit: 1,
           order: [['timestamp', 'DESC']],
+          required: false
+        },
+        {
+          model: User,
+          as: 'assigned_operator',
+          attributes: ['id', 'name', 'operator_name'],
           required: false
         }
       ]
@@ -460,6 +486,115 @@ router.put('/:id', validateParams(schemas.idParam), async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao atualizar conversa:', error);
+    res.status(500).json({
+      error: 'Erro interno do servidor',
+      code: 'INTERNAL_ERROR'
+    });
+  }
+});
+
+// Atribuir conversa a operador
+router.post('/:id/assign-operator', validateParams(schemas.idParam), async (req, res) => {
+  try {
+    const { operator_id } = req.body;
+    const conversationId = req.params.id;
+
+    // Determinar usuário principal
+    let mainUserId = req.user.id;
+    if (req.user.role === 'operator' && req.user.parent_user_id) {
+      mainUserId = req.user.parent_user_id;
+    }
+
+    // Buscar a conversa
+    const conversation = await Conversation.findOne({
+      where: { id: conversationId },
+      include: [
+        {
+          model: Bot,
+          as: 'bot',
+          where: { user_id: mainUserId }
+        }
+      ]
+    });
+
+    if (!conversation) {
+      return res.status(404).json({
+        error: 'Conversa não encontrada',
+        code: 'CONVERSATION_NOT_FOUND'
+      });
+    }
+
+    // Verificar se o operador existe e pertence à conta
+    if (operator_id) {
+      const operator = await User.findOne({
+        where: {
+          id: operator_id,
+          role: 'operator',
+          parent_user_id: mainUserId,
+          is_active: true
+        }
+      });
+
+      if (!operator) {
+        return res.status(404).json({
+          error: 'Operador não encontrado ou inativo',
+          code: 'OPERATOR_NOT_FOUND'
+        });
+      }
+    }
+
+    // Verificar se é um operador tentando assumir a conversa
+    if (req.user.role === 'operator') {
+      // Operador só pode assumir conversas não atribuídas ou suas próprias
+      if (conversation.assigned_operator_id && conversation.assigned_operator_id !== req.user.id) {
+        return res.status(403).json({
+          error: 'Esta conversa já está atribuída a outro operador',
+          code: 'CONVERSATION_ALREADY_ASSIGNED'
+        });
+      }
+      
+      // Auto-atribuição
+      await conversation.update({
+        assigned_operator_id: req.user.id,
+        status: 'active',
+        metadata: {
+          ...conversation.metadata,
+          operator_assigned: true,
+          operator_assigned_at: new Date(),
+          assigned_by: req.user.id
+        }
+      });
+    } else {
+      // Admin ou usuário principal pode atribuir a qualquer operador
+      await conversation.update({
+        assigned_operator_id: operator_id || null,
+        status: operator_id ? 'active' : 'transferred',
+        metadata: {
+          ...conversation.metadata,
+          operator_assigned: !!operator_id,
+          operator_assigned_at: operator_id ? new Date() : null,
+          assigned_by: req.user.id
+        }
+      });
+    }
+
+    // Buscar conversa atualizada com operador
+    const updatedConversation = await Conversation.findByPk(conversationId, {
+      include: [
+        {
+          model: User,
+          as: 'assigned_operator',
+          attributes: ['id', 'name', 'operator_name']
+        }
+      ]
+    });
+
+    res.json({
+      message: operator_id ? 'Conversa atribuída ao operador com sucesso' : 'Atribuição removida com sucesso',
+      conversation: updatedConversation
+    });
+  } catch (error) {
+    console.error('Erro ao atribuir operador:', error);
     res.status(500).json({
       error: 'Erro interno do servidor',
       code: 'INTERNAL_ERROR'
