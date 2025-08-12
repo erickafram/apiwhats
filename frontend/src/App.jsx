@@ -23,6 +23,7 @@ import Conversations from './pages/Conversations/Conversations'
 import ConversationDetail from './pages/Conversations/ConversationDetail'
 import Queue from './pages/Queue/Queue'
 import Operators from './pages/Operators/Operators'
+import OperatorDashboard from './pages/Operator/OperatorDashboard'
 import Analytics from './pages/Analytics/Analytics'
 import Settings from './pages/Settings/Settings'
 import LandingPage from './pages/Landing/LandingPage'
@@ -40,6 +41,28 @@ const ProtectedRoute = ({ children }) => {
   }
 
   return children
+}
+
+// Operator Route Component (redirect operators to conversations)
+const OperatorRoute = ({ children }) => {
+  const { user } = useAuth()
+  
+  if (user?.role === 'operator') {
+    return <Navigate to="/conversations" replace />
+  }
+  
+  return children
+}
+
+// Dashboard Route Component (diferentes dashboards por role)
+const DashboardRoute = () => {
+  const { user } = useAuth()
+  
+  if (user?.role === 'operator') {
+    return <OperatorDashboard />
+  }
+  
+  return <Dashboard />
 }
 
 // Public Route Component (redirect if authenticated)
@@ -92,38 +115,38 @@ function App() {
                 <Layout>
                   <Routes>
                   <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/dashboard" element={<DashboardRoute />} />
                   
                   {/* Bots */}
-                  <Route path="/bots" element={<Bots />} />
-                  <Route path="/bots/:id" element={<BotDetail />} />
+                  <Route path="/bots" element={<OperatorRoute><Bots /></OperatorRoute>} />
+                  <Route path="/bots/:id" element={<OperatorRoute><BotDetail /></OperatorRoute>} />
                   
                   {/* Flows */}
-                  <Route path="/flows" element={<Flows />} />
-                  <Route path="/flows/:id/edit" element={<FlowEditor />} />
-                  <Route path="/flows/new" element={<FlowEditor />} />
+                  <Route path="/flows" element={<OperatorRoute><Flows /></OperatorRoute>} />
+                  <Route path="/flows/:id/edit" element={<OperatorRoute><FlowEditor /></OperatorRoute>} />
+                  <Route path="/flows/new" element={<OperatorRoute><FlowEditor /></OperatorRoute>} />
                   
                   {/* Templates */}
-                  <Route path="/templates" element={<Templates />} />
+                  <Route path="/templates" element={<OperatorRoute><Templates /></OperatorRoute>} />
                   
-                  {/* Conversations */}
+                  {/* Conversations - Acessível para todos */}
                   <Route path="/conversations" element={<Conversations />} />
                   <Route path="/conversations/:id" element={<ConversationDetail />} />
                   
                   {/* Queue */}
-                  <Route path="/queue" element={<Queue />} />
+                  <Route path="/queue" element={<OperatorRoute><Queue /></OperatorRoute>} />
                   
                   {/* Operators */}
-                  <Route path="/operators" element={<Operators />} />
+                  <Route path="/operators" element={<OperatorRoute><Operators /></OperatorRoute>} />
                   
                   {/* Analytics */}
-                  <Route path="/analytics" element={<Analytics />} />
+                  <Route path="/analytics" element={<OperatorRoute><Analytics /></OperatorRoute>} />
                   
                   {/* Settings */}
-                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/settings" element={<OperatorRoute><Settings /></OperatorRoute>} />
                   
-                  {/* 404 */}
-                  <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                  {/* 404 - Redireciona operadores para conversas */}
+                  <Route path="*" element={<OperatorRoute><Navigate to="/dashboard" replace /></OperatorRoute>} />
                 </Routes>
               </Layout>
             </ConversationsProvider>

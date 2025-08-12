@@ -33,33 +33,39 @@ const menuItems = [
     title: 'Dashboard',
     path: '/dashboard',
     icon: DashboardIcon,
+    roles: ['admin', 'user'] // Operadores não precisam de dashboard
   },
   {
     title: 'Bots',
     path: '/bots',
     icon: BotIcon,
+    roles: ['admin', 'user'] // Operadores não gerenciam bots
   },
   {
     title: 'Fluxos',
     path: '/flows',
     icon: FlowIcon,
+    roles: ['admin', 'user'] // Operadores não gerenciam fluxos
   },
   {
     title: 'Templates',
     path: '/templates',
     icon: TemplateIcon,
     badge: 'Novo',
+    roles: ['admin', 'user'] // Operadores não usam templates
   },
   {
     title: 'Conversas',
     path: '/conversations',
     icon: ConversationIcon,
+    // Disponível para todos (admin, user, operator)
   },
   {
     title: 'Fila de Atendimento',
     path: '/queue',
     icon: QueueIcon,
     badge: 'Novo',
+    roles: ['admin', 'user'] // Operadores não gerenciam filas
   },
   {
     title: 'Operadores',
@@ -71,11 +77,13 @@ const menuItems = [
     title: 'Analytics',
     path: '/analytics',
     icon: AnalyticsIcon,
+    roles: ['admin', 'user'] // Operadores não precisam de analytics
   },
   {
     title: 'Configurações',
     path: '/settings',
     icon: SettingsIcon,
+    roles: ['admin', 'user'] // Operadores não alteram configurações
   },
 ]
 
