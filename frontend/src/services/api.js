@@ -139,6 +139,9 @@ export const conversationsAPI = {
   sendMessage: (id, data) => api.post(`/conversations/${id}/send-message`, data),
   update: (id, data) => api.put(`/conversations/${id}`, data),
   assignOperator: (id, operatorId = null) => api.post(`/conversations/${id}/assign-operator`, { operator_id: operatorId }),
+  transferToOperator: (id, data) => api.post(`/conversations/${id}/transfer-to-operator`, data),
+  getAvailableOperators: () => api.get('/conversations/operators/available'),
+  getAuditTrail: (id) => api.get(`/conversations/${id}/audit-trail`),
 }
 
 export const operatorsAPI = {

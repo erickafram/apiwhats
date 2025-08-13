@@ -30,7 +30,10 @@ import {
   Snackbar,
   Menu,
   MenuItem,
-  Fab
+  Fab,
+  Select,
+  FormControl,
+  InputLabel
 } from '@mui/material'
 import {
   Chat,
@@ -46,10 +49,14 @@ import {
   MoreVert,
   Notifications,
   CheckCircle,
-  Warning
+  Warning,
+  SwapHoriz,
+  PersonAdd,
+  History
 } from '@mui/icons-material'
 import { conversationsAPI } from '../../services/api'
 import { useConversations } from '../../hooks/useConversations.jsx'
+import toast from 'react-hot-toast'
 
 // Adicionar estilos CSS para animação
 const pulseAnimation = `
@@ -75,6 +82,12 @@ const Conversations = () => {
   const [lastConversationCount, setLastConversationCount] = useState(0)
   const [newConversationAlert, setNewConversationAlert] = useState(false)
   const [lastMessageCount, setLastMessageCount] = useState(0)
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false)
+  const [availableOperators, setAvailableOperators] = useState([])
+  const [selectedOperator, setSelectedOperator] = useState('')
+  const [transferReason, setTransferReason] = useState('')
+  const [auditDialogOpen, setAuditDialogOpen] = useState(false)
+  const [auditData, setAuditData] = useState(null)
 
   // Usar o hook global de conversas
   const { refreshConversations, transferredCount: globalTransferredCount, unattendedCount: globalUnattendedCount } = useConversations()
@@ -329,6 +342,59 @@ const Conversations = () => {
       case 'waiting': return 'Aguardando'
       case 'completed': return 'Finalizado'
       default: return status
+    }
+  }
+
+  const loadAvailableOperators = async () => {
+    try {
+      const response = await conversationsAPI.getAvailableOperators()
+      setAvailableOperators(response.data.operators || [])
+    } catch (error) {
+      console.error('Erro ao carregar operadores:', error)
+    }
+  }
+
+  const openTransferDialog = () => {
+    loadAvailableOperators()
+    setTransferDialogOpen(true)
+  }
+
+  const transferToOperator = async () => {
+    if (!selectedOperator || !selectedConversation) return
+    
+    try {
+      await conversationsAPI.transferToOperator(selectedConversation.id, {
+        target_operator_id: selectedOperator,
+        message: transferReason
+      })
+      
+      setTransferDialogOpen(false)
+      setDialogOpen(false)
+      setSelectedOperator('')
+      setTransferReason('')
+      loadConversations()
+      
+      toast.success('Conversa transferida com sucesso!')
+    } catch (error) {
+      console.error('Erro ao transferir conversa:', error)
+      toast.error('Erro ao transferir conversa')
+    }
+  }
+
+  const loadAuditTrail = async () => {
+    if (!selectedConversation) return
+    
+    try {
+      const response = await conversationsAPI.getAuditTrail(selectedConversation.id)
+      setAuditData(response.data)
+      setAuditDialogOpen(true)
+    } catch (error) {
+      console.error('Erro ao carregar histórico de auditoria:', error)
+      if (error.response?.status === 403) {
+        toast.error('Acesso negado. Apenas administradores podem ver o histórico completo.')
+      } else {
+        toast.error('Erro ao carregar histórico de auditoria')
+      }
     }
   }
 
@@ -623,6 +689,20 @@ const Conversations = () => {
                   onClose={() => setMenuAnchor(null)}
                 >
                   <MenuItem onClick={() => {
+                    openTransferDialog()
+                    setMenuAnchor(null)
+                  }}>
+                    <SwapHoriz sx={{ mr: 1 }} />
+                    Transferir para Operador
+                  </MenuItem>
+                  <MenuItem onClick={() => {
+                    loadAuditTrail()
+                    setMenuAnchor(null)
+                  }}>
+                    <History sx={{ mr: 1 }} />
+                    Ver Histórico de Transferências
+                  </MenuItem>
+                  <MenuItem onClick={() => {
                     endConversation()
                     setMenuAnchor(null)
                   }}>
@@ -728,6 +808,240 @@ const Conversations = () => {
             startIcon={<CheckCircle />}
           >
             Encerrar Conversa
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog para transferir conversa para operador */}
+      <Dialog
+        open={transferDialogOpen}
+        onClose={() => setTransferDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box display="flex" alignItems="center" gap={2}>
+            <SwapHoriz color="primary" />
+            <Typography variant="h6">
+              Transferir Conversa para Operador
+            </Typography>
+          </Box>
+        </DialogTitle>
+        
+        <DialogContent>
+          <Box mt={2}>
+            <FormControl fullWidth margin="normal">
+              <InputLabel>Selecionar Operador</InputLabel>
+              <Select
+                value={selectedOperator}
+                onChange={(e) => setSelectedOperator(e.target.value)}
+                label="Selecionar Operador"
+              >
+                {availableOperators.map((operator) => (
+                  <MenuItem key={operator.id} value={operator.id}>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <PersonAdd />
+                      <Box>
+                        <Typography variant="body1">{operator.name}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {operator.email}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            
+            <TextField
+              fullWidth
+              margin="normal"
+              label="Motivo da Transferência (opcional)"
+              placeholder="Ex: Cliente precisa de suporte técnico especializado"
+              multiline
+              rows={3}
+              value={transferReason}
+              onChange={(e) => setTransferReason(e.target.value)}
+            />
+            
+            {availableOperators.length === 0 && (
+              <Alert severity="info" sx={{ mt: 2 }}>
+                Nenhum operador disponível para transferência no momento.
+              </Alert>
+            )}
+          </Box>
+        </DialogContent>
+        
+        <DialogActions>
+          <Button 
+            onClick={() => setTransferDialogOpen(false)}
+            color="inherit"
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={transferToOperator}
+            variant="contained"
+            disabled={!selectedOperator || availableOperators.length === 0}
+            startIcon={<SwapHoriz />}
+          >
+            Transferir Conversa
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog para histórico de auditoria */}
+      <Dialog
+        open={auditDialogOpen}
+        onClose={() => setAuditDialogOpen(false)}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{ sx: { height: '80vh' } }}
+      >
+        <DialogTitle>
+          <Box display="flex" alignItems="center" gap={2}>
+            <History color="primary" />
+            <Typography variant="h6">
+              Histórico de Transferências e Atribuições
+            </Typography>
+          </Box>
+        </DialogTitle>
+        
+        <DialogContent>
+          {auditData && (
+            <Box>
+              {/* Resumo */}
+              <Card sx={{ mb: 3 }}>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom>
+                    📊 Resumo da Conversa
+                  </Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} md={3}>
+                      <Typography variant="body2" color="text.secondary">Cliente</Typography>
+                      <Typography variant="body1">
+                        {auditData.conversation.user_name || auditData.conversation.user_phone}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} md={3}>
+                      <Typography variant="body2" color="text.secondary">Total de Atribuições</Typography>
+                      <Typography variant="body1" color="primary">
+                        {auditData.summary.total_assignments}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} md={3}>
+                      <Typography variant="body2" color="text.secondary">Total de Transferências</Typography>
+                      <Typography variant="body1" color="warning.main">
+                        {auditData.summary.total_transfers}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} md={3}>
+                      <Typography variant="body2" color="text.secondary">Operador Atual</Typography>
+                      <Typography variant="body1">
+                        {auditData.summary.current_operator || 'Nenhum'}
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </Card>
+
+              {/* Histórico de Atribuições */}
+              <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
+                📋 Histórico de Atribuições
+              </Typography>
+              
+              {auditData.assignment_history.length > 0 ? (
+                <List>
+                  {auditData.assignment_history.map((entry, index) => (
+                    <React.Fragment key={index}>
+                      <ListItem>
+                        <ListItemAvatar>
+                          <Avatar sx={{ 
+                            bgcolor: entry.action.includes('transfer') ? 'warning.main' : 'success.main' 
+                          }}>
+                            {entry.action.includes('transfer') ? <SwapHoriz /> : <PersonAdd />}
+                          </Avatar>
+                        </ListItemAvatar>
+                        <ListItemText
+                          primary={
+                            <Box>
+                              <Typography variant="body1">
+                                {entry.action === 'assumed' && `${entry.operator_display_name} assumiu a conversa`}
+                                {entry.action === 'assigned_by_admin' && `Atribuído para ${entry.operator_display_name} pelo admin`}
+                                {entry.action === 'transferred_by_operator' && 
+                                  `Transferido para ${entry.operator_display_name} por ${entry.assigned_by_display_name}`}
+                              </Typography>
+                              {entry.transfer_reason && (
+                                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                                  <strong>Motivo:</strong> {entry.transfer_reason}
+                                </Typography>
+                              )}
+                            </Box>
+                          }
+                          secondary={
+                            <Typography variant="caption" color="text.secondary">
+                              {formatTimestamp(entry.assigned_at)} • 
+                              Por: {entry.assigned_by_display_name} ({entry.assigned_by_role})
+                            </Typography>
+                          }
+                        />
+                      </ListItem>
+                      {index < auditData.assignment_history.length - 1 && <Divider />}
+                    </React.Fragment>
+                  ))}
+                </List>
+              ) : (
+                <Alert severity="info">
+                  Nenhuma atribuição registrada para esta conversa.
+                </Alert>
+              )}
+
+              {/* Mensagens do Sistema */}
+              <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
+                💬 Mensagens do Sistema
+              </Typography>
+              
+              {auditData.audit_messages.length > 0 ? (
+                <List>
+                  {auditData.audit_messages.map((message, index) => (
+                    <React.Fragment key={message.id}>
+                      <ListItem>
+                        <ListItemText
+                          primary={message.content}
+                          secondary={
+                            <Box>
+                              <Typography variant="caption" color="text.secondary">
+                                {formatTimestamp(message.timestamp)} • 
+                                Status: {message.status} • 
+                                Tipo: {
+                                  message.metadata?.welcome_message ? 'Boas-vindas' :
+                                  message.metadata?.transfer_message ? 'Transferência' :
+                                  message.metadata?.system_message ? 'Sistema' : 'Operador'
+                                }
+                              </Typography>
+                            </Box>
+                          }
+                        />
+                      </ListItem>
+                      {index < auditData.audit_messages.length - 1 && <Divider />}
+                    </React.Fragment>
+                  ))}
+                </List>
+              ) : (
+                <Alert severity="info">
+                  Nenhuma mensagem do sistema registrada.
+                </Alert>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        
+        <DialogActions>
+          <Button 
+            onClick={() => setAuditDialogOpen(false)}
+            color="inherit"
+          >
+            Fechar
           </Button>
         </DialogActions>
       </Dialog>
