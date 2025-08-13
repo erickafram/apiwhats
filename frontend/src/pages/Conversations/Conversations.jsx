@@ -160,11 +160,14 @@ const Conversations = () => {
         setNewConversationAlert(true)
         // Som de notificação (se o navegador permitir)
         try {
-          const audio = new Audio('/notification.wav') // Som simples
+          const audio = new Audio('./notification.wav') // Som simples
           audio.volume = 0.3
-          audio.play()
+          audio.load() // Carregar explicitamente
+          audio.play().catch(err => {
+            console.warn('Não foi possível tocar o som de notificação:', err)
+          })
         } catch (e) {
-          // Ignorar se não conseguir tocar o som
+          console.warn('Erro ao criar áudio de notificação:', e)
         }
       }
       

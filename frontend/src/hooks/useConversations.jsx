@@ -51,8 +51,25 @@ export const ConversationsProvider = ({ children }) => {
       : (import.meta.env.VITE_API_URL || 'http://localhost:5000')
     
     console.log('🔗 Conectando WebSocket para:', apiUrl)
-    const socketConnection = io(apiUrl)
+    const socketConnection = io(apiUrl, {
+      transports: ['websocket', 'polling'], // Fallback para polling se WebSocket falhar
+      timeout: 10000,
+      forceNew: true
+    })
     setSocket(socketConnection)
+
+    // Event listeners para conexão
+    socketConnection.on('connect', () => {
+      console.log('✅ WebSocket conectado com sucesso:', socketConnection.id)
+    })
+    
+    socketConnection.on('connect_error', (error) => {
+      console.error('❌ Erro de conexão WebSocket:', error)
+    })
+    
+    socketConnection.on('disconnect', (reason) => {
+      console.warn('⚠️ WebSocket desconectado:', reason)
+    })
 
     // Listener para novas conversas
     socketConnection.on('new_conversation', (data) => {
@@ -70,11 +87,14 @@ export const ConversationsProvider = ({ children }) => {
       
       // Tocar som se possível
       try {
-        const audio = new Audio('/notification.wav')
+        const audio = new Audio('./notification.wav')
         audio.volume = 0.3
-        audio.play()
+        audio.load()
+        audio.play().catch(err => {
+          console.warn('Não foi possível tocar o som de notificação:', err)
+        })
       } catch (e) {
-        // Ignorar se não conseguir tocar
+        console.warn('Erro ao criar áudio de notificação:', e)
       }
       
       // Atualizar contadores
@@ -102,11 +122,14 @@ export const ConversationsProvider = ({ children }) => {
       
       // Tocar som mais alto
       try {
-        const audio = new Audio('/notification.wav')
+        const audio = new Audio('./notification.wav')
         audio.volume = 0.6
-        audio.play()
+        audio.load()
+        audio.play().catch(err => {
+          console.warn('Não foi possível tocar o som de notificação:', err)
+        })
       } catch (e) {
-        // Ignorar se não conseguir tocar
+        console.warn('Erro ao criar áudio de notificação:', e)
       }
       
       // Atualizar contadores imediatamente

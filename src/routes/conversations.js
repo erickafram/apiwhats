@@ -173,14 +173,20 @@ router.get('/:id/messages', validateParams(schemas.idParam), validateQuery(schem
     const limitNum = parseInt(limit) || 20;
     const offset = (pageNum - 1) * limitNum;
 
-    // Verificar se a conversa pertence ao usuário
+    // Determinar usuário principal (owner dos bots)
+    let mainUserId = req.user.id;
+    if (req.user.role === 'operator' && req.user.parent_user_id) {
+      mainUserId = req.user.parent_user_id;
+    }
+
+    // Verificar se a conversa pertence ao usuário principal
     const conversation = await Conversation.findOne({
       where: { id: req.params.id },
       include: [
         {
           model: Bot,
           as: 'bot',
-          where: { user_id: req.user.id },
+          where: { user_id: mainUserId },
           attributes: ['id']
         }
       ]
@@ -191,6 +197,16 @@ router.get('/:id/messages', validateParams(schemas.idParam), validateQuery(schem
         error: 'Conversa não encontrada',
         code: 'CONVERSATION_NOT_FOUND'
       });
+    }
+
+    // Verificação adicional para operadores - só podem ver conversas atribuídas a eles
+    if (req.user.role === 'operator') {
+      if (conversation.assigned_operator_id !== req.user.id && conversation.status !== 'transferred') {
+        return res.status(403).json({
+          error: 'Acesso negado a esta conversa',
+          code: 'ACCESS_DENIED'
+        });
+      }
     }
 
     const { count, rows: messages } = await Message.findAndCountAll({
@@ -238,14 +254,20 @@ router.post('/:id/send-message', validateParams(schemas.idParam), async (req, re
       });
     }
 
-    // Verificar se a conversa pertence ao usuário
+    // Determinar usuário principal (owner dos bots)
+    let mainUserId = req.user.id;
+    if (req.user.role === 'operator' && req.user.parent_user_id) {
+      mainUserId = req.user.parent_user_id;
+    }
+
+    // Verificar se a conversa pertence ao usuário principal
     const conversation = await Conversation.findOne({
       where: { id: req.params.id },
       include: [
         {
           model: Bot,
           as: 'bot',
-          where: { user_id: req.user.id }
+          where: { user_id: mainUserId }
         }
       ]
     });
@@ -255,6 +277,16 @@ router.post('/:id/send-message', validateParams(schemas.idParam), async (req, re
         error: 'Conversa não encontrada',
         code: 'CONVERSATION_NOT_FOUND'
       });
+    }
+
+    // Verificação adicional para operadores - só podem enviar em conversas atribuídas a eles
+    if (req.user.role === 'operator') {
+      if (conversation.assigned_operator_id !== req.user.id) {
+        return res.status(403).json({
+          error: 'Acesso negado a esta conversa',
+          code: 'ACCESS_DENIED'
+        });
+      }
     }
 
     // Criar mensagem
