@@ -106,6 +106,15 @@ const FlowEditor = () => {
   const [aiEditGenerating, setAiEditGenerating] = useState(false)
   const [aiEditStep, setAiEditStep] = useState('input')
   const [aiAnalysis, setAiAnalysis] = useState('')
+  
+  // Novos estados para edição estruturada
+  const [aiEditData, setAiEditData] = useState({
+    changeType: 'modificar', // modificar, adicionar, remover, corrigir
+    targetArea: 'menu', // menu, mensagens, condicoes, operador, fluxo
+    specificRequest: '',
+    addTransferOption: false,
+    menuChanges: []
+  })
 
   // Estado para o simulador do WhatsApp
   const [whatsappSimulatorOpen, setWhatsappSimulatorOpen] = useState(false)
@@ -314,7 +323,7 @@ const FlowEditor = () => {
 
   // Funções para edição com IA
   const editFlowWithAI = async () => {
-    if (!aiEditDescription.trim()) {
+    if (!aiEditDescription.trim() && !aiEditData.specificRequest.trim()) {
       toast.error('Por favor, descreva as mudanças que deseja fazer')
       return
     }
@@ -323,7 +332,10 @@ const FlowEditor = () => {
     setAiEditStep('generating')
 
     try {
-      console.log('🤖 Editando fluxo com IA:', aiEditDescription)
+      console.log('🤖 Editando fluxo com IA:', { aiEditDescription, aiEditData })
+
+      // Construir descrição estruturada
+      const structuredDescription = buildEditDescription()
 
       // Preparar dados do fluxo atual de forma mais robusta
       const currentFlowData = {
@@ -350,11 +362,7 @@ const FlowEditor = () => {
         }
       }
 
-      console.log('🤖 Dados preparados para IA:')
-      console.log('🤖 - ID:', currentFlowData.id)
-      console.log('🤖 - Nome:', currentFlowData.name)
-      console.log('🤖 - Bot ID:', currentFlowData.bot_id)
-      console.log('🤖 - Nodes:', currentFlowData.flow_data.nodes.length)
+      console.log('🤖 Dados preparados para IA:', currentFlowData.id, currentFlowData.name)
 
       const response = await fetch('/api/flows/edit-with-ai', {
         method: 'POST',
@@ -363,7 +371,8 @@ const FlowEditor = () => {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
-          description: aiEditDescription,
+          description: structuredDescription,
+          editData: aiEditData,
           currentFlow: currentFlowData
         })
       })
@@ -401,60 +410,44 @@ const FlowEditor = () => {
         try {
           const reactFlowNodes = data.flow.flow_data.nodes.map((node, index) => ({
             id: node.id,
-            type: 'default',
-            position: node.position || getAutoPosition(node, index, data.flow.flow_data.nodes),
+            type: 'customNode',
+            position: node.position || { x: 100 + (index * 200), y: 100 + (Math.floor(index / 3) * 150) },
             data: {
-              label: getNodeLabel(node, index),
               nodeType: node.type,
-              content: node.content,
-              stepNumber: getStepNumber(node, index),
-              ...node
-            },
-            style: {
-              background: `linear-gradient(135deg, ${getNodeColor(node.type)}, ${getNodeColor(node.type)}dd)`,
-              color: 'white',
-              border: `2px solid ${getNodeColor(node.type)}`,
-              borderRadius: '12px',
-              width: 200,
-              minHeight: 80,
-              fontSize: 11,
-              fontWeight: 600,
-              textAlign: 'center',
-              padding: '8px',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-              transition: 'all 0.3s ease'
+              label: node.id,
+              content: node.content || '',
+              next: node.next,
+              conditions: node.conditions || [],
+              variable: node.variable,
+              action: node.action
             }
           }))
 
-          // Gerar edges se não existirem
-          let reactFlowEdges = []
-          if (data.flow.flow_data.edges && data.flow.flow_data.edges.length > 0) {
-            reactFlowEdges = data.flow.flow_data.edges
-          } else {
-            reactFlowEdges = generateEdgesFromNodes(data.flow.flow_data.nodes)
-          }
+          const reactFlowEdges = (data.flow.flow_data.edges || []).map(edge => ({
+            id: edge.id || `${edge.source}-${edge.target}`,
+            source: edge.source,
+            target: edge.target,
+            type: edge.type || 'smoothstep'
+          }))
 
-          console.log('🤖 Atualizando nodes:', reactFlowNodes.length)
-          console.log('🤖 Atualizando edges:', reactFlowEdges.length)
+          console.log('🤖 Aplicando nós:', reactFlowNodes.length)
+          console.log('🤖 Aplicando edges:', reactFlowEdges.length)
 
           setNodes(reactFlowNodes)
           setEdges(reactFlowEdges)
 
           // Atualizar dados do fluxo
-          setFlow({ ...flow, ...data.flow })
+          if (data.flow.name && data.flow.name !== flow?.name) {
+            setFlow(prevFlow => ({ ...prevFlow, ...data.flow }))
+          }
 
-          console.log('🤖 Fluxo atualizado com sucesso!')
+          setHasUnsavedChanges(true)
 
-        } catch (updateError) {
-          console.error('🤖 Erro ao aplicar mudanças:', updateError)
-          throw new Error('Erro ao aplicar as mudanças no fluxo visual')
+        } catch (error) {
+          console.error('🤖 Erro ao aplicar mudanças:', error)
+          toast.error('Erro ao aplicar mudanças: ' + error.message)
         }
-      } else {
-        throw new Error('Dados do fluxo editado são inválidos')
       }
-
-      setAiEditStep('success')
-      toast.success('Fluxo editado com sucesso pela IA!')
 
     } catch (error) {
       console.error('🤖 Erro ao editar fluxo com IA:', error)
@@ -465,9 +458,38 @@ const FlowEditor = () => {
     }
   }
 
+  const buildEditDescription = () => {
+    let description = aiEditDescription || ''
+    
+    if (aiEditData.changeType && aiEditData.targetArea) {
+      description += `\n\nTipo de Alteração: ${aiEditData.changeType} na área: ${aiEditData.targetArea}`
+    }
+    
+    if (aiEditData.specificRequest) {
+      description += `\nSolicitação Específica: ${aiEditData.specificRequest}`
+    }
+    
+    if (aiEditData.addTransferOption) {
+      description += `\nAdicionar: Opção para transferir para operador humano`
+    }
+    
+    if (aiEditData.menuChanges.length > 0) {
+      description += `\nMudanças no Menu: ${aiEditData.menuChanges.join(', ')}`
+    }
+    
+    return description
+  }
+
   const resetAIEditDialog = () => {
     setAiEditDialogOpen(false)
     setAiEditDescription('')
+    setAiEditData({
+      changeType: 'modificar',
+      targetArea: 'menu',
+      specificRequest: '',
+      addTransferOption: false,
+      menuChanges: []
+    })
     setAiEditStep('input')
     setAiEditGenerating(false)
     setAiAnalysis('')
@@ -1526,28 +1548,105 @@ const FlowEditor = () => {
           {aiEditStep === 'input' && (
             <Box>
               <Typography variant="h6" sx={{ mb: 2, color: '#1976d2' }}>
-                🤖 Descreva as mudanças que você quer fazer no fluxo
+                🤖 Configure as mudanças desejadas
               </Typography>
               <Typography variant="body2" sx={{ mb: 3, color: '#666' }}>
-                Exemplo: "Adicionar uma opção de horário de funcionamento", "Incluir um menu de produtos", "Melhorar as mensagens de boas-vindas"
+                Use os campos abaixo para especificar exatamente o que você quer alterar no fluxo
               </Typography>
 
+              {/* Tipo de Alteração */}
+              <FormControl fullWidth sx={{ mb: 3 }}>
+                <InputLabel>Tipo de Alteração</InputLabel>
+                <Select
+                  value={aiEditData.changeType}
+                  label="Tipo de Alteração"
+                  onChange={(e) => setAiEditData({...aiEditData, changeType: e.target.value})}
+                >
+                  <MenuItem value="adicionar">➕ Adicionar elemento</MenuItem>
+                  <MenuItem value="modificar">✏️ Modificar existente</MenuItem>
+                  <MenuItem value="remover">🗑️ Remover elemento</MenuItem>
+                  <MenuItem value="corrigir">🔧 Corrigir problema</MenuItem>
+                  <MenuItem value="reorganizar">🔄 Reorganizar estrutura</MenuItem>
+                </Select>
+              </FormControl>
+
+              {/* Área do Fluxo */}
+              <FormControl fullWidth sx={{ mb: 3 }}>
+                <InputLabel>Área do Fluxo</InputLabel>
+                <Select
+                  value={aiEditData.targetArea}
+                  label="Área do Fluxo"
+                  onChange={(e) => setAiEditData({...aiEditData, targetArea: e.target.value})}
+                >
+                  <MenuItem value="menu">📋 Menu principal</MenuItem>
+                  <MenuItem value="mensagens">💬 Mensagens do bot</MenuItem>
+                  <MenuItem value="condicoes">⚡ Condições e lógica</MenuItem>
+                  <MenuItem value="operador">👨‍💼 Transferência para operador</MenuItem>
+                  <MenuItem value="fluxo">🔗 Estrutura geral do fluxo</MenuItem>
+                  <MenuItem value="ia">🤖 Respostas da IA</MenuItem>
+                </Select>
+              </FormControl>
+
+              {/* Solicitação Específica */}
+              <TextField
+                fullWidth
+                variant="outlined"
+                label="Solicitação Específica"
+                placeholder="Ex: Adicionar opção 'Promoções', Corrigir opção 3 que não funciona, Melhorar mensagem de boas-vindas..."
+                value={aiEditData.specificRequest}
+                onChange={(e) => setAiEditData({...aiEditData, specificRequest: e.target.value})}
+                sx={{ mb: 3 }}
+                helperText="Seja específico sobre o que você quer alterar"
+              />
+
+              {/* Mudanças no Menu */}
+              {aiEditData.targetArea === 'menu' && (
+                <TextField
+                  fullWidth
+                  variant="outlined"
+                  label="Mudanças no Menu"
+                  placeholder="Ex: Adicionar 'Promoções', Remover opção 4, Renomear 'Suporte' para 'Ajuda'"
+                  helperText="Digite as mudanças separadas por vírgula"
+                  value={aiEditData.menuChanges.join(', ')}
+                  onChange={(e) => setAiEditData({
+                    ...aiEditData, 
+                    menuChanges: e.target.value.split(',').map(opt => opt.trim()).filter(opt => opt)
+                  })}
+                  sx={{ mb: 3 }}
+                />
+              )}
+
+              {/* Adicionar Transferência para Operador */}
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={aiEditData.addTransferOption}
+                    onChange={(e) => setAiEditData({...aiEditData, addTransferOption: e.target.checked})}
+                    color="primary"
+                  />
+                }
+                label="👨‍💼 Adicionar/Melhorar opção para falar com atendente"
+                sx={{ mb: 3, display: 'block' }}
+              />
+
+              {/* Descrição Livre */}
               <TextField
                 fullWidth
                 multiline
                 rows={4}
                 variant="outlined"
-                label="Descreva as mudanças..."
-                placeholder="Ex: Quero adicionar uma nova opção no menu principal para 'Promoções' que mostre os produtos em oferta e depois redirecione para o atendente."
+                label="Detalhes Adicionais (opcional)"
+                placeholder="Adicione mais detalhes sobre a mudança que você quer fazer..."
                 value={aiEditDescription}
                 onChange={(e) => setAiEditDescription(e.target.value)}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: '12px',
-                    backgroundColor: 'white'
-                  }
-                }}
+                sx={{ mb: 2 }}
               />
+
+              <Alert severity="info" sx={{ borderRadius: '12px' }}>
+                <Typography variant="body2">
+                  💡 <strong>Dica:</strong> A IA analisará o fluxo atual e aplicará exatamente as mudanças que você especificou!
+                </Typography>
+              </Alert>
             </Box>
           )}
 
@@ -1617,7 +1716,7 @@ const FlowEditor = () => {
             <Button
               onClick={editFlowWithAI}
               variant="contained"
-              disabled={!aiEditDescription.trim() || aiEditGenerating}
+              disabled={!aiEditData.specificRequest.trim() || aiEditGenerating}
               startIcon={<SendIcon />}
               sx={{
                 background: 'linear-gradient(45deg, #e91e63 30%, #f06292 90%)',

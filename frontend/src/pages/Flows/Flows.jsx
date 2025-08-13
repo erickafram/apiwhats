@@ -87,6 +87,16 @@ const Flows = () => {
   const [aiGenerating, setAiGenerating] = useState(false)
   const [generatedFlow, setGeneratedFlow] = useState(null)
   const [aiStep, setAiStep] = useState('input') // 'input', 'generating', 'preview'
+  
+  // Novos estados para campos específicos
+  const [aiFlowData, setAiFlowData] = useState({
+    flowType: 'atendimento', // atendimento, vendas, suporte, agendamento, faq
+    businessType: '',
+    objectives: [],
+    hasOperatorTransfer: true,
+    menuOptions: [],
+    customInstructions: ''
+  })
 
   const navigate = useNavigate()
 
@@ -205,8 +215,8 @@ const Flows = () => {
 
   // Funções para criação com IA
   const generateFlowWithAI = async () => {
-    if (!aiDescription.trim()) {
-      toast.error('Por favor, descreva o fluxo que deseja criar')
+    if (!aiDescription.trim() && !aiFlowData.businessType.trim()) {
+      toast.error('Por favor, preencha ao menos a descrição ou tipo de negócio')
       return
     }
 
@@ -214,7 +224,7 @@ const Flows = () => {
     setAiStep('generating')
 
     try {
-      console.log('🤖 Gerando fluxo com IA:', aiDescription)
+      console.log('🤖 Gerando fluxo com IA:', { aiDescription, aiFlowData })
 
       // Determinar o bot_id para a geração
       let botId = null
@@ -224,6 +234,9 @@ const Flows = () => {
         botId = bots[0].id
       }
 
+      // Construir descrição estruturada para a IA
+      const structuredDescription = buildStructuredDescription()
+
       const response = await fetch('/api/flows/generate-with-ai', {
         method: 'POST',
         headers: {
@@ -231,7 +244,8 @@ const Flows = () => {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
-          description: aiDescription,
+          description: structuredDescription,
+          flowData: aiFlowData,
           bot_id: botId
         })
       })
@@ -255,6 +269,36 @@ const Flows = () => {
     } finally {
       setAiGenerating(false)
     }
+  }
+
+  const buildStructuredDescription = () => {
+    let description = aiDescription || ''
+    
+    if (aiFlowData.businessType) {
+      description += `\n\nTipo de Negócio: ${aiFlowData.businessType}`
+    }
+    
+    if (aiFlowData.flowType) {
+      description += `\nTipo de Fluxo: ${aiFlowData.flowType}`
+    }
+    
+    if (aiFlowData.objectives.length > 0) {
+      description += `\nObjetivos: ${aiFlowData.objectives.join(', ')}`
+    }
+    
+    if (aiFlowData.menuOptions.length > 0) {
+      description += `\nOpções do Menu: ${aiFlowData.menuOptions.join(', ')}`
+    }
+    
+    if (aiFlowData.hasOperatorTransfer) {
+      description += `\nIncluir: Opção para transferir para operador humano`
+    }
+    
+    if (aiFlowData.customInstructions) {
+      description += `\nInstruções Específicas: ${aiFlowData.customInstructions}`
+    }
+    
+    return description
   }
 
   const handleSaveAIFlow = async () => {
@@ -312,6 +356,14 @@ const Flows = () => {
   const resetAIDialog = () => {
     setAiCreateDialogOpen(false)
     setAiDescription('')
+    setAiFlowData({
+      flowType: 'atendimento',
+      businessType: '',
+      objectives: [],
+      hasOperatorTransfer: true,
+      menuOptions: [],
+      customInstructions: ''
+    })
     setGeneratedFlow(null)
     setAiStep('input')
     setAiGenerating(false)
@@ -779,28 +831,134 @@ const Flows = () => {
           {aiStep === 'input' && (
             <Box>
               <Typography variant="h6" sx={{ mb: 2, color: '#1976d2' }}>
-                🤖 Descreva o fluxo que você quer criar
+                🤖 Configure seu fluxo inteligente
               </Typography>
               <Typography variant="body2" sx={{ mb: 3, color: '#666' }}>
-                Seja específico sobre o que o bot deve fazer. Exemplo: "Criar um fluxo de atendimento para uma pizzaria com opções de cardápio, pedidos e entrega"
+                Preencha os campos abaixo para que a IA crie um fluxo personalizado para seu negócio
               </Typography>
 
+              {/* Tipo de Fluxo */}
+              <FormControl fullWidth sx={{ mb: 3 }}>
+                <InputLabel>Tipo de Fluxo</InputLabel>
+                <Select
+                  value={aiFlowData.flowType}
+                  label="Tipo de Fluxo"
+                  onChange={(e) => setAiFlowData({...aiFlowData, flowType: e.target.value})}
+                >
+                  <MenuItem value="atendimento">🏪 Atendimento ao Cliente</MenuItem>
+                  <MenuItem value="vendas">💰 Vendas / E-commerce</MenuItem>
+                  <MenuItem value="suporte">🔧 Suporte Técnico</MenuItem>
+                  <MenuItem value="agendamento">📅 Agendamento de Serviços</MenuItem>
+                  <MenuItem value="faq">❓ FAQ / Perguntas Frequentes</MenuItem>
+                  <MenuItem value="captacao">📝 Captação de Leads</MenuItem>
+                  <MenuItem value="feedback">⭐ Coleta de Feedback</MenuItem>
+                </Select>
+              </FormControl>
+
+              {/* Tipo de Negócio */}
+              <TextField
+                fullWidth
+                variant="outlined"
+                label="Tipo de Negócio"
+                placeholder="Ex: Pizzaria, Loja de roupas, Clínica médica, Escola..."
+                value={aiFlowData.businessType}
+                onChange={(e) => setAiFlowData({...aiFlowData, businessType: e.target.value})}
+                sx={{ mb: 3 }}
+              />
+
+              {/* Objetivos */}
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 600 }}>
+                  🎯 Objetivos do Fluxo (selecione quantos quiser)
+                </Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  {[
+                    'Mostrar produtos/serviços',
+                    'Capturar dados do cliente',
+                    'Agendar horários',
+                    'Processar pedidos',
+                    'Responder dúvidas',
+                    'Coletar feedback',
+                    'Gerar leads',
+                    'Dar suporte técnico',
+                    'Informar preços',
+                    'Explicar funcionamento'
+                  ].map((objective) => (
+                    <Chip
+                      key={objective}
+                      label={objective}
+                      clickable
+                      color={aiFlowData.objectives.includes(objective) ? 'primary' : 'default'}
+                      onClick={() => {
+                        const newObjectives = aiFlowData.objectives.includes(objective)
+                          ? aiFlowData.objectives.filter(obj => obj !== objective)
+                          : [...aiFlowData.objectives, objective]
+                        setAiFlowData({...aiFlowData, objectives: newObjectives})
+                      }}
+                    />
+                  ))}
+                </Box>
+              </Box>
+
+              {/* Opções do Menu */}
+              <TextField
+                fullWidth
+                variant="outlined"
+                label="Opções do Menu Principal"
+                placeholder="Ex: Ver cardápio, Fazer pedido, Horário de funcionamento, Localização"
+                helperText="Digite as opções separadas por vírgula"
+                value={aiFlowData.menuOptions.join(', ')}
+                onChange={(e) => setAiFlowData({
+                  ...aiFlowData, 
+                  menuOptions: e.target.value.split(',').map(opt => opt.trim()).filter(opt => opt)
+                })}
+                sx={{ mb: 3 }}
+              />
+
+              {/* Transferência para Operador */}
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={aiFlowData.hasOperatorTransfer}
+                    onChange={(e) => setAiFlowData({...aiFlowData, hasOperatorTransfer: e.target.checked})}
+                    color="primary"
+                  />
+                }
+                label="👨‍💼 Incluir opção para falar com atendente humano"
+                sx={{ mb: 3, display: 'block' }}
+              />
+
+              {/* Descrição Livre */}
               <TextField
                 fullWidth
                 multiline
-                rows={6}
+                rows={4}
                 variant="outlined"
-                label="Descreva seu fluxo..."
-                placeholder="Ex: Quero um fluxo para atendimento de uma loja de roupas. O bot deve cumprimentar o cliente, mostrar categorias (masculino, feminino, infantil), permitir consulta de produtos, informar preços e horário de funcionamento, e no final dar opção de falar com atendente humano."
+                label="Descrição Adicional (opcional)"
+                placeholder="Adicione detalhes específicos, tom de voz, informações especiais..."
                 value={aiDescription}
                 onChange={(e) => setAiDescription(e.target.value)}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: '12px',
-                    backgroundColor: 'white'
-                  }
-                }}
+                sx={{ mb: 2 }}
               />
+
+              {/* Instruções Específicas */}
+              <TextField
+                fullWidth
+                multiline
+                rows={3}
+                variant="outlined"
+                label="Instruções Específicas (opcional)"
+                placeholder="Ex: Usar linguagem formal, incluir emojis, mencionar promoções, horário específico..."
+                value={aiFlowData.customInstructions}
+                onChange={(e) => setAiFlowData({...aiFlowData, customInstructions: e.target.value})}
+                sx={{ mb: 2 }}
+              />
+
+              <Alert severity="info" sx={{ borderRadius: '12px' }}>
+                <Typography variant="body2">
+                  💡 <strong>Dica:</strong> Quanto mais específico você for, melhor será o fluxo gerado pela IA!
+                </Typography>
+              </Alert>
             </Box>
           )}
 
@@ -808,10 +966,10 @@ const Flows = () => {
             <Box sx={{ textAlign: 'center', py: 4 }}>
               <CircularProgress size={60} sx={{ color: '#e91e63', mb: 2 }} />
               <Typography variant="h6" sx={{ mb: 1 }}>
-                🧠 IA está criando seu fluxo...
+                🧠 IA está criando seu fluxo personalizado...
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Analisando sua descrição e gerando o fluxo conversacional
+                Analisando suas especificações e gerando o fluxo conversacional
               </Typography>
             </Box>
           )}
@@ -847,7 +1005,7 @@ const Flows = () => {
 
               <Alert severity="info" sx={{ borderRadius: '12px' }}>
                 <Typography variant="body2">
-                  💡 Você pode editar este fluxo após salvá-lo usando o editor visual ou por código.
+                  💡 Você pode editar este fluxo após salvá-lo usando o editor visual ou solicitando alterações à IA.
                 </Typography>
               </Alert>
             </Box>
@@ -863,7 +1021,7 @@ const Flows = () => {
             <Button
               onClick={generateFlowWithAI}
               variant="contained"
-              disabled={!aiDescription.trim() || aiGenerating}
+              disabled={!aiFlowData.businessType.trim() || aiGenerating}
               startIcon={<SendIcon />}
               sx={{
                 background: 'linear-gradient(45deg, #e91e63 30%, #f06292 90%)',

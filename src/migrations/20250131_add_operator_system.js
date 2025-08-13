@@ -2,10 +2,12 @@ const { DataTypes } = require('sequelize');
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    // Adicionar nova role 'operator' ao enum
-    await queryInterface.sequelize.query(`
-      ALTER TYPE "enum_users_role" ADD VALUE 'operator';
-    `);
+    // Para MySQL, modificar o enum da role para incluir 'operator'
+    await queryInterface.changeColumn('users', 'role', {
+      type: DataTypes.ENUM('admin', 'user', 'operator'),
+      defaultValue: 'user',
+      allowNull: false
+    });
 
     // Adicionar campos ao modelo User
     await queryInterface.addColumn('users', 'parent_user_id', {
@@ -53,7 +55,11 @@ module.exports = {
     await queryInterface.removeColumn('users', 'operator_name');
     await queryInterface.removeColumn('users', 'parent_user_id');
 
-    // Nota: Não é possível remover valores de enum facilmente no PostgreSQL
-    // Em ambiente de produção, seria necessário criar um novo enum e migrar
+    // Reverter enum para valores originais
+    await queryInterface.changeColumn('users', 'role', {
+      type: DataTypes.ENUM('admin', 'user'),
+      defaultValue: 'user',
+      allowNull: false
+    });
   }
 };

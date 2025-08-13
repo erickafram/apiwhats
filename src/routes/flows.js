@@ -650,7 +650,7 @@ router.post('/clear-cache', async (req, res) => {
 // Gerar fluxo com IA
 router.post('/generate-with-ai', async (req, res) => {
   try {
-    const { description, bot_id } = req.body;
+    const { description, flowData, bot_id } = req.body;
 
     if (!description || !description.trim()) {
       return res.status(400).json({
@@ -663,59 +663,16 @@ router.post('/generate-with-ai', async (req, res) => {
     const AIService = require('../services/AIService');
     const aiService = new AIService();
 
-    // Prompt especializado para criação de fluxos
-    const systemPrompt = `Você é um especialista em criação de fluxos conversacionais para chatbots do WhatsApp.
-
-Crie um fluxo completo e funcional baseado na descrição fornecida.
-
-Estrutura obrigatória do JSON:
-{
-  "name": "Nome do Fluxo",
-  "description": "Descrição do fluxo",
-  "trigger_keywords": ["palavra1", "palavra2"],
-  "bot_id": null,
-  "is_active": true,
-  "is_default": false,
-  "flow_data": {
-    "nodes": [
-      {
-        "id": "start",
-        "type": "start",
-        "position": {"x": 100, "y": 100},
-        "next": "welcome"
-      },
-      {
-        "id": "welcome",
-        "type": "message",
-        "content": "Mensagem de boas-vindas",
-        "position": {"x": 100, "y": 200},
-        "next": "menu"
-      }
-    ],
-    "edges": []
-  }
-}
-
-Tipos de nó válidos: start, message, input, condition, ai, action, end
-- start: sempre o primeiro nó
-- message: enviar mensagem
-- input: capturar entrada do usuário
-- condition: decisões baseadas em condições
-- ai: resposta gerada por IA
-- end: finalizar conversa
-
-Use emojis nas mensagens para tornar mais amigável.
-Crie um fluxo lógico e bem estruturado.
-
-Responda APENAS com o JSON válido, sem explicações adicionais.`;
+    // Prompt especializado e melhorado para criação de fluxos
+    const systemPrompt = buildEnhancedFlowPrompt(flowData);
 
     const aiResponse = await aiService.generateResponse({
-      message: `Crie um fluxo conversacional para: ${description}`,
+      message: `Crie um fluxo conversacional com base nestas especificações:\n\n${description}`,
       context: [],
       config: {
         system_prompt: systemPrompt,
         temperature: 0.7,
-        max_tokens: 2000
+        max_tokens: 3000
       }
     });
 
@@ -731,6 +688,9 @@ Responda APENAS com o JSON válido, sem explicações adicionais.`;
         if (!generatedFlow.flow_data || !generatedFlow.flow_data.nodes) {
           throw new Error('Estrutura de fluxo inválida');
         }
+
+        // Aprimorar o fluxo com dados específicos
+        generatedFlow = enhanceFlowWithData(generatedFlow, flowData);
 
       } catch (parseError) {
         console.error('Erro ao parsear resposta da IA:', parseError);
@@ -764,6 +724,160 @@ Responda APENAS com o JSON válido, sem explicações adicionais.`;
   }
 });
 
+// Função para criar prompt melhorado baseado nos dados estruturados
+function buildEnhancedFlowPrompt(flowData = {}) {
+  const { flowType, businessType, objectives, hasOperatorTransfer, menuOptions } = flowData;
+  
+  let prompt = `Você é um ESPECIALISTA EM CRIAÇÃO DE FLUXOS CONVERSACIONAIS para chatbots do WhatsApp.
+
+MISSÃO: Criar um fluxo COMPLETO, FUNCIONAL e PROFISSIONAL baseado nas especificações fornecidas.
+
+CONTEXTO ESPECÍFICO:
+- Tipo de Fluxo: ${flowType || 'atendimento'}
+- Tipo de Negócio: ${businessType || 'negócio genérico'}
+- Objetivos: ${objectives?.join(', ') || 'atendimento geral'}
+- Transferência para Operador: ${hasOperatorTransfer ? 'SIM - obrigatório incluir' : 'NÃO'}
+- Opções do Menu: ${menuOptions?.join(', ') || 'opções padrão'}
+
+ESTRUTURA OBRIGATÓRIA DO JSON:
+{
+  "name": "Nome Específico do Fluxo",
+  "description": "Descrição detalhada",
+  "trigger_keywords": ["palavras", "relacionadas", "ao", "negócio"],
+  "bot_id": null,
+  "is_active": true,
+  "is_default": false,
+  "flow_data": {
+    "nodes": [
+      // Nós detalhados aqui
+    ],
+    "edges": [
+      // Conexões visuais aqui
+    ],
+    "viewport": {"x": 0, "y": 0, "zoom": 1}
+  }
+}
+
+TIPOS DE NÓS E ESTRUTURAS:
+
+🎯 START NODE:
+{
+  "id": "start",
+  "type": "start",
+  "position": {"x": 100, "y": 100},
+  "next": "welcome"
+}
+
+📝 MESSAGE NODE:
+{
+  "id": "welcome",
+  "type": "message",
+  "position": {"x": 100, "y": 200},
+  "next": "menu",
+  "content": "Mensagem personalizada com emojis relacionados ao negócio 🎉"
+}
+
+📥 INPUT NODE:
+{
+  "id": "input_opcao",
+  "type": "input",
+  "position": {"x": 100, "y": 300},
+  "next": "condition_opcao",
+  "content": "Digite sua escolha:",
+  "variable": "opcao_escolhida"
+}
+
+⚡ CONDITION NODE:
+{
+  "id": "condition_opcao",
+  "type": "condition",
+  "position": {"x": 100, "y": 400},
+  "conditions": [
+    {"value": "1", "operator": "equals", "variable": "opcao_escolhida", "next": "opcao_1"},
+    {"value": "2", "operator": "equals", "variable": "opcao_escolhida", "next": "opcao_2"}
+  ],
+  "fallback": "opcao_invalida"
+}
+
+🤖 AI_RESPONSE NODE:
+{
+  "id": "ai_atendimento",
+  "type": "ai_response",
+  "position": {"x": 100, "y": 500},
+  "next": "menu",
+  "data": {
+    "system_prompt": "Você é um assistente especializado em ${businessType}. Responda perguntas sobre ${objectives?.join(', ')}.",
+    "temperature": 0.7,
+    "max_tokens": 500,
+    "fallback_message": "Desculpe, não consegui processar. Que tal falar com um atendente?"
+  }
+}`;
+
+  if (hasOperatorTransfer) {
+    prompt += `
+
+👨‍💼 TRANSFERIR PARA OPERADOR (2 nós OBRIGATÓRIOS):
+// 1. Mensagem informativa
+{
+  "id": "transferir_operador",
+  "type": "message",
+  "position": {"x": 400, "y": 600},
+  "next": "acao_transferir",
+  "content": "👨‍💼 **TRANSFERINDO PARA ATENDENTE**\\n\\n✅ Conectando você com nossa equipe especializada em ${businessType}!\\n\\n⏱️ **Horário de atendimento:**\\n🕕 Segunda a Sexta: 08:00 às 18:00\\n🕘 Sábados: 08:00 às 12:00\\n\\n📞 **Aguarde um momento...**"
+}
+
+// 2. Ação de transferência
+{
+  "id": "acao_transferir",
+  "type": "action",
+  "position": {"x": 400, "y": 750},
+  "next": "end",
+  "content": "",
+  "action": "transfer_to_human"
+}`;
+  }
+
+  prompt += `
+
+REGRAS ESPECÍFICAS PARA ESTE FLUXO:
+✅ Criar fluxo específico para ${businessType}
+✅ Incluir todas as opções: ${menuOptions?.join(', ')}
+✅ Focar nos objetivos: ${objectives?.join(', ')}
+✅ Usar linguagem adequada ao tipo de negócio
+✅ Incluir emojis relacionados ao segmento
+✅ Posições escalonadas (x: 100, 300, 500 / y: 100, 200, 300...)
+✅ IDs descritivos e únicos
+✅ Fluxo completo do início ao fim
+${hasOperatorTransfer ? '✅ OBRIGATÓRIO: Incluir opção para transferir para operador' : ''}
+
+IMPORTANTE: Crie um fluxo REAL e ÚTIL para ${businessType}, não genérico!
+
+Responda APENAS com o JSON válido, sem explicações adicionais.`;
+
+  return prompt;
+}
+
+// Função para aprimorar o fluxo com dados específicos
+function enhanceFlowWithData(flow, flowData) {
+  if (!flowData) return flow;
+  
+  // Atualizar nome se for genérico
+  if (flow.name === "Fluxo Gerado por IA" && flowData.businessType) {
+    flow.name = `Fluxo de ${flowData.flowType} - ${flowData.businessType}`;
+  }
+  
+  // Adicionar palavras-chave específicas
+  if (flowData.businessType) {
+    const businessKeywords = flowData.businessType.toLowerCase().split(' ');
+    flow.trigger_keywords = [...(flow.trigger_keywords || []), ...businessKeywords];
+  }
+  
+  // Remover duplicatas das palavras-chave
+  flow.trigger_keywords = [...new Set(flow.trigger_keywords)];
+  
+  return flow;
+}
+
 // Função para criar fluxo básico como fallback
 function createFallbackFlow(description, bot_id) {
   return {
@@ -791,55 +905,93 @@ function createFallbackFlow(description, bot_id) {
         {
           id: "menu",
           type: "message",
-          content: "Escolha uma opção:\n\n1️⃣ Informações\n2️⃣ Suporte\n3️⃣ Falar com atendente\n\nDigite o número da opção:",
+          content: "Escolha uma opção:\n\n1️⃣ Informações\n2️⃣ Suporte com IA\n3️⃣ Falar com atendente\n\nDigite o número da opção:",
           position: { x: 100, y: 300 },
-          next: "input"
+          next: "input_opcao"
         },
         {
-          id: "input",
+          id: "input_opcao",
           type: "input",
           content: "Aguardando sua escolha...",
           position: { x: 100, y: 400 },
-          next: "condition"
+          next: "condition_opcao",
+          variable: "opcao_menu"
         },
         {
-          id: "condition",
+          id: "condition_opcao",
           type: "condition",
           conditions: [
-            { value: "1", next: "info" },
-            { value: "2", next: "support" },
-            { value: "3", next: "human" }
+            { value: "1", operator: "equals", variable: "opcao_menu", next: "info" },
+            { value: "2", operator: "equals", variable: "opcao_menu", next: "support_ai" },
+            { value: "3", operator: "equals", variable: "opcao_menu", next: "transferir_operador" }
           ],
-          position: { x: 100, y: 500 }
+          position: { x: 100, y: 500 },
+          fallback: "opcao_invalida"
         },
         {
           id: "info",
           type: "message",
-          content: "ℹ️ Aqui estão nossas informações principais.\n\nObrigado pelo contato!",
+          content: `ℹ️ **Informações sobre ${description}**\n\nAqui estão nossas informações principais.\n\n✅ Estamos disponíveis para ajudá-lo!\n📞 Entre em contato conosco sempre que precisar.\n\nObrigado pelo contato! 😊`,
           position: { x: 200, y: 600 },
           next: "end"
         },
         {
-          id: "support",
-          type: "ai",
-          prompt: `Você é um assistente de suporte. Contexto: ${description}. Ajude o usuário de forma útil e amigável.`,
+          id: "support_ai",
+          type: "ai_response",
           position: { x: 300, y: 600 },
-          next: "end"
+          next: "menu",
+          data: {
+            system_prompt: `Você é um assistente de suporte especializado em ${description}. Ajude o usuário de forma útil, profissional e amigável. Se não conseguir resolver, sugira falar com um atendente humano.`,
+            temperature: 0.7,
+            max_tokens: 500,
+            fallback_message: "Desculpe, não consegui processar sua mensagem. Que tal falar com um de nossos atendentes? Digite 3 no menu principal."
+          }
         },
         {
-          id: "human",
+          id: "transferir_operador",
           type: "message",
-          content: "👨‍💼 Transferindo para atendente humano...\n\nAguarde um momento.",
+          content: "👨‍💼 **TRANSFERINDO PARA ATENDENTE**\n\n✅ Você será conectado com nossa equipe especializada!\n\n⏱️ **Horário de atendimento:**\n🕕 Segunda a Sexta: 08:00 às 18:00\n🕘 Sábados: 08:00 às 12:00\n\n📞 **O que nosso atendente pode fazer:**\n• Resolver questões complexas\n• Dar suporte personalizado\n• Finalizar negociações\n• Tirar dúvidas específicas\n\n🔄 **Conectando... aguarde um momento**",
           position: { x: 400, y: 600 },
-          next: "end"
+          next: "acao_transferir"
+        },
+        {
+          id: "acao_transferir",
+          type: "action",
+          position: { x: 400, y: 750 },
+          next: "end",
+          content: "",
+          action: "transfer_to_human"
+        },
+        {
+          id: "opcao_invalida",
+          type: "message",
+          content: "❌ **Opção inválida!**\n\n🔍 Por favor, digite apenas:\n• **1** = Informações\n• **2** = Suporte com IA\n• **3** = Falar com atendente\n\n🔄 Voltando ao menu...",
+          position: { x: 500, y: 600 },
+          next: "menu"
         },
         {
           id: "end",
           type: "end",
-          position: { x: 300, y: 700 }
+          position: { x: 300, y: 900 },
+          content: "Obrigado pelo contato! 😊\n\nVolte sempre que precisar de ajuda!"
         }
       ],
-      edges: []
+      edges: [
+        { id: "e1", source: "start", target: "welcome" },
+        { id: "e2", source: "welcome", target: "menu" },
+        { id: "e3", source: "menu", target: "input_opcao" },
+        { id: "e4", source: "input_opcao", target: "condition_opcao" },
+        { id: "e5", source: "condition_opcao", target: "info" },
+        { id: "e6", source: "condition_opcao", target: "support_ai" },
+        { id: "e7", source: "condition_opcao", target: "transferir_operador" },
+        { id: "e8", source: "condition_opcao", target: "opcao_invalida" },
+        { id: "e9", source: "info", target: "end" },
+        { id: "e10", source: "support_ai", target: "menu" },
+        { id: "e11", source: "transferir_operador", target: "acao_transferir" },
+        { id: "e12", source: "acao_transferir", target: "end" },
+        { id: "e13", source: "opcao_invalida", target: "menu" }
+      ],
+      viewport: { x: 0, y: 0, zoom: 1 }
     }
   };
 }
@@ -1020,104 +1172,33 @@ function applySimpleFlowEdit(currentFlow, description) {
 router.post('/edit-with-ai', async (req, res) => {
   try {
     console.log('🤖 Iniciando edição com IA...');
-    const { description, currentFlow } = req.body;
+    
+    const { description, editData, currentFlow } = req.body;
 
-    console.log('🤖 Descrição:', description);
-    console.log('🤖 Fluxo atual recebido:', currentFlow ? 'Sim' : 'Não');
-
+    // Validação básica
     if (!description || !description.trim()) {
-      console.log('🤖 Erro: Descrição vazia');
       return res.status(400).json({
         error: 'Descrição das mudanças é obrigatória',
         code: 'DESCRIPTION_REQUIRED'
       });
     }
 
-    if (!currentFlow) {
-      console.log('🤖 Erro: Fluxo atual não fornecido');
+    if (!currentFlow || !currentFlow.flow_data || !currentFlow.flow_data.nodes) {
       return res.status(400).json({
-        error: 'Dados do fluxo atual são obrigatórios',
-        code: 'CURRENT_FLOW_REQUIRED'
+        error: 'Fluxo atual inválido',
+        code: 'INVALID_CURRENT_FLOW'
       });
     }
 
-    // Validar estrutura do fluxo atual
-    if (!currentFlow.flow_data || !currentFlow.flow_data.nodes) {
-      console.log('🤖 Erro: Estrutura do fluxo inválida');
-      return res.status(400).json({
-        error: 'Estrutura do fluxo atual é inválida',
-        code: 'INVALID_FLOW_STRUCTURE'
-      });
-    }
+    console.log(`🤖 Editando fluxo ID: ${currentFlow.id}, Nome: ${currentFlow.name}`);
+    console.log(`🤖 Número de nós no fluxo atual: ${currentFlow.flow_data.nodes.length}`);
 
     // Usar o AIService para editar o fluxo
     const AIService = require('../services/AIService');
     const aiService = new AIService();
 
-    // Prompt especializado para análise e correção de fluxos
-    const systemPrompt = `Você é um ESPECIALISTA EM DEBUGGING de fluxos conversacionais para chatbots do WhatsApp.
-
-MISSÃO: Analisar o problema descrito pelo usuário, identificar a causa raiz no fluxo e corrigi-la.
-
-PROCESSO DE ANÁLISE:
-1. 🔍 ANALISE o problema descrito pelo usuário
-2. 🧠 IDENTIFIQUE a causa raiz no fluxo atual:
-   - Conexões quebradas entre nós (campo "next" incorreto)
-   - Condições mal configuradas (conditions array)
-   - IDs de nós que não existem
-   - Tipos de nó incorretos
-   - Conteúdo de mensagens inadequado
-3. 🔧 CORRIJA o problema específico
-4. ✅ VALIDE que a correção resolve o problema
-
-PROBLEMAS COMUNS E SOLUÇÕES:
-- "Opção X não responde": Verificar se condition tem o valor correto e next aponta para nó existente
-- "Fica travado": Verificar se todos os nós têm next válido ou são do tipo end
-- "Não entende entrada": Verificar se há nó input antes de condition
-- "Pula etapas": Verificar sequência de next entre nós
-- "Remover opção X": Remover linha da opção do conteúdo da mensagem E remover condition correspondente E remover edges relacionadas
-- "Retire opção X e Y": Remover múltiplas opções do menu e suas condições/conexões
-
-ESTRUTURA DE RESPOSTA:
-Retorne um JSON com duas partes:
-
-{
-  "analysis": "Análise detalhada do problema encontrado e como foi corrigido",
-  "flow": {
-    "name": "Nome do Fluxo",
-    "description": "Descrição",
-    "trigger_keywords": ["palavra1", "palavra2"],
-    "bot_id": 1,
-    "is_active": true,
-    "is_default": false,
-    "flow_data": {
-      "nodes": [...nós corrigidos...],
-      "edges": [...edges corrigidas...],
-      "viewport": {"x": 0, "y": 0, "zoom": 1}
-    }
-  }
-}
-
-REGRAS TÉCNICAS:
-- Mantenha TODOS os campos obrigatórios
-- Para condition: {"conditions": [{"value": "1", "operator": "equals", "variable": "menu_option", "next": "node_id"}]}
-- Para input: {"variable": "nome_variavel", "next": "proximo_node"}
-- IDs únicos e consistentes
-- Posições (x,y) adequadas para novos nós
-- Edges devem conectar source → target corretamente
-
-IMPORTANTE: Seja um detective! Encontre exatamente o que está quebrado e conserte.
-
-EXEMPLO DE REMOÇÃO DE OPÇÕES:
-Se o usuário pedir "Retire a opção 4 e 5 do fluxo":
-1. Encontre o nó de mensagem que contém o menu
-2. Remova as linhas "4️⃣ Opção 4" e "5️⃣ Opção 5" do content
-3. Encontre o nó condition que verifica menu_option
-4. Remova as conditions com value "4" e "5"
-5. Remova as edges que conectam essas conditions aos próximos nós
-6. Mantenha apenas as opções 1, 2 e 3 funcionando
-
-SEMPRE retorne JSON válido com analysis explicando o que foi feito.`;
+    // Prompt especializado e melhorado para edição de fluxos
+    const systemPrompt = buildEnhancedEditPrompt(editData, currentFlow);
 
     const contextMessage = `Fluxo atual:
 ${JSON.stringify(currentFlow, null, 2)}
@@ -1133,7 +1214,7 @@ Mudanças solicitadas: ${description}`;
         config: {
           system_prompt: systemPrompt,
           temperature: 0.7,
-          max_tokens: 3000
+          max_tokens: 4000
         }
       });
     } catch (aiError) {
@@ -1178,101 +1259,47 @@ Mudanças solicitadas: ${description}`;
         console.log('🤖 JSON parseado com sucesso!');
 
         // Verificar se tem análise e fluxo
-        if (aiResult.analysis && aiResult.flow) {
-          console.log('🤖 Análise da IA:', aiResult.analysis);
-          editedFlow = aiResult.flow;
-        } else if (aiResult.flow_data) {
-          // Formato antigo - fluxo direto
-          editedFlow = aiResult;
-        } else {
+        if (!aiResult || !aiResult.flow) {
           throw new Error('Estrutura de resposta inválida da IA');
         }
 
-        // Validações obrigatórias
-        if (!editedFlow.flow_data) {
-          throw new Error('Campo flow_data é obrigatório');
-        }
+        editedFlow = aiResult.flow;
+        console.log('🤖 Fluxo editado extraído com sucesso');
 
-        if (!editedFlow.flow_data.nodes || !Array.isArray(editedFlow.flow_data.nodes)) {
-          throw new Error('Campo flow_data.nodes deve ser um array');
-        }
-
-        if (editedFlow.flow_data.nodes.length === 0) {
-          throw new Error('Fluxo deve ter pelo menos um nó');
-        }
-
-        // Validar se tem pelo menos um nó start
-        const hasStart = editedFlow.flow_data.nodes.some(node => node.type === 'start');
-        if (!hasStart) {
-          throw new Error('Fluxo deve ter pelo menos um nó do tipo start');
-        }
-
-        // Garantir que todos os nós tenham IDs únicos
-        const nodeIds = editedFlow.flow_data.nodes.map(node => node.id);
-        const uniqueIds = [...new Set(nodeIds)];
-        if (nodeIds.length !== uniqueIds.length) {
-          throw new Error('Fluxo contém IDs de nós duplicados');
-        }
-
-        // Garantir campos obrigatórios
-        editedFlow.name = editedFlow.name || currentFlow.name;
-        editedFlow.description = editedFlow.description || currentFlow.description;
-        editedFlow.trigger_keywords = editedFlow.trigger_keywords || currentFlow.trigger_keywords || [];
-        editedFlow.bot_id = editedFlow.bot_id || currentFlow.bot_id;
-        editedFlow.is_active = editedFlow.is_active !== undefined ? editedFlow.is_active : currentFlow.is_active;
-        editedFlow.is_default = editedFlow.is_default !== undefined ? editedFlow.is_default : currentFlow.is_default;
-
-        // Garantir estrutura de flow_data
-        if (!editedFlow.flow_data.edges) {
-          editedFlow.flow_data.edges = [];
-        }
-        if (!editedFlow.flow_data.viewport) {
-          editedFlow.flow_data.viewport = { x: 0, y: 0, zoom: 1 };
-        }
-
-        console.log('🤖 Fluxo validado com sucesso!');
-        console.log('🤖 Nodes:', editedFlow.flow_data.nodes.length);
-        console.log('🤖 Edges:', editedFlow.flow_data.edges.length);
+        // Aplicar melhorias baseadas nos dados estruturados
+        editedFlow = enhanceEditedFlow(editedFlow, editData, currentFlow);
 
       } catch (parseError) {
-        console.error('🤖 Erro ao parsear/validar resposta da IA:', parseError.message);
-        console.error('🤖 Conteúdo completo da resposta:', aiResponse ? aiResponse.content : 'Nenhum conteúdo');
-
-        // Fallback mais inteligente: aplicar mudança simples
-        console.log('🤖 Aplicando fallback: modificação simples do fluxo');
-
+        console.error('🤖 Erro ao parsear resposta da IA:', parseError);
+        console.log('🤖 Conteúdo que causou erro:', aiResponse.content);
+        
+        // Fallback: aplicar edição simples
         editedFlow = applySimpleFlowEdit(currentFlow, description);
-
-        console.log('🤖 Fallback aplicado com sucesso');
+        aiResult = { analysis: 'Falha no processamento da IA. Aplicando edição básica.' };
       }
     } else {
-      console.error('🤖 IA não retornou conteúdo');
-      console.log('🤖 Aplicando fallback: IA não respondeu');
-
+      console.log('🤖 IA não retornou resposta válida, usando fallback...');
+      // Fallback: aplicar edição simples
       editedFlow = applySimpleFlowEdit(currentFlow, description);
-      console.log('🤖 Fallback aplicado com sucesso');
+      aiResult = { analysis: 'IA indisponível. Aplicando edição básica.' };
     }
 
-    // Preparar resposta com análise se disponível
-    const response = {
-      success: true,
-      flow: editedFlow,
-      ai_used: true,
-      confidence: (aiResponse && aiResponse.confidence) ? aiResponse.confidence : 0.8,
-      changes_applied: description
-    };
-
-    // Adicionar análise se a IA forneceu
-    if (typeof aiResult !== 'undefined' && aiResult && aiResult.analysis) {
-      response.analysis = aiResult.analysis;
-      console.log('🤖 Incluindo análise na resposta:', aiResult.analysis);
-    } else if (editedFlow && description.toLowerCase().includes('retire')) {
-      // Adicionar análise para fallback de remoção de opções
-      response.analysis = `Fallback aplicado: Comando de remoção de opções detectado e processado automaticamente.`;
+    // Garantir que o fluxo editado tem estrutura válida
+    if (!editedFlow || !editedFlow.flow_data || !editedFlow.flow_data.nodes) {
+      console.error('🤖 Fluxo editado inválido, usando original');
+      editedFlow = currentFlow;
+      aiResult = { analysis: 'Não foi possível aplicar as mudanças. Fluxo mantido inalterado.' };
     }
 
     console.log('🤖 Edição concluída com sucesso');
-    res.json(response);
+    
+    res.json({
+      success: true,
+      flow: editedFlow,
+      analysis: aiResult?.analysis || 'Mudanças aplicadas com sucesso.',
+      ai_used: true,
+      confidence: aiResponse?.confidence || 0.7
+    });
 
   } catch (error) {
     console.error('Erro ao editar fluxo com IA:', error);
@@ -1283,5 +1310,168 @@ Mudanças solicitadas: ${description}`;
     });
   }
 });
+
+// Função para criar prompt melhorado para edição baseado nos dados estruturados
+function buildEnhancedEditPrompt(editData = {}, currentFlow = {}) {
+  const { changeType, targetArea, specificRequest, addTransferOption, menuChanges } = editData;
+  
+  let prompt = `Você é um ESPECIALISTA EM DEBUGGING E EDIÇÃO de fluxos conversacionais para chatbots do WhatsApp.
+
+MISSÃO: Analisar o fluxo atual e aplicar as mudanças específicas solicitadas com PRECISÃO ABSOLUTA.
+
+CONTEXTO DA EDIÇÃO:
+- Tipo de Alteração: ${changeType || 'modificar'}
+- Área do Fluxo: ${targetArea || 'geral'}
+- Solicitação: ${specificRequest || 'mudança geral'}
+- Adicionar Transferência: ${addTransferOption ? 'SIM - obrigatório' : 'NÃO'}
+- Mudanças no Menu: ${menuChanges?.join(', ') || 'nenhuma'}
+- Fluxo Atual: ${currentFlow.name || 'sem nome'} (${currentFlow.flow_data?.nodes?.length || 0} nós)
+
+PROCESSO DE EDIÇÃO:
+1. 🔍 ANALISE o fluxo atual detalhadamente
+2. 🎯 IDENTIFIQUE exatamente onde aplicar as mudanças
+3. 🔧 APLIQUE as mudanças ESPECÍFICAS solicitadas
+4. ✅ VALIDE que o fluxo permanece funcional
+
+ESTRUTURA DE RESPOSTA OBRIGATÓRIA:
+{
+  "analysis": "Análise detalhada do que foi identificado e alterado",
+  "flow": {
+    "id": ${currentFlow.id || 'null'},
+    "name": "${currentFlow.name || 'Fluxo Editado'}",
+    "description": "${currentFlow.description || ''}",
+    "trigger_keywords": ${JSON.stringify(currentFlow.trigger_keywords || [])},
+    "bot_id": ${currentFlow.bot_id || 'null'},
+    "is_active": ${currentFlow.is_active !== undefined ? currentFlow.is_active : true},
+    "is_default": ${currentFlow.is_default !== undefined ? currentFlow.is_default : false},
+    "flow_data": {
+      "nodes": [...nós atualizados...],
+      "edges": [...conexões atualizadas...],
+      "viewport": {"x": 0, "y": 0, "zoom": 1}
+    }
+  }
+}`;
+
+  // Instruções específicas baseadas no tipo de alteração
+  if (changeType === 'adicionar' && targetArea === 'menu') {
+    prompt += `
+
+INSTRUÇÃO ESPECÍFICA - ADICIONAR AO MENU:
+1. Encontre o nó de mensagem que contém o menu principal
+2. Adicione as novas opções: ${menuChanges?.join(', ')}
+3. Atualize o nó condition para incluir as novas condições
+4. Crie novos nós para as opções adicionadas
+5. Conecte tudo com edges apropriadas`;
+  }
+
+  if (changeType === 'remover' && targetArea === 'menu') {
+    prompt += `
+
+INSTRUÇÃO ESPECÍFICA - REMOVER DO MENU:
+1. Encontre o nó de mensagem que contém o menu
+2. Remova as opções especificadas: ${menuChanges?.join(', ')}
+3. Remova as conditions correspondentes
+4. Remova os nós relacionados às opções removidas
+5. Atualize as edges`;
+  }
+
+  if (changeType === 'corrigir' && targetArea === 'operador') {
+    prompt += `
+
+INSTRUÇÃO ESPECÍFICA - CORRIGIR TRANSFERÊNCIA:
+1. Identifique onde deveria ter transferência para operador
+2. Crie 2 nós obrigatórios:
+   - Nó message informativo sobre transferência
+   - Nó action com "action": "transfer_to_human"
+3. Conecte adequadamente ao fluxo`;
+  }
+
+  if (addTransferOption) {
+    prompt += `
+
+OBRIGATÓRIO - ADICIONAR TRANSFERÊNCIA:
+Criar 2 nós para transferência ao operador:
+{
+  "id": "transferir_operador",
+  "type": "message",
+  "position": {"x": 400, "y": 600},
+  "next": "acao_transferir",
+  "content": "👨‍💼 **TRANSFERINDO PARA ATENDENTE**\\n\\n✅ Conectando você com nossa equipe!\\n\\n📞 **Aguarde um momento...**"
+}
+{
+  "id": "acao_transferir", 
+  "type": "action",
+  "position": {"x": 400, "y": 750},
+  "next": "end",
+  "content": "",
+  "action": "transfer_to_human"
+}`;
+  }
+
+  prompt += `
+
+REGRAS IMPORTANTES:
+✅ Mantenha TODA a estrutura original intacta, exceto onde especificado
+✅ IDs únicos para novos nós
+✅ Posições adequadas (x,y) para novos elementos
+✅ Edges conectando source → target corretamente
+✅ Conditions com formato: {"value": "X", "operator": "equals", "variable": "Y", "next": "Z"}
+✅ Para action: {"action": "transfer_to_human"}
+✅ Para ai_response: {"data": {"system_prompt": "...", "temperature": 0.7, "max_tokens": 500}}
+
+CRÍTICO: Aplique EXATAMENTE as mudanças solicitadas, nem mais nem menos!
+
+Responda APENAS com o JSON válido, sem explicações adicionais.`;
+
+  return prompt;
+}
+
+// Função para aprimorar o fluxo editado com dados específicos
+function enhanceEditedFlow(flow, editData, originalFlow) {
+  if (!editData || !flow) return flow;
+  
+  // Preservar IDs e metadados importantes
+  flow.id = originalFlow.id;
+  flow.bot_id = originalFlow.bot_id;
+  
+  // Se adicionou transferência, garantir que está configurada corretamente
+  if (editData.addTransferOption && flow.flow_data && flow.flow_data.nodes) {
+    const hasTransferNode = flow.flow_data.nodes.some(node => 
+      node.type === 'action' && node.action === 'transfer_to_human'
+    );
+    
+    if (!hasTransferNode) {
+      // Adicionar nós de transferência se não existirem
+      const transferNodes = [
+        {
+          id: "transferir_operador",
+          type: "message",
+          position: { x: 400, y: 600 },
+          next: "acao_transferir",
+          content: "👨‍💼 **TRANSFERINDO PARA ATENDENTE**\n\n✅ Conectando você com nossa equipe!\n\n📞 **Aguarde um momento...**"
+        },
+        {
+          id: "acao_transferir",
+          type: "action", 
+          position: { x: 400, y: 750 },
+          next: "end",
+          content: "",
+          action: "transfer_to_human"
+        }
+      ];
+      
+      flow.flow_data.nodes.push(...transferNodes);
+      
+      // Adicionar edges se não existirem
+      if (!flow.flow_data.edges) flow.flow_data.edges = [];
+      flow.flow_data.edges.push(
+        { id: "e_transfer1", source: "transferir_operador", target: "acao_transferir" },
+        { id: "e_transfer2", source: "acao_transferir", target: "end" }
+      );
+    }
+  }
+  
+  return flow;
+}
 
 module.exports = router;
