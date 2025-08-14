@@ -23,6 +23,7 @@ import {
   Analytics as AnalyticsIcon,
   Settings as SettingsIcon,
   WhatsApp as WhatsAppIcon,
+  Label as StatusIcon,
 } from '@mui/icons-material'
 
 import { useConversations } from '../../hooks/useConversations.jsx'
@@ -59,6 +60,12 @@ const menuItems = [
     path: '/conversations',
     icon: ConversationIcon,
     // Disponível para todos (admin, user, operator)
+  },
+  {
+    title: 'Status de Conversas',
+    path: '/conversation-statuses',
+    icon: StatusIcon,
+    roles: ['admin', 'user'] // Apenas admins e usuários principais podem gerenciar status
   },
   {
     title: 'Fila de Atendimento',

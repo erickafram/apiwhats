@@ -1,6 +1,6 @@
 const express = require('express');
 const { Op } = require('sequelize');
-const { Conversation, Bot, Message, Flow, User } = require('../models');
+const { Conversation, Bot, Message, Flow, User, ConversationStatus } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { validateParams, validateQuery, schemas } = require('../middleware/validation');
 
@@ -54,6 +54,12 @@ router.get('/', validateQuery(schemas.pagination), async (req, res) => {
       whereClause.status = status;
     }
 
+    // Filtrar por status customizado se fornecido
+    const { custom_status_id } = req.query;
+    if (custom_status_id) {
+      whereClause.custom_status_id = custom_status_id;
+    }
+
     // Controle de acesso para operadores
     if (req.user.role === 'operator') {
       // Operadores só veem conversas atribuídas a eles ou não atribuídas (disponíveis)
@@ -97,6 +103,12 @@ router.get('/', validateQuery(schemas.pagination), async (req, res) => {
           model: User,
           as: 'assigned_operator',
           attributes: ['id', 'name', 'operator_name'],
+          required: false
+        },
+        {
+          model: ConversationStatus,
+          as: 'custom_status',
+          attributes: ['id', 'name', 'color', 'icon', 'is_final'],
           required: false
         }
       ]
@@ -585,6 +597,10 @@ router.post('/:id/assign-operator', validateParams(schemas.idParam), async (req,
         });
       }
       
+      // Verificar se já houve alguma atribuição de operador antes (não contar a atual)
+      const hadPreviousOperator = (conversation.metadata?.assignment_history?.length > 0) || 
+                                  (conversation.metadata?.operator_assigned_at && conversation.assigned_operator_id);
+      
       // Auto-atribuição
       await conversation.update({
         assigned_operator_id: req.user.id,
@@ -607,43 +623,46 @@ router.post('/:id/assign-operator', validateParams(schemas.idParam), async (req,
         }
       });
 
-      // Enviar mensagem automática de boas-vindas
-      const operatorName = req.user.operator_name || req.user.name;
-      const welcomeMessage = `Olá! Meu nome é ${operatorName} e vou continuar a conversa com você. Como posso ajudá-lo?`;
-      
-      // Criar mensagem de boas-vindas
-      const welcomeMsg = await Message.create({
-        conversation_id: conversation.id,
-        bot_id: conversation.bot_id,
-        sender_phone: conversation.user_phone,
-        direction: 'outgoing',
-        content: welcomeMessage,
-        message_type: 'text',
-        metadata: {
-          welcome_message: true,
-          operator_message: true,
-          sent_by_operator: true,
-          operator_id: req.user.id,
-          operator_name: operatorName
-        }
-      });
-
-      // Enviar via WhatsApp
-      try {
-        const UltraMsgService = require('../services/UltraMsgService');
-        const ultraMsgService = new UltraMsgService();
-        await ultraMsgService.sendMessage(conversation.bot_id, conversation.user_phone, welcomeMessage, 'text');
+      // Enviar mensagem automática de boas-vindas APENAS se for a PRIMEIRA VEZ que um operador assume
+      if (!hadPreviousOperator) {
+        const operatorName = req.user.operator_name || req.user.name;
+        const welcomeMessage = `Olá! Meu nome é ${operatorName} e vou continuar a conversa com você. Como posso ajudá-lo?`;
         
-        await welcomeMsg.update({ 
-          status: 'sent',
-          timestamp: new Date()
+        // Criar mensagem de boas-vindas
+        const welcomeMsg = await Message.create({
+          conversation_id: conversation.id,
+          bot_id: conversation.bot_id,
+          sender_phone: conversation.user_phone,
+          direction: 'outgoing',
+          content: welcomeMessage,
+          message_type: 'text',
+          metadata: {
+            welcome_message: true,
+            operator_message: true,
+            sent_by_operator: true,
+            operator_id: req.user.id,
+            operator_name: operatorName,
+            first_operator_assignment: true
+          }
         });
-      } catch (whatsappError) {
-        console.error('Erro ao enviar mensagem de boas-vindas via WhatsApp:', whatsappError);
-        await welcomeMsg.update({ 
-          status: 'failed',
-          error_message: whatsappError.message 
-        });
+
+        // Enviar via WhatsApp
+        try {
+          const UltraMsgService = require('../services/UltraMsgService');
+          const ultraMsgService = new UltraMsgService();
+          await ultraMsgService.sendMessage(conversation.bot_id, conversation.user_phone, welcomeMessage, 'text');
+          
+          await welcomeMsg.update({ 
+            status: 'sent',
+            timestamp: new Date()
+          });
+        } catch (whatsappError) {
+          console.error('Erro ao enviar mensagem de boas-vindas via WhatsApp:', whatsappError);
+          await welcomeMsg.update({ 
+            status: 'failed',
+            error_message: whatsappError.message 
+          });
+        }
       }
     } else {
       // Admin ou usuário principal pode atribuir a qualquer operador
@@ -800,10 +819,8 @@ router.post('/:id/transfer-to-operator', validateParams(schemas.idParam), async 
       }
     });
 
-    // Criar mensagem de transferência
-    const transferMessage = message 
-      ? `Conversa transferida por ${currentOperatorName} para ${targetOperatorName}. Motivo: ${message}`
-      : `Conversa transferida por ${currentOperatorName} para ${targetOperatorName}.`;
+    // Criar mensagem de transferência mais simples
+    const transferMessage = `Conversa transferida para operador ${targetOperatorName}.`;
 
     const transferMsg = await Message.create({
       conversation_id: conversation.id,
@@ -904,6 +921,107 @@ router.post('/:id/transfer-to-operator', validateParams(schemas.idParam), async 
     });
   } catch (error) {
     console.error('Erro ao transferir conversa para operador:', error);
+    res.status(500).json({
+      error: 'Erro interno do servidor',
+      code: 'INTERNAL_ERROR'
+    });
+  }
+});
+
+// Atualizar status customizado da conversa
+router.patch('/:id/status', validateParams(schemas.idParam), async (req, res) => {
+  try {
+    const { custom_status_id } = req.body;
+    const conversationId = req.params.id;
+
+    // Determinar usuário principal
+    let mainUserId = req.user.id;
+    if (req.user.role === 'operator' && req.user.parent_user_id) {
+      mainUserId = req.user.parent_user_id;
+    }
+
+    // Buscar a conversa
+    const conversation = await Conversation.findOne({
+      where: { id: conversationId },
+      include: [
+        {
+          model: Bot,
+          as: 'bot',
+          where: { user_id: mainUserId }
+        }
+      ]
+    });
+
+    if (!conversation) {
+      return res.status(404).json({
+        error: 'Conversa não encontrada',
+        code: 'CONVERSATION_NOT_FOUND'
+      });
+    }
+
+    // Verificar permissões para operadores
+    if (req.user.role === 'operator') {
+      if (conversation.assigned_operator_id !== req.user.id) {
+        return res.status(403).json({
+          error: 'Você só pode alterar o status de conversas atribuídas a você',
+          code: 'ACCESS_DENIED'
+        });
+      }
+    }
+
+    // Verificar se o status existe e pertence à conta
+    if (custom_status_id) {
+      const customStatus = await ConversationStatus.findOne({
+        where: {
+          id: custom_status_id,
+          user_id: mainUserId,
+          is_active: true
+        }
+      });
+
+      if (!customStatus) {
+        return res.status(404).json({
+          error: 'Status customizado não encontrado ou inativo',
+          code: 'CUSTOM_STATUS_NOT_FOUND'
+        });
+      }
+
+      // Se o status é final, atualizar também o status da conversa
+      if (customStatus.is_final) {
+        await conversation.update({
+          custom_status_id,
+          status: 'completed',
+          completed_at: new Date()
+        });
+      } else {
+        await conversation.update({
+          custom_status_id
+        });
+      }
+    } else {
+      // Remover status customizado
+      await conversation.update({
+        custom_status_id: null
+      });
+    }
+
+    // Buscar conversa atualizada com status
+    const updatedConversation = await Conversation.findByPk(conversationId, {
+      include: [
+        {
+          model: ConversationStatus,
+          as: 'custom_status',
+          attributes: ['id', 'name', 'color', 'icon', 'is_final']
+        }
+      ]
+    });
+
+    res.json({
+      message: 'Status da conversa atualizado com sucesso',
+      conversation: updatedConversation
+    });
+  } catch (error) {
+    console.error('Erro ao atualizar status da conversa:', error);
     res.status(500).json({
       error: 'Erro interno do servidor',
       code: 'INTERNAL_ERROR'

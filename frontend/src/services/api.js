@@ -142,6 +142,17 @@ export const conversationsAPI = {
   transferToOperator: (id, data) => api.post(`/conversations/${id}/transfer-to-operator`, data),
   getAvailableOperators: () => api.get('/conversations/operators/available'),
   getAuditTrail: (id) => api.get(`/conversations/${id}/audit-trail`),
+  updateStatus: (id, data) => api.patch(`/conversations/${id}/status`, data),
+}
+
+export const conversationStatusesAPI = {
+  getAll: (params = {}) => api.get('/conversation-statuses', { params }),
+  getById: (id) => api.get(`/conversation-statuses/${id}`),
+  create: (data) => api.post('/conversation-statuses', data),
+  update: (id, data) => api.put(`/conversation-statuses/${id}`, data),
+  delete: (id) => api.delete(`/conversation-statuses/${id}`),
+  reorder: (data) => api.post('/conversation-statuses/reorder', data),
+  createDefaults: () => api.post('/conversation-statuses/create-defaults'),
 }
 
 export const operatorsAPI = {

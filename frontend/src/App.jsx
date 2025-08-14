@@ -21,6 +21,7 @@ import FlowEditor from './pages/Flows/FlowEditor'
 import Templates from './pages/Templates/Templates'
 import Conversations from './pages/Conversations/Conversations'
 import ConversationDetail from './pages/Conversations/ConversationDetail'
+import ConversationStatuses from './pages/ConversationStatuses/ConversationStatuses'
 import Queue from './pages/Queue/Queue'
 import Operators from './pages/Operators/Operators'
 import OperatorDashboard from './pages/Operator/OperatorDashboard'
@@ -132,6 +133,9 @@ function App() {
                   {/* Conversations - Acessível para todos */}
                   <Route path="/conversations" element={<Conversations />} />
                   <Route path="/conversations/:id" element={<ConversationDetail />} />
+                  
+                  {/* Conversation Statuses - Apenas para admins */}
+                  <Route path="/conversation-statuses" element={<OperatorRoute><ConversationStatuses /></OperatorRoute>} />
                   
                   {/* Queue */}
                   <Route path="/queue" element={<OperatorRoute><Queue /></OperatorRoute>} />

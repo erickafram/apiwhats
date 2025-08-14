@@ -70,6 +70,15 @@ module.exports = (sequelize, DataTypes) => {
       },
       comment: 'ID do operador responsável por esta conversa'
     },
+    custom_status_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'conversation_statuses',
+        key: 'id'
+      },
+      comment: 'ID do status customizado da conversa'
+    },
     metadata: {
       type: DataTypes.JSON,
       allowNull: true,
@@ -190,6 +199,11 @@ module.exports = (sequelize, DataTypes) => {
     Conversation.belongsTo(models.User, {
       foreignKey: 'assigned_operator_id',
       as: 'assigned_operator'
+    });
+
+    Conversation.belongsTo(models.ConversationStatus, {
+      foreignKey: 'custom_status_id',
+      as: 'custom_status'
     });
   };
 

@@ -52,9 +52,15 @@ import {
   Warning,
   SwapHoriz,
   PersonAdd,
-  History
+  History,
+  Label,
+  FiberNew,
+  Payment,
+  TaskAlt,
+  Cancel,
+  FilterList
 } from '@mui/icons-material'
-import { conversationsAPI } from '../../services/api'
+import { conversationsAPI, conversationStatusesAPI } from '../../services/api'
 import { useConversations } from '../../hooks/useConversations.jsx'
 import toast from 'react-hot-toast'
 
@@ -88,6 +94,11 @@ const Conversations = () => {
   const [transferReason, setTransferReason] = useState('')
   const [auditDialogOpen, setAuditDialogOpen] = useState(false)
   const [auditData, setAuditData] = useState(null)
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false)
+  const [availableStatuses, setAvailableStatuses] = useState([])
+  const [selectedStatus, setSelectedStatus] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+  const [showStatusFilter, setShowStatusFilter] = useState(false)
 
   // Usar o hook global de conversas
   const { refreshConversations, transferredCount: globalTransferredCount, unattendedCount: globalUnattendedCount } = useConversations()
@@ -108,25 +119,34 @@ const Conversations = () => {
   const loadConversations = async () => {
     try {
       setLoading(true)
+      // Parâmetros base para as consultas
+      const baseParams = {}
+      if (statusFilter) {
+        baseParams.custom_status_id = statusFilter
+      }
+
       // Buscar conversas transferidas, ativas (com operador) e completadas
       const [transferredResponse, activeResponse, completedResponse] = await Promise.all([
         conversationsAPI.getAll({
           status: 'transferred',
           sort: 'priority',
           order: 'DESC',
-          limit: 50
+          limit: 50,
+          ...baseParams
         }),
         conversationsAPI.getAll({
           status: 'active',
           sort: 'updated_at',
           order: 'DESC',
-          limit: 50
+          limit: 50,
+          ...baseParams
         }),
         conversationsAPI.getAll({
           status: 'completed',
           sort: 'updated_at',
           order: 'DESC',
-          limit: 100 // Aumentar para mostrar mais conversas completadas
+          limit: 100, // Aumentar para mostrar mais conversas completadas
+          ...baseParams
         })
       ])
       
@@ -398,6 +418,55 @@ const Conversations = () => {
     }
   }
 
+  const loadAvailableStatuses = async () => {
+    try {
+      const response = await conversationStatusesAPI.getAll({ active: true })
+      setAvailableStatuses(response.data.statuses || [])
+    } catch (error) {
+      console.error('Erro ao carregar status:', error)
+    }
+  }
+
+  const openStatusDialog = () => {
+    loadAvailableStatuses()
+    setSelectedStatus(selectedConversation?.custom_status?.id || '')
+    setStatusDialogOpen(true)
+  }
+
+  const updateConversationStatus = async () => {
+    if (!selectedConversation) return
+    
+    try {
+      await conversationsAPI.updateStatus(selectedConversation.id, {
+        custom_status_id: selectedStatus || null
+      })
+      
+      setStatusDialogOpen(false)
+      setSelectedStatus('')
+      loadConversations()
+      
+      const statusName = availableStatuses.find(s => s.id == selectedStatus)?.name || 'Sem status'
+      toast.success(`Status alterado para: ${statusName}`)
+    } catch (error) {
+      console.error('Erro ao atualizar status:', error)
+      toast.error('Erro ao atualizar status da conversa')
+    }
+  }
+
+  const getStatusIcon = (iconName) => {
+    const iconMap = {
+      'FiberNew': FiberNew,
+      'Schedule': Schedule,
+      'Payment': Payment,
+      'CheckCircle': CheckCircle,
+      'TaskAlt': TaskAlt,
+      'Cancel': Cancel,
+      'Warning': Warning
+    }
+    const IconComponent = iconMap[iconName] || Label
+    return <IconComponent />
+  }
+
   const formatTimestamp = (timestamp) => {
     return new Date(timestamp).toLocaleString('pt-BR')
   }
@@ -411,7 +480,7 @@ const Conversations = () => {
       }
     }, 10000)
     return () => clearInterval(interval)
-  }, [dialogOpen])
+  }, [dialogOpen, statusFilter])
 
   // Auto-refresh para mensagens quando chat está aberto
   useEffect(() => {
@@ -508,25 +577,105 @@ const Conversations = () => {
           <Typography variant="h4" component="h1" gutterBottom>
             💬 Central de Atendimento
           </Typography>
-          {globalUnattendedCount > 0 && (
-            <Chip
-              icon={<Warning />}
-              label={`${globalUnattendedCount} não atendida(s)`}
-              color="warning"
-              size="small"
-              sx={{ animation: 'pulse 2s infinite' }}
-            />
-          )}
+          <Stack direction="row" spacing={1} alignItems="center">
+            {globalUnattendedCount > 0 && (
+              <Chip
+                icon={<Warning />}
+                label={`${globalUnattendedCount} não atendida(s)`}
+                color="warning"
+                size="small"
+                sx={{ animation: 'pulse 2s infinite' }}
+              />
+            )}
+            {statusFilter && (
+              <Chip
+                icon={<FilterList />}
+                label={`Filtro: ${availableStatuses.find(s => s.id == statusFilter)?.name || 'Status'}`}
+                color="info"
+                size="small"
+                onDelete={() => setStatusFilter('')}
+              />
+            )}
+          </Stack>
         </Box>
-        <Button
-          variant="outlined"
-          startIcon={<Refresh />}
-          onClick={loadConversations}
-          disabled={loading}
-        >
-          Atualizar
-        </Button>
+        <Stack direction="row" spacing={2}>
+          <Button
+            variant="outlined"
+            startIcon={<FilterList />}
+            onClick={() => {
+              setShowStatusFilter(!showStatusFilter)
+              if (!showStatusFilter && availableStatuses.length === 0) {
+                loadAvailableStatuses()
+              }
+            }}
+          >
+            Filtros
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<Refresh />}
+            onClick={loadConversations}
+            disabled={loading}
+          >
+            Atualizar
+          </Button>
+        </Stack>
       </Box>
+
+      {/* Filtros */}
+      {showStatusFilter && (
+        <Card sx={{ mb: 3, p: 2 }}>
+          <Typography variant="h6" gutterBottom>
+            🔍 Filtrar por Status
+          </Typography>
+          <Stack direction="row" spacing={2} alignItems="center">
+            <FormControl size="small" sx={{ minWidth: 200 }}>
+              <InputLabel>Status Customizado</InputLabel>
+              <Select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                label="Status Customizado"
+              >
+                <MenuItem value="">
+                  <Typography>Todos os status</Typography>
+                </MenuItem>
+                {availableStatuses.map((status) => (
+                  <MenuItem key={status.id} value={status.id}>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <Box
+                        sx={{
+                          width: 16,
+                          height: 16,
+                          borderRadius: '50%',
+                          backgroundColor: status.color,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white'
+                        }}
+                      >
+                        {getStatusIcon(status.icon)}
+                      </Box>
+                      <Typography>{status.name}</Typography>
+                    </Box>
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Button
+              variant="outlined"
+              onClick={() => {
+                setStatusFilter('')
+                setShowStatusFilter(false)
+              }}
+            >
+              Limpar
+            </Button>
+          </Stack>
+        </Card>
+      )}
+
+
 
       {conversations.length === 0 ? (
         <Paper sx={{ p: 4, textAlign: 'center' }}>
@@ -570,12 +719,27 @@ const Conversations = () => {
                     )}
                   </Box>
 
-                  <Chip 
-                    label={getStatusText(conversation.status)}
-                    color={getStatusColor(conversation.status)}
-                    size="small"
-                    sx={{ mb: 2 }}
-                  />
+                  <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+                    <Chip 
+                      label={getStatusText(conversation.status)}
+                      color={getStatusColor(conversation.status)}
+                      size="small"
+                    />
+                    {conversation.custom_status && (
+                      <Chip
+                        icon={getStatusIcon(conversation.custom_status.icon)}
+                        label={conversation.custom_status.name}
+                        size="small"
+                        sx={{
+                          backgroundColor: conversation.custom_status.color,
+                          color: 'white',
+                          '& .MuiChip-icon': {
+                            color: 'white'
+                          }
+                        }}
+                      />
+                    )}
+                  </Stack>
 
                   <Typography variant="body2" color="text.secondary" gutterBottom>
                     <strong>Bot:</strong> {conversation.bot?.name || 'N/A'}
@@ -688,6 +852,13 @@ const Conversations = () => {
                   open={Boolean(menuAnchor)}
                   onClose={() => setMenuAnchor(null)}
                 >
+                  <MenuItem onClick={() => {
+                    openStatusDialog()
+                    setMenuAnchor(null)
+                  }}>
+                    <Label sx={{ mr: 1 }} />
+                    Alterar Status
+                  </MenuItem>
                   <MenuItem onClick={() => {
                     openTransferDialog()
                     setMenuAnchor(null)
@@ -1042,6 +1213,103 @@ const Conversations = () => {
             color="inherit"
           >
             Fechar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog para alterar status da conversa */}
+      <Dialog
+        open={statusDialogOpen}
+        onClose={() => setStatusDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box display="flex" alignItems="center" gap={2}>
+            <Label color="primary" />
+            <Typography variant="h6">
+              Alterar Status da Conversa
+            </Typography>
+          </Box>
+        </DialogTitle>
+        
+        <DialogContent>
+          <Box mt={2}>
+            <FormControl fullWidth margin="normal">
+              <InputLabel>Selecionar Status</InputLabel>
+              <Select
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                label="Selecionar Status"
+              >
+                <MenuItem value="">
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <Cancel />
+                    <Typography>Sem status</Typography>
+                  </Box>
+                </MenuItem>
+                {availableStatuses.map((status) => (
+                  <MenuItem key={status.id} value={status.id}>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <Box
+                        sx={{
+                          width: 20,
+                          height: 20,
+                          borderRadius: '50%',
+                          backgroundColor: status.color,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white'
+                        }}
+                      >
+                        {getStatusIcon(status.icon)}
+                      </Box>
+                      <Box>
+                        <Typography variant="body1">{status.name}</Typography>
+                        {status.description && (
+                          <Typography variant="caption" color="text.secondary">
+                            {status.description}
+                          </Typography>
+                        )}
+                        {status.is_final && (
+                          <Chip label="Final" size="small" color="success" sx={{ ml: 1 }} />
+                        )}
+                      </Box>
+                    </Box>
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            
+            {availableStatuses.length === 0 && (
+              <Alert severity="info" sx={{ mt: 2 }}>
+                Nenhum status customizado disponível. Entre em contato com o administrador para criar status personalizados.
+              </Alert>
+            )}
+
+            {selectedStatus && availableStatuses.find(s => s.id == selectedStatus)?.is_final && (
+              <Alert severity="warning" sx={{ mt: 2 }}>
+                ⚠️ Este é um status final. A conversa será marcada como concluída automaticamente.
+              </Alert>
+            )}
+          </Box>
+        </DialogContent>
+        
+        <DialogActions>
+          <Button 
+            onClick={() => setStatusDialogOpen(false)}
+            color="inherit"
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={updateConversationStatus}
+            variant="contained"
+            disabled={availableStatuses.length === 0}
+            startIcon={<Label />}
+          >
+            Alterar Status
           </Button>
         </DialogActions>
       </Dialog>
