@@ -135,13 +135,19 @@ router.get('/', validateQuery(schemas.pagination), async (req, res) => {
 // Buscar conversa por ID
 router.get('/:id', validateParams(schemas.idParam), async (req, res) => {
   try {
+    // Determinar usuário principal (owner dos bots)
+    let mainUserId = req.user.id;
+    if (req.user.role === 'operator' && req.user.parent_user_id) {
+      mainUserId = req.user.parent_user_id;
+    }
+
     const conversation = await Conversation.findOne({
       where: { id: req.params.id },
       include: [
         {
           model: Bot,
           as: 'bot',
-          where: { user_id: req.user.id },
+          where: { user_id: mainUserId },
           attributes: ['id', 'name', 'description']
         },
         {
@@ -165,6 +171,16 @@ router.get('/:id', validateParams(schemas.idParam), async (req, res) => {
         error: 'Conversa não encontrada',
         code: 'CONVERSATION_NOT_FOUND'
       });
+    }
+
+    // Verificação adicional para operadores - só podem ver conversas atribuídas a eles
+    if (req.user.role === 'operator') {
+      if (conversation.assigned_operator_id !== req.user.id && conversation.status !== 'transferred') {
+        return res.status(403).json({
+          error: 'Acesso negado a esta conversa',
+          code: 'ACCESS_DENIED'
+        });
+      }
     }
 
     res.json(conversation);
@@ -372,14 +388,20 @@ router.put('/:id/status', validateParams(schemas.idParam), async (req, res) => {
       });
     }
 
-    // Verificar se a conversa pertence ao usuário
+    // Determinar usuário principal (owner dos bots)
+    let mainUserId = req.user.id;
+    if (req.user.role === 'operator' && req.user.parent_user_id) {
+      mainUserId = req.user.parent_user_id;
+    }
+
+    // Verificar se a conversa pertence ao usuário principal
     const conversation = await Conversation.findOne({
       where: { id: req.params.id },
       include: [
         {
           model: Bot,
           as: 'bot',
-          where: { user_id: req.user.id }
+          where: { user_id: mainUserId }
         }
       ]
     });
@@ -389,6 +411,16 @@ router.put('/:id/status', validateParams(schemas.idParam), async (req, res) => {
         error: 'Conversa não encontrada',
         code: 'CONVERSATION_NOT_FOUND'
       });
+    }
+
+    // Verificação adicional para operadores - só podem atualizar status de conversas atribuídas a eles
+    if (req.user.role === 'operator') {
+      if (conversation.assigned_operator_id !== req.user.id) {
+        return res.status(403).json({
+          error: 'Você só pode atualizar o status de conversas atribuídas a você',
+          code: 'ACCESS_DENIED'
+        });
+      }
     }
 
     const updateData = { status };
@@ -421,14 +453,20 @@ router.post('/:id/transfer', validateParams(schemas.idParam), async (req, res) =
   try {
     const { department = 'support', message } = req.body;
 
-    // Verificar se a conversa pertence ao usuário
+    // Determinar usuário principal (owner dos bots)
+    let mainUserId = req.user.id;
+    if (req.user.role === 'operator' && req.user.parent_user_id) {
+      mainUserId = req.user.parent_user_id;
+    }
+
+    // Verificar se a conversa pertence ao usuário principal
     const conversation = await Conversation.findOne({
       where: { id: req.params.id },
       include: [
         {
           model: Bot,
           as: 'bot',
-          where: { user_id: req.user.id }
+          where: { user_id: mainUserId }
         }
       ]
     });
@@ -483,25 +521,57 @@ router.post('/:id/transfer', validateParams(schemas.idParam), async (req, res) =
 // Atualizar conversa completa (para operadores)
 router.put('/:id', validateParams(schemas.idParam), async (req, res) => {
   try {
+    console.log(`🔄 PUT /conversations/${req.params.id} - User: ${req.user.id} (${req.user.role})`);
+    
     const updateData = req.body;
 
-    // Verificar se a conversa pertence ao usuário
+    // Determinar usuário principal (owner dos bots)
+    let mainUserId = req.user.id;
+    if (req.user.role === 'operator' && req.user.parent_user_id) {
+      mainUserId = req.user.parent_user_id;
+      console.log(`👤 Operador detectado, usando parent_user_id: ${mainUserId}`);
+    }
+
+    // Primeiro, encontrar a conversa sem restrições de Bot
     const conversation = await Conversation.findOne({
       where: { id: req.params.id },
       include: [
         {
           model: Bot,
           as: 'bot',
-          where: { user_id: req.user.id }
+          required: false // ✅ Não exigir que exista Bot
         }
       ]
     });
 
     if (!conversation) {
+      console.log(`❌ Conversa ${req.params.id} não encontrada`);
       return res.status(404).json({
         error: 'Conversa não encontrada',
         code: 'CONVERSATION_NOT_FOUND'
       });
+    }
+
+    console.log(`✅ Conversa encontrada: ID=${conversation.id}, Bot=${conversation.bot?.user_id}, AssignedOperator=${conversation.assigned_operator_id}`);
+
+    // Verificar se o bot pertence ao usuário principal (se houver bot)
+    if (conversation.bot && conversation.bot.user_id !== mainUserId) {
+      console.log(`❌ Bot ${conversation.bot.id} não pertence ao usuário ${mainUserId}`);
+      return res.status(403).json({
+        error: 'Acesso negado - Bot não pertence ao usuário',
+        code: 'ACCESS_DENIED'
+      });
+    }
+
+    // Verificação adicional para operadores - só podem atualizar conversas atribuídas a eles
+    if (req.user.role === 'operator') {
+      if (conversation.assigned_operator_id !== req.user.id) {
+        console.log(`❌ Operador ${req.user.id} tentou atualizar conversa atribuída a ${conversation.assigned_operator_id}`);
+        return res.status(403).json({
+          error: 'Você só pode atualizar conversas atribuídas a você',
+          code: 'ACCESS_DENIED'
+        });
+      }
     }
 
     // Atualizar campos permitidos
@@ -517,13 +587,17 @@ router.put('/:id', validateParams(schemas.idParam), async (req, res) => {
     // Se está marcando como completed, adicionar timestamp
     if (filteredData.status === 'completed') {
       filteredData.completed_at = new Date();
+      console.log(`✅ Marcando conversa ${conversation.id} como completed`);
     }
 
     // Atualizar atividade
     filteredData.last_activity_at = new Date();
 
+    console.log(`🔄 Atualizando conversa ${conversation.id} com dados:`, filteredData);
     await conversation.update(filteredData);
 
+    console.log(`✅ Conversa ${conversation.id} atualizada com sucesso`);
+    
     res.json({
       message: 'Conversa atualizada com sucesso',
       conversation: await conversation.reload()
