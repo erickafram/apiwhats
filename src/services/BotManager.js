@@ -60,9 +60,12 @@ class BotManager {
     try {
       const startTime = Date.now();
       
-      // ✅ VERIFICAR SE CONVERSA ESTÁ TRANSFERIDA PARA OPERADOR
-      if (conversation.status === 'transferred') {
-        console.log(`📞 Conversa ${conversation.id} está transferida - apenas salvando mensagem sem processar fluxo`);
+      // ✅ VERIFICAR SE CONVERSA ESTÁ COM OPERADOR (transferida ou ativa com operador)
+      const hasActiveOperator = conversation.status === 'transferred' || 
+                                (conversation.status === 'active' && conversation.assigned_operator_id);
+      
+      if (hasActiveOperator) {
+        console.log(`📞 Conversa ${conversation.id} está com operador (status: ${conversation.status}, operador: ${conversation.assigned_operator_id}) - apenas salvando mensagem sem processar fluxo`);
         
         // Registrar métrica de mensagem recebida
         await Analytics.recordMetric({

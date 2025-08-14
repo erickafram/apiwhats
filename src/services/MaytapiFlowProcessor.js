@@ -98,6 +98,15 @@ Digite o número da opção desejada:`;
         });
       }
 
+      // ✅ VERIFICAR SE CONVERSA ESTÁ COM OPERADOR (transferida ou ativa com operador)
+      const hasActiveOperator = conversation.status === 'transferred' || 
+                                (conversation.status === 'active' && conversation.assigned_operator_id);
+      
+      if (hasActiveOperator) {
+        console.log(`📞 Conversa com operador ativo - não processando fluxo (status: ${conversation.status}, operador: ${conversation.assigned_operator_id})`);
+        return { success: true, message: 'Conversa está com operador ativo' };
+      }
+
       // Buscar fluxos ativos do bot
       const flows = await Flow.findAll({
         where: { 
