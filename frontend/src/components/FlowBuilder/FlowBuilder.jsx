@@ -288,22 +288,71 @@ const FlowBuilder = ({ open, onClose, selectedBot, onFlowCreated, bots = [], edi
           } else if (hasMenuOptions) {
             // É um menu de opções
             block.type = 'menu'
-            block.content = node.content || ''
             
-            // Extrair opções do texto
-            const optionMatches = node.content.match(/([1-9]️⃣|[1-9]\.)\s*([^\n]+)/g) || []
-            block.options = optionMatches.map((match, idx) => ({
-              id: (idx + 1).toString(),
-              text: match.replace(/^[1-9]️⃣|^[1-9]\./, '').trim()
-            }))
+            // Separar o texto principal das opções
+            const fullContent = node.content || ''
+            const optionPattern = /([1-9]️⃣|[1-9]\.)/
+            const optionStart = fullContent.search(optionPattern)
             
-            if (block.options.length === 0) {
-              // Se não conseguiu extrair, criar opções padrão
-              block.options = [
-                { id: '1', text: 'Opção 1' },
-                { id: '2', text: 'Opção 2' }
-              ]
+            // Extrair apenas o texto principal (antes das opções)
+            if (optionStart > 0) {
+              block.content = fullContent.substring(0, optionStart).trim()
+            } else {
+              block.content = fullContent
             }
+            
+            // Remover texto comum que pode estar grudado no final
+            block.content = block.content
+              .replace(/\*Digite.*$/i, '')
+              .replace(/\*Voltando.*$/i, '') 
+              .replace(/\*Responda.*$/i, '')
+              .trim()
+            
+            // Extrair opções do texto - funciona mesmo quando tudo está numa linha
+            const options = []
+            
+            // Usar regex global para encontrar todas as opções no texto, mesmo se estiverem na mesma linha
+            const globalOptionMatches = fullContent.matchAll(/([1-9])️⃣\s*([^1-9]*?)(?=[1-9]️⃣|\*|$)/g)
+            
+            for (const match of globalOptionMatches) {
+              const optionId = match[1]
+              let optionText = match[2].trim()
+              
+              // Limpar texto da opção (remover asteriscos, etc.)
+              optionText = optionText.replace(/^\*|\*$/g, '').trim()
+              
+              if (optionText && optionText !== 'Opção') {
+                options.push({
+                  id: optionId,
+                  text: optionText
+                })
+              }
+            }
+            
+            // Se não encontrou opções com emoji, tentar com pontos (1. 2. 3.)
+            if (options.length === 0) {
+              const dotOptionMatches = fullContent.matchAll(/([1-9])\.\s*([^1-9\.]+?)(?=[1-9]\.|$)/g)
+              
+              for (const match of dotOptionMatches) {
+                const optionId = match[1]
+                let optionText = match[2].trim()
+                
+                optionText = optionText.replace(/^\*|\*$/g, '').trim()
+                
+                if (optionText && optionText !== 'Opção') {
+                  options.push({
+                    id: optionId,
+                    text: optionText
+                  })
+                }
+              }
+            }
+            
+            // Se ainda não encontrou nada, usar as opções padrão
+            block.options = options.length > 0 ? options : [
+              { id: '1', text: 'Opção 1' },
+              { id: '2', text: 'Opção 2' }
+            ]
             
             // Marcar nós relacionados como processados
             processedNodes.add(node.id)
@@ -312,7 +361,7 @@ const FlowBuilder = ({ open, onClose, selectedBot, onFlowCreated, bots = [], edi
             if (relatedInput) processedNodes.add(relatedInput.id)
             if (relatedCondition) processedNodes.add(relatedCondition.id)
             
-            console.log(`✅ Criado bloco MENU com ${block.options.length} opções`)
+            console.log(`✅ Criado bloco MENU: ${block.options.map(o => `"${o.text}"`).join(', ')}`)
             
           } else {
             // Mensagem simples
@@ -506,12 +555,32 @@ const FlowBuilder = ({ open, onClose, selectedBot, onFlowCreated, bots = [], edi
           break
 
         case 'menu':
+          // Extrair apenas o texto principal do menu (sem as opções)
+          let menuContent = block.content.trim()
+          
+          // Se o conteúdo já contém opções, extrair apenas a parte antes das opções
+          const optionPattern = /([1-9]️⃣|[1-9]\.)/
+          const optionStart = menuContent.search(optionPattern)
+          if (optionStart > 0) {
+            menuContent = menuContent.substring(0, optionStart).trim()
+          }
+          
+          // Garantir que o texto principal tenha formatação adequada
+          if (!menuContent.includes('\n\n')) {
+            // Adicionar quebra de linha após o título se não existir
+            menuContent = menuContent.replace(/(\*[^*]+\*)([^*])/, '$1\n\n$2')
+          }
+          
+          // Construir o menu completo com opções formatadas e quebras de linha
+          const formattedOptions = block.options.map((opt, i) => `${opt.id}️⃣ ${opt.text}`).join('\n')
+          const fullMenuContent = `${menuContent}\n\n${formattedOptions}\n\n*Digite o número da opção:*`
+          
           // Nó de mensagem do menu
           nodes.push({
             id: block.id,
             type: 'message',
             position: { x: 100, y: yPosition },
-            content: `${block.content}\n\n${block.options.map((opt, i) => `${opt.id}️⃣ ${opt.text}`).join('\n')}`,
+            content: fullMenuContent,
             next: `${block.id}_input`
           })
 

@@ -5,6 +5,36 @@ const { validate, validateParams, validateQuery, schemas } = require('../middlew
 
 const router = express.Router();
 
+// Função para sanitizar Unicode problemático no JSON
+function sanitizeUnicodeForJSON(data) {
+  if (typeof data === 'string') {
+    try {
+      const parsed = JSON.parse(data);
+      return JSON.stringify(sanitizeUnicodeForJSON(parsed));
+    } catch {
+      // Se não for JSON válido, sanitizar a string diretamente
+      return data
+        .replace(/[\u200D]/g, '') // Remove Zero Width Joiner (ZWJ)
+        .replace(/[\uD800-\uDFFF]/g, '') // Remove surrogate pairs órfãos
+        .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove caracteres de controle
+        .replace(/[\uFEFF]/g, ''); // Remove BOM
+    }
+  } else if (typeof data === 'object' && data !== null) {
+    if (Array.isArray(data)) {
+      return data.map(item => sanitizeUnicodeForJSON(item));
+    } else {
+      const result = {};
+      for (const [key, value] of Object.entries(data)) {
+        const sanitizedKey = typeof key === 'string' ? 
+          key.replace(/[\u200D]/g, '').replace(/[\uD800-\uDFFF]/g, '') : key;
+        result[sanitizedKey] = sanitizeUnicodeForJSON(value);
+      }
+      return result;
+    }
+  }
+  return data;
+}
+
 // Aplicar autenticação a todas as rotas
 router.use(authenticateToken);
 
@@ -198,6 +228,12 @@ router.post('/', validate(schemas.createFlow), async (req, res) => {
       bot_id: bot_id
     });
 
+    // Sanitizar flow_data antes de salvar
+    if (flowData.flow_data) {
+      flowData.flow_data = sanitizeUnicodeForJSON(flowData.flow_data);
+      console.log('🔧 DEBUG: flow_data sanitizado para criação');
+    }
+
     const flow = await Flow.create({
       ...flowData,
       bot_id: bot_id
@@ -264,6 +300,13 @@ router.put('/:id', validateParams(schemas.idParam), validate(schemas.updateFlow)
     }
 
     const oldFlowData = flow.flow_data;
+    
+    // Sanitizar flow_data antes de atualizar
+    if (req.body.flow_data) {
+      req.body.flow_data = sanitizeUnicodeForJSON(req.body.flow_data);
+      console.log('🔧 DEBUG: flow_data sanitizado para atualização');
+    }
+    
     await flow.update(req.body);
 
     console.log(`✅ DEBUG: Fluxo ${req.params.id} atualizado com sucesso`);
@@ -276,6 +319,29 @@ router.put('/:id', validateParams(schemas.idParam), validate(schemas.updateFlow)
     });
   } catch (error) {
     console.error('Erro ao atualizar fluxo:', error);
+    
+    // Se for erro de JSON inválido, tentar sanitizar
+    if (error.name === 'SequelizeDatabaseError' && error.original?.code === 'ER_INVALID_JSON_TEXT') {
+      console.log('🔧 Detectado erro de JSON inválido - tentando sanitizar...');
+      
+      try {
+        // Sanitizar o flow_data
+        const sanitizedData = sanitizeUnicodeForJSON(req.body.flow_data);
+        req.body.flow_data = sanitizedData;
+        
+        console.log('🔧 JSON sanitizado - tentando salvar novamente...');
+        await flow.update(req.body);
+        
+        console.log('✅ Fluxo salvo com sucesso após sanitização!');
+        return res.json({
+          message: 'Fluxo atualizado com sucesso (com sanitização)',
+          flow
+        });
+      } catch (sanitizeError) {
+        console.error('❌ Erro mesmo após sanitização:', sanitizeError);
+      }
+    }
+    
     res.status(500).json({
       error: 'Erro interno do servidor',
       code: 'INTERNAL_ERROR'
