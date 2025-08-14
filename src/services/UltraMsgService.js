@@ -309,8 +309,8 @@ class UltraMsgService {
 
   // Enviar mensagem de texto
   async sendTextMessage(to, body) {
-    // Garantir que quebras de linha sejam preservadas
-    const formattedBody = body.replace(/\n/g, '\n');
+    // Garantir que quebras de linha sejam preservadas no UltraMsg
+    const formattedBody = body.replace(/\\n/g, '\n').replace(/\n/g, '%0A');
     
     console.log(`📤 Enviando texto para ${to}:`, JSON.stringify(formattedBody));
     

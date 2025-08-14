@@ -1,794 +1,386 @@
 {
-    "name": "Sistema de Passagens de Ônibus",
-    "description": "Fluxo simplificado Palmas ➜ Goiânia com integração WhatsApp",
-    "trigger_keywords": [
-      "oi",
-      "olá",
-      "menu",
-      "passagem",
-      "onibus",
-      "viagem",
-      "start",
-      "começar",
-      "iniciar"
-    ],
-    "is_active": true,
-    "is_default": true,
-    "priority": 100,
-    "flow_data": {
-      "nodes": [
-        {
+  "name": "Sistema de Passagens de Ônibus",
+  "description": "Fluxo simplificado Palmas ➜ Goiânia com integração WhatsApp",
+  "trigger_keywords": [
+    "oi",
+    "olá",
+    "menu",
+    "passagem",
+    "onibus",
+    "viagem",
+    "start",
+    "começar",
+    "iniciar"
+  ],
+  "is_active": true,
+  "is_default": true,
+  "priority": 100,
+  "flow_data": {
+    "nodes": [
+      {
+        "id": "start",
+        "type": "start",
+        "position": { "x": 100, "y": 100 },
+        "data": {
+          "label": "INICIO",
+          "nodeType": "start",
+          "content": "",
+          "stepNumber": "1",
           "id": "start",
+          "next": "welcome",
           "type": "start",
-          "position": {
-            "x": 100,
-            "y": 100
-          },
-          "data": {
-            "label": "🚀 INÍCIO\nInício",
-            "nodeType": "start",
-            "content": "",
-            "stepNumber": "🚀",
-            "id": "start",
-            "next": "welcome",
-            "type": "start",
-            "position": {
-              "x": 100,
-              "y": 100
-            }
-          }
-        },
-        {
+          "position": { "x": 100, "y": 100 }
+        }
+      },
+      {
+        "id": "welcome",
+        "type": "message",
+        "position": { "x": 380, "y": 100 },
+        "data": {
+          "label": "PASSO 2 - MENU",
+          "nodeType": "message",
+          "content": "VIACAO EXPRESSA\n\nO que voce deseja?\n\n1) Comprar Passagem\n2) Consultar Horarios\n3) Falar com Operador\n\nDigite o numero da opcao:",
+          "stepNumber": "2",
           "id": "welcome",
+          "next": "menu_input",
           "type": "message",
-          "position": {
-            "x": 380,
-            "y": 100
-          },
-          "data": {
-            "label": "📝 PASSO 2\n🚌 *VIAÇÃO EXPRESSA*\n\nO q...",
-            "nodeType": "message",
-            "content": "🚌 *VIAÇÃO EXPRESSA*\n\nO que você deseja?\n\n1️⃣ 🎫 Comprar Passagem\n2️⃣ 🕐 Consultar Horários\n3️⃣ ☎️ Falar com Operador\n\n*Digite o número da opção:*",
-            "stepNumber": "2",
-            "id": "welcome",
-            "next": "menu_input",
-            "type": "message",
-            "position": {
-              "x": 380,
-              "y": 100
-            }
-          }
-        },
-        {
+          "position": { "x": 380, "y": 100 }
+        }
+      },
+      {
+        "id": "menu_input",
+        "type": "input",
+        "position": { "x": 660, "y": 100 },
+        "data": {
+          "label": "PASSO 3 - Entrada",
+          "nodeType": "input",
+          "content": "",
+          "stepNumber": "3",
           "id": "menu_input",
+          "next": "menu_condition",
           "type": "input",
-          "position": {
-            "x": 660,
-            "y": 100
-          },
-          "data": {
-            "label": "📝 PASSO 3\nEntrada",
-            "nodeType": "input",
-            "content": "",
-            "stepNumber": "3",
-            "id": "menu_input",
-            "next": "menu_condition",
-            "type": "input",
-            "position": {
-              "x": 660,
-              "y": 100
-            },
-            "variable": "opcao_menu"
-          }
-        },
-        {
+          "position": { "x": 660, "y": 100 },
+          "variable": "opcao_menu"
+        }
+      },
+      {
+        "id": "menu_condition",
+        "type": "condition",
+        "position": { "x": 100, "y": 250 },
+        "data": {
+          "label": "DECISAO - Menu",
+          "nodeType": "condition",
+          "content": "",
+          "stepNumber": "4",
           "id": "menu_condition",
           "type": "condition",
-          "position": {
-            "x": 100,
-            "y": 250
-          },
-          "data": {
-            "label": "🔀 DECISÃO\nCondição",
-            "nodeType": "condition",
-            "content": "",
-            "stepNumber": "🔀",
-            "id": "menu_condition",
-            "next": "comprar_destino",
-            "type": "condition",
-            "position": {
-              "x": 100,
-              "y": 250
-            }
-          }
-        },
-        {
+          "position": { "x": 100, "y": 250 },
+          "next": null,
+          "conditions": [
+            {"variable": "opcao_menu", "operator": "equals", "value": "1", "next": "comprar_destino"},
+            {"variable": "opcao_menu", "operator": "equals", "value": "2", "next": "consultar_horarios"},
+            {"variable": "opcao_menu", "operator": "equals", "value": "3", "next": "transferir_atendente"},
+            {"variable": "opcao_menu", "operator": "default", "value": "", "next": "opcao_invalida"}
+          ]
+        }
+      },
+      {
+        "id": "comprar_destino",
+        "type": "message",
+        "position": { "x": 380, "y": 250 },
+        "data": {
+          "label": "PASSO 5 - Compra de passagem",
+          "nodeType": "message",
+          "content": "COMPRA DE PASSAGEM\n\nOrigem fixa: Palmas (TO)\nDigite o destino + a origem (Palmas).\n\nExemplos:\n- Goiania - Palmas\n- Destino: Goiania | Origem: Palmas\n- Palmas -> Goiania\n\nEnvie sua mensagem incluindo a palavra 'Palmas' como origem.",
+          "stepNumber": "5",
           "id": "comprar_destino",
+          "next": "input_destino",
           "type": "message",
-          "position": {
-            "x": 380,
-            "y": 250
-          },
-          "data": {
-            "label": "📝 PASSO 5\n🗺️ *COMPRA DE PASSAGEM*\n📍 Digite destino...",
-            "nodeType": "message",
-            "content": "🗺️ *COMPRA DE PASSAGEM*\n\n📍 *Origem fixa:* Palmas (TO)\n📍 *Digite o destino desejado:*\n\n💡 Exemplos:\n• Goiânia\n• Brasília\n• Anápolis\n• Aparecida de Goiânia\n\n✍️ *Digite o nome da cidade:*",
-            "stepNumber": "5",
-            "id": "comprar_destino",
-            "next": "input_destino",
-            "type": "message",
-            "position": {
-              "x": 380,
-              "y": 250
-            }
-          }
-        },
-        {
+          "position": { "x": 380, "y": 250 }
+        }
+      },
+      {
+        "id": "input_destino",
+        "type": "input",
+        "position": { "x": 660, "y": 250 },
+        "data": {
+          "label": "PASSO 6 - Entrada destino",
+          "nodeType": "input",
+          "content": "",
+          "stepNumber": "6",
           "id": "input_destino",
+          "next": "mostrar_horarios_compra",
           "type": "input",
-          "position": {
-            "x": 660,
-            "y": 250
-          },
-          "data": {
-            "label": "📝 PASSO 6\nEntrada",
-            "nodeType": "input",
-            "content": "",
-            "stepNumber": "6",
-            "id": "input_destino",
-            "next": "mostrar_horarios_compra",
-            "type": "input",
-            "position": {
-              "x": 660,
-              "y": 250
-            },
-            "variable": "cidade_destino"
-          }
-        },
-        {
+          "position": { "x": 660, "y": 250 },
+          "variable": "destino_escolhido"
+        }
+      },
+      {
+        "id": "mostrar_horarios_compra",
+        "type": "message",
+        "position": { "x": 100, "y": 400 },
+        "data": {
+          "label": "PASSO 7 - Horarios",
+          "nodeType": "message",
+          "content": "HORARIOS DISPONIVEIS\nRota: Palmas -> ${destino_escolhido}\n\n1) EXECUTIVO - 06:00 (R$ 85)\n2) CONVENCIONAL - 09:00 (R$ 65)\n3) EXECUTIVO - 14:00 (R$ 85)\n4) LEITO - 22:00 (R$ 120)\n\nDigite o numero do horario desejado:",
+          "stepNumber": "7",
           "id": "mostrar_horarios_compra",
+          "next": "input_horario",
           "type": "message",
-          "position": {
-            "x": 100,
-            "y": 400
-          },
-          "data": {
-            "label": "📝 PASSO 7\n🕐 *HORÁRIOS DISPONÍVEIS*...",
-            "nodeType": "message",
-            "content": "🕐 *HORÁRIOS DISPONÍVEIS*\n\n🚌 Rota: Palmas ➜ #${cidade_destino}\n\n1️⃣ EXECUTIVO - 06:00 (R$ 85)\n2️⃣ CONVENCIONAL - 09:00 (R$ 65)\n3️⃣ EXECUTIVO - 14:00 (R$ 85)\n4️⃣ LEITO - 22:00 (R$ 120)\n\n*Digite o número do horário desejado:*",
-            "stepNumber": "7",
-            "id": "mostrar_horarios_compra",
-            "next": "input_horario",
-            "type": "message",
-            "position": {
-              "x": 100,
-              "y": 400
-            }
-          }
-        },
-        {
+          "position": { "x": 100, "y": 400 }
+        }
+      },
+      {
+        "id": "input_horario",
+        "type": "input",
+        "position": { "x": 380, "y": 400 },
+        "data": {
+          "label": "PASSO 8 - Entrada horario",
+          "nodeType": "input",
+          "content": "",
+          "stepNumber": "8",
           "id": "input_horario",
+          "next": "confirmar_compra",
           "type": "input",
-          "position": {
-            "x": 380,
-            "y": 400
-          },
-          "data": {
-            "label": "📝 PASSO 8\nEntrada",
-            "nodeType": "input",
-            "content": "",
-            "stepNumber": "8",
-            "id": "input_horario",
-            "next": "confirmar_compra",
-            "type": "input",
-            "position": {
-              "x": 380,
-              "y": 400
-            },
-            "variable": "horario_escolhido"
-          }
-        },
-        {
+          "position": { "x": 380, "y": 400 },
+          "variable": "horario_escolhido"
+        }
+      },
+      {
+        "id": "confirmar_compra",
+        "type": "message",
+        "position": { "x": 660, "y": 400 },
+        "data": {
+          "label": "PASSO 9 - Confirmacao",
+          "nodeType": "message",
+          "content": "Confirma a reserva?\n\nRota: Palmas -> ${destino_escolhido}\nHorario: #${horario_escolhido}\n\nResponda: SIM para confirmar, NAO para cancelar, MENU para voltar.",
+          "stepNumber": "9",
           "id": "confirmar_compra",
+          "next": "input_confirmacao",
           "type": "message",
-          "position": {
-            "x": 660,
-            "y": 400
-          },
-          "data": {
-            "label": "📝 PASSO 9\n✅ *Confirma a reserva?*\n\n...",
-            "nodeType": "message",
-            "content": "✅ *Confirma a reserva?*\n\nRota: Palmas ➜ #${cidade_destino}\nHorário: #${horario_escolhido}\n\n*Responda:*\n• SIM para confirmar\n• NÃO para cancelar\n• MENU para voltar",
-            "stepNumber": "9",
-            "id": "confirmar_compra",
-            "next": "input_confirmacao",
-            "type": "message",
-            "position": {
-              "x": 660,
-              "y": 400
-            }
-          }
-        },
-        {
+          "position": { "x": 660, "y": 400 }
+        }
+      },
+      {
+        "id": "input_confirmacao",
+        "type": "input",
+        "position": { "x": 100, "y": 550 },
+        "data": {
+          "label": "PASSO 10 - Entrada confirmacao",
+          "nodeType": "input",
+          "content": "",
+          "stepNumber": "10",
           "id": "input_confirmacao",
+          "next": "processar_confirmacao",
           "type": "input",
-          "position": {
-            "x": 100,
-            "y": 550
-          },
-          "data": {
-            "label": "📝 PASSO 10\nEntrada",
-            "nodeType": "input",
-            "content": "",
-            "stepNumber": "10",
-            "id": "input_confirmacao",
-            "next": "processar_confirmacao",
-            "type": "input",
-            "position": {
-              "x": 100,
-              "y": 550
-            },
-            "variable": "confirmacao"
-          }
-        },
-        {
+          "position": { "x": 100, "y": 550 },
+          "variable": "confirmacao"
+        }
+      },
+      {
+        "id": "processar_confirmacao",
+        "type": "condition",
+        "position": { "x": 380, "y": 550 },
+        "data": {
+          "label": "DECISAO - Confirmacao",
+          "nodeType": "condition",
+          "content": "",
+          "stepNumber": "11",
           "id": "processar_confirmacao",
           "type": "condition",
-          "position": {
-            "x": 380,
-            "y": 550
-          },
-          "data": {
-            "label": "🔀 DECISÃO\nCondição",
-            "nodeType": "condition",
-            "content": "",
-            "stepNumber": "🔀",
-            "id": "processar_confirmacao",
-            "next": "transferir_operador_qr",
-            "type": "condition",
-            "position": {
-              "x": 380,
-              "y": 550
-            }
-          }
-        },
-        {
+          "next": null,
+          "conditions": [
+            {"variable": "confirmacao", "operator": "equals", "value": "sim", "next": "transferir_operador_qr"},
+            {"variable": "confirmacao", "operator": "equals", "value": "SIM", "next": "transferir_operador_qr"},
+            {"variable": "confirmacao", "operator": "equals", "value": "nao", "next": "compra_cancelada"},
+            {"variable": "confirmacao", "operator": "equals", "value": "NAO", "next": "compra_cancelada"},
+            {"variable": "confirmacao", "operator": "equals", "value": "menu", "next": "welcome"},
+            {"variable": "confirmacao", "operator": "equals", "value": "MENU", "next": "welcome"},
+            {"variable": "confirmacao", "operator": "default", "value": "", "next": "opcao_invalida"}
+          ]
+        }
+      },
+      {
+        "id": "transferir_operador_qr",
+        "type": "message",
+        "position": { "x": 660, "y": 550 },
+        "data": {
+          "label": "PASSO 12 - Transferir para operador (QR)",
+          "nodeType": "message",
+          "content": "Reserva feita!\n\nVou conectar voce com um operador agora para gerar o QR Code de pagamento e finalizar a emissao do bilhete. Aguarde um instante.",
+          "stepNumber": "12",
           "id": "transferir_operador_qr",
+          "next": "acao_transferir",
           "type": "message",
-          "position": {
-            "x": 660,
-            "y": 550
-          },
-          "data": {
-            "label": "📝 PASSO 12\n🎉 *Reserva feita!*\n\n👨‍\ud83d...",
-            "nodeType": "message",
-            "content": "🎉 *Reserva feita!*\n\n👨‍💼 Vou te conectar com um operador agora para *gerar o QR Code de pagamento* e finalizar a emissão do bilhete. Aguarde um instante…",
-            "stepNumber": "12",
-            "id": "transferir_operador_qr",
-            "next": "acao_transferir",
-            "type": "message",
-            "position": {
-              "x": 660,
-              "y": 550
-            }
-          }
-        },
-        {
+          "position": { "x": 660, "y": 550 }
+        }
+      },
+      {
+        "id": "acao_transferir",
+        "type": "action",
+        "position": { "x": 100, "y": 700 },
+        "data": {
+          "label": "PASSO 13 - Acao transferir (QR)",
+          "nodeType": "action",
+          "content": "",
+          "stepNumber": "13",
           "id": "acao_transferir",
+          "next": "end",
           "type": "action",
-          "position": {
-            "x": 100,
-            "y": 700
-          },
-          "data": {
-            "label": "📝 PASSO 13\nAção",
-            "nodeType": "action",
-            "content": "",
-            "stepNumber": "13",
-            "id": "acao_transferir",
-            "next": "end",
-            "type": "action",
-            "position": {
-              "x": 100,
-              "y": 700
-            }
-          }
-        },
-        {
+          "action": "transfer_to_human",
+          "position": { "x": 100, "y": 700 }
+        }
+      },
+      {
+        "id": "compra_cancelada",
+        "type": "message",
+        "position": { "x": 380, "y": 700 },
+        "data": {
+          "label": "PASSO 14 - Compra cancelada",
+          "nodeType": "message",
+          "content": "Compra cancelada.\n\n1) Voltar ao menu\n2) Consultar horarios\n3) Falar com operador\n\nDigite a opcao:",
+          "stepNumber": "14",
           "id": "compra_cancelada",
+          "next": "voltar_pos_cancelamento",
           "type": "message",
-          "position": {
-            "x": 380,
-            "y": 700
-          },
-          "data": {
-            "label": "📝 PASSO 14\n❌ *Compra cancelada.*\n\n1️...",
-            "nodeType": "message",
-            "content": "❌ *Compra cancelada.*\n\n1️⃣ Voltar ao menu\n2️⃣ Consultar horários\n3️⃣ Falar com operador\n\n*Digite a opção:*",
-            "stepNumber": "14",
-            "id": "compra_cancelada",
-            "next": "voltar_pos_cancelamento",
-            "type": "message",
-            "position": {
-              "x": 380,
-              "y": 700
-            }
-          }
-        },
-        {
+          "position": { "x": 380, "y": 700 }
+        }
+      },
+      {
+        "id": "voltar_pos_cancelamento",
+        "type": "input",
+        "position": { "x": 660, "y": 700 },
+        "data": {
+          "label": "PASSO 15 - Entrada (pos cancelamento)",
+          "nodeType": "input",
+          "content": "",
+          "stepNumber": "15",
           "id": "voltar_pos_cancelamento",
+          "next": "welcome",
           "type": "input",
-          "position": {
-            "x": 660,
-            "y": 700
-          },
-          "data": {
-            "label": "📝 PASSO 15\nEntrada",
-            "nodeType": "input",
-            "content": "",
-            "stepNumber": "15",
-            "id": "voltar_pos_cancelamento",
-            "next": "welcome",
-            "type": "input",
-            "position": {
-              "x": 660,
-              "y": 700
-            }
-          }
-        },
-        {
+          "position": { "x": 660, "y": 700 },
+          "variable": "opcao_pos_cancelamento"
+        }
+      },
+      {
+        "id": "consultar_horarios",
+        "type": "message",
+        "position": { "x": 100, "y": 850 },
+        "data": {
+          "label": "PASSO 16 - Horarios da rota",
+          "nodeType": "message",
+          "content": "HORARIOS PALMAS -> GOIANIA\n\n06:00 (Executivo) • 09:00 (Convencional) • 14:00 (Executivo) • 22:00 (Leito)\n\nDigite 1 para comprar neste trajeto ou MENU para voltar.",
+          "stepNumber": "16",
           "id": "consultar_horarios",
+          "next": "voltar_menu_horarios",
           "type": "message",
-          "position": {
-            "x": 100,
-            "y": 850
-          },
-          "data": {
-            "label": "📝 PASSO 16\n🕐 *HORÁRIOS PALMAS ➜ GOI...",
-            "nodeType": "message",
-            "content": "🕐 *HORÁRIOS PALMAS ➜ GOIÂNIA*\n\n06:00 (Executivo) • 09:00 (Convencional) • 14:00 (Executivo) • 22:00 (Leito)\n\n💡 Digite *1* para comprar nesse trajeto ou *MENU* para voltar.",
-            "stepNumber": "16",
-            "id": "consultar_horarios",
-            "next": "voltar_menu_horarios",
-            "type": "message",
-            "position": {
-              "x": 100,
-              "y": 850
-            }
-          }
-        },
-        {
+          "position": { "x": 100, "y": 850 }
+        }
+      },
+      {
+        "id": "voltar_menu_horarios",
+        "type": "input",
+        "position": { "x": 380, "y": 850 },
+        "data": {
+          "label": "PASSO 17 - Entrada (horarios)",
+          "nodeType": "input",
+          "content": "",
+          "stepNumber": "17",
           "id": "voltar_menu_horarios",
+          "next": "welcome",
           "type": "input",
-          "position": {
-            "x": 380,
-            "y": 850
-          },
-          "data": {
-            "label": "📝 PASSO 17\nEntrada",
-            "nodeType": "input",
-            "content": "",
-            "stepNumber": "17",
-            "id": "voltar_menu_horarios",
-            "next": "welcome",
-            "type": "input",
-            "position": {
-              "x": 380,
-              "y": 850
-            }
-          }
-        },
-        {
+          "position": { "x": 380, "y": 850 },
+          "variable": "voltar_horarios"
+        }
+      },
+      {
+        "id": "transferir_atendente",
+        "type": "message",
+        "position": { "x": 660, "y": 850 },
+        "data": {
+          "label": "PASSO 18 - Transferir para operador (menu 3)",
+          "nodeType": "message",
+          "content": "Conectando voce ao operador...\n\nEle podera gerar o QR Code e finalizar sua compra.",
+          "stepNumber": "18",
           "id": "transferir_atendente",
+          "next": "acao_transferir_atendente",
           "type": "message",
-          "position": {
-            "x": 660,
-            "y": 850
-          },
-          "data": {
-            "label": "📝 PASSO 18\n👨‍💼 *Conectando você ao...",
-            "nodeType": "message",
-            "content": "👨‍💼 *Conectando você ao operador…*\nEle poderá *gerar o QR Code* e finalizar sua compra.",
-            "stepNumber": "18",
-            "id": "transferir_atendente",
-            "next": "acao_transferir_atendente",
-            "type": "message",
-            "position": {
-              "x": 660,
-              "y": 850
-            }
-          }
-        },
-        {
+          "position": { "x": 660, "y": 850 }
+        }
+      },
+      {
+        "id": "acao_transferir_atendente",
+        "type": "action",
+        "position": { "x": 100, "y": 1000 },
+        "data": {
+          "label": "PASSO 19 - Acao transferir (menu 3)",
+          "nodeType": "action",
+          "content": "",
+          "stepNumber": "19",
           "id": "acao_transferir_atendente",
+          "next": "end",
           "type": "action",
-          "position": {
-            "x": 100,
-            "y": 1000
-          },
-          "data": {
-            "label": "📝 PASSO 19\nAção",
-            "nodeType": "action",
-            "content": "",
-            "stepNumber": "19",
-            "id": "acao_transferir_atendente",
-            "next": "end",
-            "type": "action",
-            "position": {
-              "x": 100,
-              "y": 1000
-            }
-          }
-        },
-        {
+          "action": "transfer_to_human",
+          "position": { "x": 100, "y": 1000 }
+        }
+      },
+      {
+        "id": "opcao_invalida",
+        "type": "message",
+        "position": { "x": 380, "y": 1000 },
+        "data": {
+          "label": "PASSO 20 - Opcao invalida",
+          "nodeType": "message",
+          "content": "Opcao invalida!\n\n1 = Comprar Passagem\n2 = Consultar Horarios\n3 = Falar com Operador\n\nVoltando ao menu...",
+          "stepNumber": "20",
           "id": "opcao_invalida",
+          "next": "welcome",
           "type": "message",
-          "position": {
-            "x": 380,
-            "y": 1000
-          },
-          "data": {
-            "label": "📝 PASSO 20\n❌ *Opção inválida!*\n\n1 = ...",
-            "nodeType": "message",
-            "content": "❌ *Opção inválida!*\n\n1 = Comprar Passagem\n2 = Consultar Horários\n3 = Falar com Operador\n\n*Voltando ao menu…*",
-            "stepNumber": "20",
-            "id": "opcao_invalida",
-            "next": "welcome",
-            "type": "message",
-            "position": {
-              "x": 380,
-              "y": 1000
-            }
-          }
-        },
-        {
+          "position": { "x": 380, "y": 1000 }
+        }
+      },
+      {
+        "id": "end",
+        "type": "end",
+        "position": { "x": 660, "y": 1000 },
+        "data": {
+          "label": "FIM",
+          "nodeType": "end",
+          "content": "",
+          "stepNumber": "21",
           "id": "end",
+          "next": null,
           "type": "end",
-          "position": {
-            "x": 660,
-            "y": 1000
-          },
-          "data": {
-            "label": "🏁 FIM\nFim",
-            "nodeType": "end",
-            "content": "",
-            "stepNumber": "🏁",
-            "id": "end",
-            "next": null,
-            "type": "end",
-            "position": {
-              "x": 660,
-              "y": 1000
-            }
-          }
+          "position": { "x": 660, "y": 1000 }
         }
-      ],
-      "edges": [
-        {
-          "id": "start-welcome",
-          "source": "start",
-          "target": "welcome",
-          "type": "smoothstep",
-          "animated": true,
-          "style": {
-            "stroke": "#2196f3",
-            "strokeWidth": 3,
-            "strokeDasharray": "5,5"
-          },
-          "markerEnd": {
-            "type": "arrowclosed",
-            "color": "#2196f3"
-          }
-        },
-        {
-          "id": "welcome-menu_input",
-          "source": "welcome",
-          "target": "menu_input",
-          "type": "smoothstep",
-          "animated": true,
-          "style": {
-            "stroke": "#2196f3",
-            "strokeWidth": 3,
-            "strokeDasharray": "5,5"
-          },
-          "markerEnd": {
-            "type": "arrowclosed",
-            "color": "#2196f3"
-          }
-        },
-        {
-          "id": "menu_input-menu_condition",
-          "source": "menu_input",
-          "target": "menu_condition",
-          "type": "smoothstep",
-          "animated": true,
-          "style": {
-            "stroke": "#2196f3",
-            "strokeWidth": 3,
-            "strokeDasharray": "5,5"
-          },
-          "markerEnd": {
-            "type": "arrowclosed",
-            "color": "#2196f3"
-          }
-        },
-        {
-          "id": "menu_condition-comprar_destino",
-          "source": "menu_condition",
-          "target": "comprar_destino",
-          "type": "smoothstep",
-          "animated": true,
-          "style": {
-            "stroke": "#2196f3",
-            "strokeWidth": 3,
-            "strokeDasharray": "5,5"
-          },
-          "markerEnd": {
-            "type": "arrowclosed",
-            "color": "#2196f3"
-          }
-        },
-        {
-          "id": "comprar_destino-input_destino",
-          "source": "comprar_destino",
-          "target": "input_destino",
-          "type": "smoothstep",
-          "animated": true,
-          "style": {
-            "stroke": "#2196f3",
-            "strokeWidth": 3,
-            "strokeDasharray": "5,5"
-          },
-          "markerEnd": {
-            "type": "arrowclosed",
-            "color": "#2196f3"
-          }
-        },
-        {
-          "id": "input_destino-mostrar_horarios_compra",
-          "source": "input_destino",
-          "target": "mostrar_horarios_compra",
-          "type": "smoothstep",
-          "animated": true,
-          "style": {
-            "stroke": "#2196f3",
-            "strokeWidth": 3,
-            "strokeDasharray": "5,5"
-          },
-          "markerEnd": {
-            "type": "arrowclosed",
-            "color": "#2196f3"
-          }
-        },
-        {
-          "id": "mostrar_horarios_compra-input_horario",
-          "source": "mostrar_horarios_compra",
-          "target": "input_horario",
-          "type": "smoothstep",
-          "animated": true,
-          "style": {
-            "stroke": "#2196f3",
-            "strokeWidth": 3,
-            "strokeDasharray": "5,5"
-          },
-          "markerEnd": {
-            "type": "arrowclosed",
-            "color": "#2196f3"
-          }
-        },
-        {
-          "id": "input_horario-confirmar_compra",
-          "source": "input_horario",
-          "target": "confirmar_compra",
-          "type": "smoothstep",
-          "animated": true,
-          "style": {
-            "stroke": "#2196f3",
-            "strokeWidth": 3,
-            "strokeDasharray": "5,5"
-          },
-          "markerEnd": {
-            "type": "arrowclosed",
-            "color": "#2196f3"
-          }
-        },
-        {
-          "id": "confirmar_compra-input_confirmacao",
-          "source": "confirmar_compra",
-          "target": "input_confirmacao",
-          "type": "smoothstep",
-          "animated": true,
-          "style": {
-            "stroke": "#2196f3",
-            "strokeWidth": 3,
-            "strokeDasharray": "5,5"
-          },
-          "markerEnd": {
-            "type": "arrowclosed",
-            "color": "#2196f3"
-          }
-        },
-        {
-          "id": "input_confirmacao-processar_confirmacao",
-          "source": "input_confirmacao",
-          "target": "processar_confirmacao",
-          "type": "smoothstep",
-          "animated": true,
-          "style": {
-            "stroke": "#2196f3",
-            "strokeWidth": 3,
-            "strokeDasharray": "5,5"
-          },
-          "markerEnd": {
-            "type": "arrowclosed",
-            "color": "#2196f3"
-          }
-        },
-        {
-          "id": "processar_confirmacao-transferir_operador_qr",
-          "source": "processar_confirmacao",
-          "target": "transferir_operador_qr",
-          "type": "smoothstep",
-          "animated": true,
-          "style": {
-            "stroke": "#2196f3",
-            "strokeWidth": 3,
-            "strokeDasharray": "5,5"
-          },
-          "markerEnd": {
-            "type": "arrowclosed",
-            "color": "#2196f3"
-          }
-        },
-        {
-          "id": "transferir_operador_qr-acao_transferir",
-          "source": "transferir_operador_qr",
-          "target": "acao_transferir",
-          "type": "smoothstep",
-          "animated": true,
-          "style": {
-            "stroke": "#2196f3",
-            "strokeWidth": 3,
-            "strokeDasharray": "5,5"
-          },
-          "markerEnd": {
-            "type": "arrowclosed",
-            "color": "#2196f3"
-          }
-        },
-        {
-          "id": "acao_transferir-end",
-          "source": "acao_transferir",
-          "target": "end",
-          "type": "smoothstep",
-          "animated": true,
-          "style": {
-            "stroke": "#2196f3",
-            "strokeWidth": 3,
-            "strokeDasharray": "5,5"
-          },
-          "markerEnd": {
-            "type": "arrowclosed",
-            "color": "#2196f3"
-          }
-        },
-        {
-          "id": "compra_cancelada-voltar_pos_cancelamento",
-          "source": "compra_cancelada",
-          "target": "voltar_pos_cancelamento",
-          "type": "smoothstep",
-          "animated": true,
-          "style": {
-            "stroke": "#2196f3",
-            "strokeWidth": 3,
-            "strokeDasharray": "5,5"
-          },
-          "markerEnd": {
-            "type": "arrowclosed",
-            "color": "#2196f3"
-          }
-        },
-        {
-          "id": "voltar_pos_cancelamento-welcome",
-          "source": "voltar_pos_cancelamento",
-          "target": "welcome",
-          "type": "smoothstep",
-          "animated": true,
-          "style": {
-            "stroke": "#2196f3",
-            "strokeWidth": 3,
-            "strokeDasharray": "5,5"
-          },
-          "markerEnd": {
-            "type": "arrowclosed",
-            "color": "#2196f3"
-          }
-        },
-        {
-          "id": "consultar_horarios-voltar_menu_horarios",
-          "source": "consultar_horarios",
-          "target": "voltar_menu_horarios",
-          "type": "smoothstep",
-          "animated": true,
-          "style": {
-            "stroke": "#2196f3",
-            "strokeWidth": 3,
-            "strokeDasharray": "5,5"
-          },
-          "markerEnd": {
-            "type": "arrowclosed",
-            "color": "#2196f3"
-          }
-        },
-        {
-          "id": "voltar_menu_horarios-welcome",
-          "source": "voltar_menu_horarios",
-          "target": "welcome",
-          "type": "smoothstep",
-          "animated": true,
-          "style": {
-            "stroke": "#2196f3",
-            "strokeWidth": 3,
-            "strokeDasharray": "5,5"
-          },
-          "markerEnd": {
-            "type": "arrowclosed",
-            "color": "#2196f3"
-          }
-        },
-        {
-          "id": "transferir_atendente-acao_transferir_atendente",
-          "source": "transferir_atendente",
-          "target": "acao_transferir_atendente",
-          "type": "smoothstep",
-          "animated": true,
-          "style": {
-            "stroke": "#2196f3",
-            "strokeWidth": 3,
-            "strokeDasharray": "5,5"
-          },
-          "markerEnd": {
-            "type": "arrowclosed",
-            "color": "#2196f3"
-          }
-        },
-        {
-          "id": "acao_transferir_atendente-end",
-          "source": "acao_transferir_atendente",
-          "target": "end",
-          "type": "smoothstep",
-          "animated": true,
-          "style": {
-            "stroke": "#2196f3",
-            "strokeWidth": 3,
-            "strokeDasharray": "5,5"
-          },
-          "markerEnd": {
-            "type": "arrowclosed",
-            "color": "#2196f3"
-          }
-        },
-        {
-          "id": "opcao_invalida-welcome",
-          "source": "opcao_invalida",
-          "target": "welcome",
-          "type": "smoothstep",
-          "animated": true,
-          "style": {
-            "stroke": "#2196f3",
-            "strokeWidth": 3,
-            "strokeDasharray": "5,5"
-          },
-          "markerEnd": {
-            "type": "arrowclosed",
-            "color": "#2196f3"
-          }
-        }
-      ],
-      "viewport": {
-        "x": 0,
-        "y": 0,
-        "zoom": 1
       }
-    }
+    ],
+    "edges": [
+      { "id": "start-welcome", "source": "start", "target": "welcome", "type": "smoothstep", "animated": true, "style": { "stroke": "#2196f3", "strokeWidth": 3, "strokeDasharray": "5,5" }, "markerEnd": { "type": "arrowclosed", "color": "#2196f3" } },
+      { "id": "welcome-menu_input", "source": "welcome", "target": "menu_input", "type": "smoothstep", "animated": true, "style": { "stroke": "#2196f3", "strokeWidth": 3, "strokeDasharray": "5,5" }, "markerEnd": { "type": "arrowclosed", "color": "#2196f3" } },
+      { "id": "menu_input-menu_condition", "source": "menu_input", "target": "menu_condition", "type": "smoothstep", "animated": true, "style": { "stroke": "#2196f3", "strokeWidth": 3, "strokeDasharray": "5,5" }, "markerEnd": { "type": "arrowclosed", "color": "#2196f3" } },
+      { "id": "menu_condition-comprar_destino", "source": "menu_condition", "target": "comprar_destino", "type": "smoothstep", "animated": true, "style": { "stroke": "#2196f3", "strokeWidth": 3, "strokeDasharray": "5,5" }, "markerEnd": { "type": "arrowclosed", "color": "#2196f3" } },
+      { "id": "menu_condition-consultar_horarios", "source": "menu_condition", "target": "consultar_horarios", "type": "smoothstep", "animated": true, "style": { "stroke": "#2196f3", "strokeWidth": 3, "strokeDasharray": "5,5" }, "markerEnd": { "type": "arrowclosed", "color": "#2196f3" } },
+      { "id": "menu_condition-transferir_atendente", "source": "menu_condition", "target": "transferir_atendente", "type": "smoothstep", "animated": true, "style": { "stroke": "#2196f3", "strokeWidth": 3, "strokeDasharray": "5,5" }, "markerEnd": { "type": "arrowclosed", "color": "#2196f3" } },
+      { "id": "comprar_destino-input_destino", "source": "comprar_destino", "target": "input_destino", "type": "smoothstep", "animated": true, "style": { "stroke": "#2196f3", "strokeWidth": 3, "strokeDasharray": "5,5" }, "markerEnd": { "type": "arrowclosed", "color": "#2196f3" } },
+      { "id": "input_destino-mostrar_horarios_compra", "source": "input_destino", "target": "mostrar_horarios_compra", "type": "smoothstep", "animated": true, "style": { "stroke": "#2196f3", "strokeWidth": 3, "strokeDasharray": "5,5" }, "markerEnd": { "type": "arrowclosed", "color": "#2196f3" } },
+      { "id": "mostrar_horarios_compra-input_horario", "source": "mostrar_horarios_compra", "target": "input_horario", "type": "smoothstep", "animated": true, "style": { "stroke": "#2196f3", "strokeWidth": 3, "strokeDasharray": "5,5" }, "markerEnd": { "type": "arrowclosed", "color": "#2196f3" } },
+      { "id": "input_horario-confirmar_compra", "source": "input_horario", "target": "confirmar_compra", "type": "smoothstep", "animated": true, "style": { "stroke": "#2196f3", "strokeWidth": 3, "strokeDasharray": "5,5" }, "markerEnd": { "type": "arrowclosed", "color": "#2196f3" } },
+      { "id": "confirmar_compra-input_confirmacao", "source": "confirmar_compra", "target": "input_confirmacao", "type": "smoothstep", "animated": true, "style": { "stroke": "#2196f3", "strokeWidth": 3, "strokeDasharray": "5,5" }, "markerEnd": { "type": "arrowclosed", "color": "#2196f3" } },
+      { "id": "input_confirmacao-processar_confirmacao", "source": "input_confirmacao", "target": "processar_confirmacao", "type": "smoothstep", "animated": true, "style": { "stroke": "#2196f3", "strokeWidth": 3, "strokeDasharray": "5,5" }, "markerEnd": { "type": "arrowclosed", "color": "#2196f3" } },
+      { "id": "processar_confirmacao-transferir_operador_qr", "source": "processar_confirmacao", "target": "transferir_operador_qr", "type": "smoothstep", "animated": true, "style": { "stroke": "#2196f3", "strokeWidth": 3, "strokeDasharray": "5,5" }, "markerEnd": { "type": "arrowclosed", "color": "#2196f3" } },
+      { "id": "processar_confirmacao-compra_cancelada", "source": "processar_confirmacao", "target": "compra_cancelada", "type": "smoothstep", "animated": true, "style": { "stroke": "#e91e63", "strokeWidth": 3, "strokeDasharray": "5,5" }, "markerEnd": { "type": "arrowclosed", "color": "#e91e63" } },
+      { "id": "processar_confirmacao-welcome", "source": "processar_confirmacao", "target": "welcome", "type": "smoothstep", "animated": true, "style": { "stroke": "#9c27b0", "strokeWidth": 3, "strokeDasharray": "5,5" }, "markerEnd": { "type": "arrowclosed", "color": "#9c27b0" } },
+      { "id": "transferir_operador_qr-acao_transferir", "source": "transferir_operador_qr", "target": "acao_transferir", "type": "smoothstep", "animated": true, "style": { "stroke": "#2196f3", "strokeWidth": 3, "strokeDasharray": "5,5" }, "markerEnd": { "type": "arrowclosed", "color": "#2196f3" } },
+      { "id": "acao_transferir-end", "source": "acao_transferir", "target": "end", "type": "smoothstep", "animated": true, "style": { "stroke": "#2196f3", "strokeWidth": 3, "strokeDasharray": "5,5" }, "markerEnd": { "type": "arrowclosed", "color": "#2196f3" } },
+      { "id": "compra_cancelada-voltar_pos_cancelamento", "source": "compra_cancelada", "target": "voltar_pos_cancelamento", "type": "smoothstep", "animated": true, "style": { "stroke": "#2196f3", "strokeWidth": 3, "strokeDasharray": "5,5" }, "markerEnd": { "type": "arrowclosed", "color": "#2196f3" } },
+      { "id": "voltar_pos_cancelamento-welcome", "source": "voltar_pos_cancelamento", "target": "welcome", "type": "smoothstep", "animated": true, "style": { "stroke": "#2196f3", "strokeWidth": 3, "strokeDasharray": "5,5" }, "markerEnd": { "type": "arrowclosed", "color": "#2196f3" } },
+      { "id": "consultar_horarios-voltar_menu_horarios", "source": "consultar_horarios", "target": "voltar_menu_horarios", "type": "smoothstep", "animated": true, "style": { "stroke": "#2196f3", "strokeWidth": 3, "strokeDasharray": "5,5" }, "markerEnd": { "type": "arrowclosed", "color": "#2196f3" } },
+      { "id": "voltar_menu_horarios-welcome", "source": "voltar_menu_horarios", "target": "welcome", "type": "smoothstep", "animated": true, "style": { "stroke": "#2196f3", "strokeWidth": 3, "strokeDasharray": "5,5" }, "markerEnd": { "type": "arrowclosed", "color": "#2196f3" } },
+      { "id": "transferir_atendente-acao_transferir_atendente", "source": "transferir_atendente", "target": "acao_transferir_atendente", "type": "smoothstep", "animated": true, "style": { "stroke": "#2196f3", "strokeWidth": 3, "strokeDasharray": "5,5" }, "markerEnd": { "type": "arrowclosed", "color": "#2196f3" } },
+      { "id": "acao_transferir_atendente-end", "source": "acao_transferir_atendente", "target": "end", "type": "smoothstep", "animated": true, "style": { "stroke": "#2196f3", "strokeWidth": 3, "strokeDasharray": "5,5" }, "markerEnd": { "type": "arrowclosed", "color": "#2196f3" } },
+      { "id": "opcao_invalida-welcome", "source": "opcao_invalida", "target": "welcome", "type": "smoothstep", "animated": true, "style": { "stroke": "#2196f3", "strokeWidth": 3, "strokeDasharray": "5,5" }, "markerEnd": { "type": "arrowclosed", "color": "#2196f3" } }
+    ],
+    "viewport": { "x": 0, "y": 0, "zoom": 1 }
   }
+}

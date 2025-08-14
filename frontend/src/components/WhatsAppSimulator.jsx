@@ -46,6 +46,11 @@ const WhatsAppSimulator = ({ open, onClose, flow, botName = 'ChatBot' }) => {
   }, [open, flow])
 
   const resetConversation = () => {
+    console.log('🔄 Resetando conversa...')
+    console.log('📊 Flow disponível:', !!flow)
+    console.log('📊 Flow data:', flow?.flow_data)
+    console.log('📊 Nodes:', flow?.flow_data?.nodes?.length)
+    
     setMessages([])
     setSessionData({})
     setInputMessage('')
@@ -53,21 +58,31 @@ const WhatsAppSimulator = ({ open, onClose, flow, botName = 'ChatBot' }) => {
     
     // Encontrar nó start
     const startNode = flow?.flow_data?.nodes?.find(node => node.type === 'start')
+    
+    console.log('🚀 Start node encontrado:', !!startNode)
     if (startNode) {
+      console.log('🚀 Start node:', startNode)
       setCurrentNode(startNode)
       processNode(startNode)
+    } else {
+      console.error('❌ Nó start não encontrado!')
+      console.log('📋 Nós disponíveis:', flow?.flow_data?.nodes?.map(n => `${n.id} (${n.type})`))
     }
   }
 
   const processNode = async (node) => {
-    if (!node) return
+    if (!node) {
+      console.error('❌ Nó não encontrado!')
+      return
+    }
 
     console.log('🤖 Processando nó:', node.id, node.type)
+    console.log('🤖 Nó completo:', node)
 
     switch (node.type) {
       case 'start':
         // Ir para o próximo nó
-        const nextNode = findNodeById(node.next)
+        const nextNode = findNodeById(node.data?.next || node.next)
         if (nextNode) {
           setTimeout(() => processNode(nextNode), 500)
         }
@@ -79,11 +94,24 @@ const WhatsAppSimulator = ({ open, onClose, flow, botName = 'ChatBot' }) => {
         await new Promise(resolve => setTimeout(resolve, 1000))
         setIsTyping(false)
         
-        // Adicionar mensagem do bot
-        addBotMessage(node.content || 'Mensagem não definida')
+        // Adicionar mensagem do bot - verificar várias possibilidades
+        let messageContent = 'Mensagem não definida'
+        
+        // Tentar diferentes estruturas possíveis
+        if (node.data?.content) {
+          messageContent = node.data.content
+        } else if (node.content) {
+          messageContent = node.content
+        } else if (typeof node.data === 'string') {
+          messageContent = node.data
+        }
+        
+        console.log('🐛 DEBUG - Content final:', JSON.stringify(messageContent))
+        console.log('🐛 DEBUG - Node completo:', node)
+        addBotMessage(messageContent)
         
         // Ir para próximo nó
-        const nextMessageNode = findNodeById(node.next)
+        const nextMessageNode = findNodeById(node.data?.next || node.next)
         if (nextMessageNode && nextMessageNode.type !== 'input') {
           setTimeout(() => processNode(nextMessageNode), 1000)
         } else if (nextMessageNode) {
@@ -117,7 +145,8 @@ const WhatsAppSimulator = ({ open, onClose, flow, botName = 'ChatBot' }) => {
 
       case 'action':
         // Simular ação
-        addBotMessage(`⚙️ Ação executada: ${node.content || 'Ação do sistema'}`)
+        const actionContent = node.data?.content || node.content || 'Ação do sistema'
+        addBotMessage(`⚙️ Ação executada: ${actionContent}`)
         
         const nextActionNode = findNodeById(node.next)
         if (nextActionNode) {
@@ -137,7 +166,21 @@ const WhatsAppSimulator = ({ open, onClose, flow, botName = 'ChatBot' }) => {
   }
 
   const findNodeById = (nodeId) => {
-    return flow?.flow_data?.nodes?.find(node => node.id === nodeId)
+    if (!nodeId) {
+      console.error('❌ NodeId é nulo/undefined')
+      return null
+    }
+    
+    const foundNode = flow?.flow_data?.nodes?.find(node => node.id === nodeId)
+    
+    if (!foundNode) {
+      console.error(`❌ Nó "${nodeId}" não encontrado!`)
+      console.log('📋 Nós disponíveis:', flow?.flow_data?.nodes?.map(n => n.id))
+    } else {
+      console.log(`✅ Nó "${nodeId}" encontrado:`, foundNode.type)
+    }
+    
+    return foundNode
   }
 
   const addBotMessage = (content) => {
@@ -177,15 +220,19 @@ const WhatsAppSimulator = ({ open, onClose, flow, botName = 'ChatBot' }) => {
     if (currentNode) {
       if (currentNode.type === 'input') {
         // Salvar dados da sessão
-        if (currentNode.variable) {
-          setSessionData(prev => ({
-            ...prev,
-            [currentNode.variable]: userMessage
-          }))
+        if (currentNode.data?.variable) {
+          const newSessionData = {
+            ...sessionData,
+            [currentNode.data.variable]: userMessage
+          }
+          setSessionData(newSessionData)
+          
+          console.log('💾 Variável salva:', currentNode.data.variable, '=', userMessage)
+          console.log('💾 Sessão atualizada:', newSessionData)
         }
 
         // Ir para próximo nó
-        const nextNode = findNodeById(currentNode.next)
+        const nextNode = findNodeById(currentNode.data?.next || currentNode.next)
         if (nextNode) {
           setTimeout(() => processNode(nextNode), 500)
         }
@@ -196,41 +243,120 @@ const WhatsAppSimulator = ({ open, onClose, flow, botName = 'ChatBot' }) => {
   }
 
   const handleCondition = (node) => {
+    // Pegar condições do data
+    const conditions = node.data?.conditions || node.conditions || []
+    
+    console.log('🔧 DEBUG - Condições do nó:', conditions)
+    console.log('🔧 DEBUG - Dados da sessão para condição:', sessionData)
+    
     // Se não tem condições definidas, ir para próximo
-    if (!node.conditions || node.conditions.length === 0) {
-      const nextNode = findNodeById(node.next)
+    if (conditions.length === 0) {
+      const nextNode = findNodeById(node.data?.next || node.next)
       if (nextNode) {
         processNode(nextNode)
       }
       return
     }
 
-    // Usar primeira condição como padrão se não há input
-    const firstCondition = node.conditions[0]
-    const nextNode = findNodeById(firstCondition.next)
-    if (nextNode) {
-      processNode(nextNode)
+    // Avaliar condições com base nos dados da sessão
+    const matchingCondition = conditions.find(condition => {
+      if (condition.operator === 'default') {
+        return false // Skip default for now
+      }
+      
+      if (condition.variable && sessionData[condition.variable]) {
+        const variableValue = sessionData[condition.variable]
+        console.log(`🔧 Avaliando: ${condition.variable}="${variableValue}" ${condition.operator} "${condition.value}"`)
+        
+        switch (condition.operator) {
+          case 'equals':
+            return variableValue === condition.value || 
+                   variableValue.toString() === condition.value.toString()
+          case 'contains':
+            return variableValue.toString().toLowerCase().includes(condition.value.toLowerCase())
+          default:
+            return variableValue === condition.value
+        }
+      }
+      return false
+    })
+
+    if (matchingCondition) {
+      console.log('✅ Condição automática encontrada, indo para:', matchingCondition.next)
+      const nextNode = findNodeById(matchingCondition.next)
+      if (nextNode) {
+        processNode(nextNode)
+      }
+    } else {
+      // Usar condição default se disponível
+      const defaultCondition = conditions.find(c => c.operator === 'default')
+      if (defaultCondition) {
+        console.log('⚠️ Usando condição default automática, indo para:', defaultCondition.next)
+        const nextNode = findNodeById(defaultCondition.next)
+        if (nextNode) {
+          processNode(nextNode)
+        }
+      } else {
+        // Aguardar entrada do usuário para a condição
+        console.log('⏳ Aguardando input do usuário para condição')
+        setCurrentNode(node)
+      }
     }
   }
 
   const handleConditionWithInput = (node, userInput) => {
-    if (!node.conditions) return
+    const conditions = node.data?.conditions || node.conditions || []
+    if (conditions.length === 0) return
 
-    // Procurar condição que corresponde ao input
-    const matchingCondition = node.conditions.find(condition => {
-      return condition.value === userInput || 
-             condition.value.toLowerCase() === userInput.toLowerCase()
+    console.log('🔧 DEBUG - Avaliando condições:', conditions)
+    console.log('🔧 DEBUG - Input do usuário:', userInput)
+    console.log('🔧 DEBUG - Dados da sessão:', sessionData)
+
+    // Procurar condição que corresponde
+    const matchingCondition = conditions.find(condition => {
+      if (condition.operator === 'default') {
+        return false // Skip default for now
+      }
+      
+      // Pegar valor da variável ou usar input diretamente
+      let valueToCompare = userInput
+      if (condition.variable && sessionData[condition.variable]) {
+        valueToCompare = sessionData[condition.variable]
+      }
+      
+      console.log(`🔧 Comparando: "${valueToCompare}" com "${condition.value}" (operador: ${condition.operator})`)
+      
+      switch (condition.operator) {
+        case 'equals':
+          return valueToCompare === condition.value || 
+                 valueToCompare.toLowerCase() === condition.value.toLowerCase()
+        case 'contains':
+          return valueToCompare.toLowerCase().includes(condition.value.toLowerCase())
+        default:
+          return valueToCompare === condition.value
+      }
     })
 
     if (matchingCondition) {
+      console.log('✅ Condição encontrada, indo para:', matchingCondition.next)
       const nextNode = findNodeById(matchingCondition.next)
       if (nextNode) {
         setTimeout(() => processNode(nextNode), 500)
       }
     } else {
-      // Condição padrão ou erro
-      addBotMessage('❌ Opção inválida. Tente novamente.')
-      setCurrentNode(node) // Manter no mesmo nó
+      // Usar condição default se disponível
+      const defaultCondition = conditions.find(c => c.operator === 'default')
+      if (defaultCondition) {
+        console.log('⚠️ Usando condição default, indo para:', defaultCondition.next)
+        const nextNode = findNodeById(defaultCondition.next)
+        if (nextNode) {
+          setTimeout(() => processNode(nextNode), 500)
+        }
+      } else {
+        // Sem condição correspondente
+        addBotMessage('❌ Opção inválida. Tente novamente.')
+        setCurrentNode(node) // Manter no mesmo nó
+      }
     }
   }
 

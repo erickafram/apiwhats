@@ -209,9 +209,15 @@ const FlowEditor = () => {
           data: {
             label: getNodeLabel(node, index),
             nodeType: node.type,
-            content: node.content,
             stepNumber: getStepNumber(node, index),
-            ...node
+            ...node,
+            ...node.data,
+            // Garantir que os campos importantes do data tenham precedência
+            content: node.data?.content || node.content,
+            next: node.data?.next || node.next,
+            variable: node.data?.variable || node.variable,
+            conditions: node.data?.conditions || node.conditions,
+            action: node.data?.action || node.action
           },
           style: {
             background: `linear-gradient(135deg, ${getNodeColor(node.type)}, ${getNodeColor(node.type)}dd)`,

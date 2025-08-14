@@ -1,5 +1,7 @@
 const mysql = require('mysql2/promise');
+const fs = require('fs');
 
+// Configuração do banco
 const dbConfig = {
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
@@ -8,86 +10,73 @@ const dbConfig = {
   charset: 'utf8mb4'
 };
 
-async function atualizarFluxoTeste() {
+async function corrigirFluxoDatabase() {
   let connection;
   
   try {
-    console.log('🔧 Conectando ao banco...');
+    console.log('🔧 Conectando ao banco de dados...');
     connection = await mysql.createConnection(dbConfig);
     
-    console.log('🔍 Buscando fluxo ID 5...');
-    const [flows] = await connection.execute('SELECT * FROM flows WHERE id = 5');
+    console.log('📁 Lendo arquivo JSON correto...');
+    const fluxoData = fs.readFileSync('fluxo-passagens-onibus.json', 'utf8');
+    const fluxo = JSON.parse(fluxoData);
     
-    if (flows.length === 0) {
-      console.log('❌ Fluxo ID 5 não encontrado!');
-      return;
+    console.log('📋 Fluxo carregado:', fluxo.name);
+    
+    // Verificar se o flow_data está correto no arquivo
+    const welcomeNode = fluxo.flow_data.nodes.find(node => node.id === 'welcome');
+    if (welcomeNode) {
+      console.log('\n📝 CONTEÚDO DO WELCOME NO ARQUIVO:');
+      console.log('════════════════════════════════════════');
+      console.log(welcomeNode.content);
+      console.log('════════════════════════════════════════');
+      console.log(`🔍 Quebras de linha no arquivo: ${(welcomeNode.content.match(/\\n/g) || []).length}`);
     }
     
-    const flow = flows[0];
-    console.log(`📋 Fluxo encontrado: ${flow.name}`);
-    
-    // Parse do flow_data
-    let flowData;
-    try {
-      if (typeof flow.flow_data === 'string') {
-        flowData = JSON.parse(flow.flow_data);
-      } else {
-        flowData = flow.flow_data;
-      }
-    } catch (parseError) {
-      console.log('❌ Erro ao parsear flow_data:', parseError.message);
-      return;
-    }
-    
-    // Helper para aplicar conteúdo com segurança
-    const applyContent = (nodeId, content) => {
-      const node = flowData.nodes.find(n => n.id === nodeId);
-      if (!node) {
-        console.log(`⚠️ Nó ${nodeId} não encontrado`);
-        return false;
-      }
-      node.content = content;
-      if (node.data) node.data.content = content;
-      console.log(`✅ Atualizado nó ${nodeId}`);
-      return true;
-    };
-
-    // 1) Menu principal (welcome)
-    const welcomeContent = `🚌 *VIAÇÃO EXPRESSA*\n\nO que você deseja?\n\n1️⃣ 🎫 Comprar Passagem\n2️⃣ 🕐 Consultar Horários\n3️⃣ ☎️ Falar com Operador\n\n*Digite o número da opção:*`;
-    applyContent('welcome', welcomeContent);
-
-    // 2) Compra de destino (comprar_destino) - já ajustado anteriormente
-    const comprarDestinoContent = `🗺️ *COMPRA DE PASSAGEM*\n\n📍 *Origem fixa:* Palmas (TO)\n📍 *Digite o destino desejado:*\n\n💡 Exemplos:\n• Goiânia\n• Brasília\n• Anápolis\n• Aparecida de Goiânia\n\n✍️ *Digite o nome da cidade:*`;
-    applyContent('comprar_destino', comprarDestinoContent);
-
-    // 3) Mostrar horários (mostrar_horarios_compra)
-    const horariosContent = `🕐 *HORÁRIOS DISPONÍVEIS*\n\n🚌 Rota: Palmas ➜ #\${cidade_destino}\n\n1️⃣ EXECUTIVO - 06:00 (R$ 85)\n2️⃣ CONVENCIONAL - 09:00 (R$ 65)\n3️⃣ EXECUTIVO - 14:00 (R$ 85)\n4️⃣ LEITO - 22:00 (R$ 120)\n\n*Digite o número do horário desejado:*`;
-    applyContent('mostrar_horarios_compra', horariosContent);
-
-    // 4) Confirmação (confirmar_compra)
-    const confirmarContent = `✅ *Confirma a reserva?*\n\nRota: Palmas ➜ #\${cidade_destino}\nHorário: #\${horario_escolhido}\n\n*Responda:*\n• SIM para confirmar\n• NÃO para cancelar\n• MENU para voltar`;
-    applyContent('confirmar_compra', confirmarContent);
-
-    // Salvar no banco
+    // Atualizar o flow_data no banco
+    console.log('\n🔄 Atualizando flow_data no banco...');
     await connection.execute(
-      'UPDATE flows SET flow_data = ?, updated_at = NOW() WHERE id = ?',
-      [JSON.stringify(flowData), 5]
+      'UPDATE flows SET flow_data = ?, updated_at = NOW() WHERE id = 5',
+      [JSON.stringify(fluxo.flow_data)]
     );
     
-    console.log('✅ Fluxo atualizado com sucesso!');
-    console.log('\n💡 Teste: "oi" -> 1 -> digite destino -> verifique linhas e variáveis.');
+    console.log('✅ Flow_data atualizado!');
+    
+    // Verificar se foi atualizado corretamente
+    console.log('\n🔍 Verificando atualização...');
+    const [result] = await connection.execute(
+      'SELECT flow_data FROM flows WHERE id = 5'
+    );
+    
+    if (result.length > 0) {
+      const flowDataFromDB = JSON.parse(result[0].flow_data);
+      const welcomeNodeFromDB = flowDataFromDB.nodes.find(node => node.id === 'welcome');
+      
+      if (welcomeNodeFromDB) {
+        console.log('\n📝 CONTEÚDO DO WELCOME NO BANCO (APÓS ATUALIZAÇÃO):');
+        console.log('════════════════════════════════════════');
+        console.log(welcomeNodeFromDB.content);
+        console.log('════════════════════════════════════════');
+        console.log(`🔍 Quebras de linha no banco: ${(welcomeNodeFromDB.content.match(/\\n/g) || []).length}`);
+        
+        if (welcomeNodeFromDB.content === welcomeNode.content) {
+          console.log('\n✅ SUCESSO! O conteúdo no banco está igual ao arquivo!');
+        } else {
+          console.log('\n❌ PROBLEMA! O conteúdo não confere!');
+        }
+      }
+    }
     
   } catch (error) {
     console.error('❌ Erro:', error.message);
-    console.error(error.stack);
+    console.error('Stack:', error.stack);
   } finally {
     if (connection) {
       await connection.end();
-      console.log('🔌 Conexão fechada');
+      console.log('\n🔌 Conexão fechada');
     }
   }
 }
 
-console.log('🚀 ATUALIZANDO NÓS COM QUEBRAS DE LINHA (welcome, horários, confirmação)');
-console.log('=====================================================================');
-atualizarFluxoTeste().catch(console.error); 
+console.log('🚀 Corrigindo flow_data no banco...');
+corrigirFluxoDatabase().catch(console.error); 
