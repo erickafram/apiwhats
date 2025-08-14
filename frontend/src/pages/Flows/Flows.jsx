@@ -56,12 +56,15 @@ import {
   Stop as EndIcon,
   Code as CodeIcon,
   AutoAwesome as AutoAwesomeIcon,
-  Send as SendIcon
+  Send as SendIcon,
+  Build as BuildIcon,
+  Dashboard as TemplateIcon
 } from '@mui/icons-material'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { flowsAPI, botsAPI } from '../../services/api'
 import CodeFlowCreator from '../../components/CodeFlowCreator'
+import FlowBuilder from '../../components/FlowBuilder/FlowBuilder'
 
 const Flows = () => {
   const [flows, setFlows] = useState([])
@@ -97,6 +100,9 @@ const Flows = () => {
     menuOptions: [],
     customInstructions: ''
   })
+
+  // Estado para o FlowBuilder
+  const [flowBuilderOpen, setFlowBuilderOpen] = useState(false)
 
   const navigate = useNavigate()
 
@@ -457,6 +463,19 @@ const Flows = () => {
           Fluxos Conversacionais
         </Typography>
         <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            variant="contained"
+            startIcon={<BuildIcon />}
+            onClick={() => setFlowBuilderOpen(true)}
+            sx={{
+              background: 'linear-gradient(45deg, #2196F3 30%, #64B5F6 90%)',
+              '&:hover': {
+                background: 'linear-gradient(45deg, #1976D2 30%, #2196F3 90%)',
+              }
+            }}
+          >
+            Construtor Visual
+          </Button>
           <Button
             variant="contained"
             startIcon={<AutoAwesomeIcon />}
@@ -1060,6 +1079,14 @@ const Flows = () => {
           )}
         </DialogActions>
       </Dialog>
+
+      {/* FlowBuilder - Construtor Visual */}
+      <FlowBuilder
+        open={flowBuilderOpen}
+        onClose={() => setFlowBuilderOpen(false)}
+        selectedBot={selectedBot !== 'all' ? selectedBot : ''}
+        onFlowCreated={handleFlowCreated}
+      />
     </Box>
   )
 }

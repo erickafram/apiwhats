@@ -724,6 +724,116 @@ router.post('/generate-with-ai', async (req, res) => {
   }
 });
 
+// Obter templates de fluxos
+router.get('/templates', async (req, res) => {
+  try {
+    console.log('🎨 Buscando templates de fluxos...');
+    
+    const FlowTemplateService = require('../services/FlowTemplateService');
+    const templateService = new FlowTemplateService();
+    
+    const { category, search } = req.query;
+    
+    let templates;
+    
+    if (category) {
+      templates = templateService.getTemplatesByCategory(category);
+    } else if (search) {
+      templates = templateService.searchTemplates(search);
+    } else {
+      templates = templateService.getAllTemplates();
+    }
+    
+    res.json({
+      message: 'Templates obtidos com sucesso',
+      templates: templates,
+      categories: templateService.getCategories(),
+      total: templates.length
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro ao obter templates:', error);
+    res.status(500).json({
+      error: 'Erro interno do servidor ao obter templates',
+      code: 'INTERNAL_ERROR',
+      details: error.message
+    });
+  }
+});
+
+// Criar fluxo a partir de template
+router.post('/from-template/:templateId', authenticateToken, async (req, res) => {
+  try {
+    const { templateId } = req.params;
+    const { customizations } = req.body;
+    
+    console.log('🎨 Criando fluxo a partir do template:', templateId);
+    console.log('🎨 Customizações:', customizations);
+    
+    const FlowTemplateService = require('../services/FlowTemplateService');
+    const templateService = new FlowTemplateService();
+    
+    // Verificar se o template existe
+    const template = templateService.getTemplateById(templateId);
+    if (!template) {
+      return res.status(404).json({
+        error: 'Template não encontrado',
+        code: 'TEMPLATE_NOT_FOUND'
+      });
+    }
+    
+    // Verificar se o bot pertence ao usuário
+    if (customizations.bot_id) {
+      const bot = await Bot.findOne({
+        where: { 
+          id: customizations.bot_id, 
+          user_id: req.user.id 
+        }
+      });
+      
+      if (!bot) {
+        return res.status(404).json({
+          error: 'Bot não encontrado ou você não tem permissão para acessá-lo',
+          code: 'BOT_NOT_FOUND'
+        });
+      }
+    }
+    
+    // Criar fluxo a partir do template
+    const flowData = templateService.createFlowFromTemplate(templateId, {
+      ...customizations,
+      user_id: req.user.id
+    });
+    
+    // Salvar no banco
+    const flow = await Flow.create({
+      ...flowData,
+      user_id: req.user.id,
+      created_at: new Date(),
+      updated_at: new Date()
+    });
+    
+    console.log('✅ Fluxo criado a partir do template:', flow.id);
+    
+    res.status(201).json({
+      message: 'Fluxo criado com sucesso a partir do template',
+      flow: flow,
+      template: {
+        id: templateId,
+        name: template.name
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro ao criar fluxo a partir do template:', error);
+    res.status(500).json({
+      error: 'Erro interno do servidor ao criar fluxo',
+      code: 'INTERNAL_ERROR',
+      details: error.message
+    });
+  }
+});
+
 // Função para criar prompt melhorado baseado nos dados estruturados
 function buildEnhancedFlowPrompt(flowData = {}) {
   const { flowType, businessType, objectives, hasOperatorTransfer, menuOptions } = flowData;

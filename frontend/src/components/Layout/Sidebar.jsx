@@ -302,7 +302,9 @@ const Sidebar = ({ onItemClick }) => {
                     fontSize: '0.8rem',
                     fontWeight: isActive ? 600 : 500,
                     color: isActive ? '#f1f5f9' : '#94a3b8',
-                    textShadow: isActive ? '0 1px 2px rgba(0, 0, 0, 0.2)' : 'none'
+                    sx: {
+                      textShadow: isActive ? '0 1px 2px rgba(0, 0, 0, 0.2)' : 'none'
+                    }
                   }}
                 />
                 {/* Badge estático original */}

@@ -120,6 +120,10 @@ export const flowsAPI = {
   activate: (id) => api.patch(`/flows/${id}/activate`),
   deactivate: (id) => api.patch(`/flows/${id}/deactivate`),
   setDefault: (id) => api.patch(`/flows/${id}/set-default`),
+  getTemplates: (params = {}) => api.get('/flows/templates', { params }),
+  createFromTemplate: (templateId, data) => api.post(`/flows/from-template/${templateId}`, data),
+  generateWithAI: (data) => api.post('/flows/generate-ai', data),
+  editWithAI: (id, data) => api.post(`/flows/${id}/edit-ai`, data)
 }
 
 export const templatesAPI = {
