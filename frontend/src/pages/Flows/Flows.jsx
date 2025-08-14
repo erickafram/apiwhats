@@ -1084,8 +1084,9 @@ const Flows = () => {
       <FlowBuilder
         open={flowBuilderOpen}
         onClose={() => setFlowBuilderOpen(false)}
-        selectedBot={selectedBot !== 'all' ? selectedBot : ''}
+        selectedBot={selectedBot !== 'all' ? selectedBot : null}
         onFlowCreated={handleFlowCreated}
+        bots={bots}
       />
     </Box>
   )

@@ -51,7 +51,8 @@ import {
   Code as CodeIcon,
   AccountTree as FlowIcon,
   AutoAwesome as AutoAwesomeIcon,
-  Send as SendIcon
+  Send as SendIcon,
+  Build as BuildIcon
 } from '@mui/icons-material'
 import { useParams, useNavigate } from 'react-router-dom'
 import ReactFlow, {
@@ -66,8 +67,9 @@ import ReactFlow, {
 } from 'reactflow'
 import 'reactflow/dist/style.css'
 import toast from 'react-hot-toast'
-import { flowsAPI } from '../../services/api'
+import { flowsAPI, botsAPI } from '../../services/api'
 import WhatsAppSimulator from '../../components/WhatsAppSimulator'
+import FlowBuilder from '../../components/FlowBuilder/FlowBuilder'
 
 // Tipos de nós disponíveis
 const nodeTypes = [
@@ -119,6 +121,10 @@ const FlowEditor = () => {
   // Estado para o simulador do WhatsApp
   const [whatsappSimulatorOpen, setWhatsappSimulatorOpen] = useState(false)
 
+  // Estado para o FlowBuilder
+  const [flowBuilderOpen, setFlowBuilderOpen] = useState(false)
+  const [bots, setBots] = useState([])
+
   // Estados para edição por código
   const [codeEditorOpen, setCodeEditorOpen] = useState(false)
   const [flowCode, setFlowCode] = useState('')
@@ -142,8 +148,18 @@ const FlowEditor = () => {
   useEffect(() => {
     if (id) {
       loadFlow()
+      loadBots()
     }
   }, [id])
+
+  const loadBots = async () => {
+    try {
+      const response = await botsAPI.getAll()
+      setBots(response.data.bots || response.data || [])
+    } catch (error) {
+      console.error('Erro ao carregar bots:', error)
+    }
+  }
 
   // Auto-save quando nodes ou edges mudarem
   useEffect(() => {
@@ -916,6 +932,24 @@ const FlowEditor = () => {
             </Button>
 
 
+
+            <Button
+              startIcon={<BuildIcon />}
+              onClick={() => setFlowBuilderOpen(true)}
+              variant="outlined"
+              size="small"
+              sx={{
+                mr: 1,
+                color: '#2196F3',
+                borderColor: '#2196F3',
+                '&:hover': {
+                  backgroundColor: '#2196F3',
+                  color: 'white'
+                }
+              }}
+            >
+              Construtor Visual
+            </Button>
 
             <Button
               startIcon={<AutoAwesomeIcon />}
@@ -1732,11 +1766,26 @@ const FlowEditor = () => {
       </Dialog>
 
       {/* Simulador do WhatsApp */}
-      <WhatsAppSimulator
+            <WhatsAppSimulator 
         open={whatsappSimulatorOpen}
         onClose={() => setWhatsappSimulatorOpen(false)}
         flow={flow}
         botName={flow?.name || 'ChatBot'}
+      />
+
+      {/* FlowBuilder para edição visual */}
+      <FlowBuilder
+        open={flowBuilderOpen}
+        onClose={() => setFlowBuilderOpen(false)}
+        selectedBot={flow?.bot_id || null}
+        onFlowCreated={() => {
+          setFlowBuilderOpen(false)
+          loadFlow() // Recarregar o fluxo após edição
+          toast.success('Fluxo atualizado com sucesso!')
+        }}
+        bots={bots}
+        editingFlow={flow} // Passar o fluxo atual para edição
+        isEditing={true} // Indicar que está em modo de edição
       />
     </Box>
   )

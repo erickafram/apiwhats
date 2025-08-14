@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react'
+import React, { useState, useCallback, useRef, useEffect } from 'react'
 import {
   Box,
   Paper,
@@ -90,7 +90,7 @@ const BLOCK_TYPES = [
     color: '#FF9800',
     description: 'Fazer uma pergunta e capturar a resposta do usuário',
     template: {
-      type: 'input',
+      type: 'question',
       content: 'Qual é o seu nome?',
       variable: 'user_name',
       validation: 'required'
@@ -168,7 +168,7 @@ const BUSINESS_TEMPLATES = [
   }
 ]
 
-const FlowBuilder = ({ open, onClose, selectedBot, onFlowCreated }) => {
+const FlowBuilder = ({ open, onClose, selectedBot, onFlowCreated, bots = [], editingFlow = null, isEditing = false }) => {
   const [step, setStep] = useState(0) // 0: template, 1: build, 2: config, 3: save
   const [selectedTemplate, setSelectedTemplate] = useState(null)
   const [flowBlocks, setFlowBlocks] = useState([])
@@ -183,6 +183,7 @@ const FlowBuilder = ({ open, onClose, selectedBot, onFlowCreated }) => {
   const [editDialog, setEditDialog] = useState(false)
   const [saving, setSaving] = useState(false)
   const [newKeyword, setNewKeyword] = useState('')
+  const [internalSelectedBot, setInternalSelectedBot] = useState(selectedBot || null)
 
   const steps = [
     'Escolher Template',
@@ -190,6 +191,202 @@ const FlowBuilder = ({ open, onClose, selectedBot, onFlowCreated }) => {
     'Configurar Detalhes',
     'Salvar Fluxo'
   ]
+
+  // Atualizar bot interno quando prop mudar
+  useEffect(() => {
+    if (selectedBot) {
+      setInternalSelectedBot(selectedBot)
+    }
+  }, [selectedBot])
+
+  // Carregar fluxo existente quando em modo de edição
+  useEffect(() => {
+    if (isEditing && editingFlow && open) {
+      console.log('🔧 Carregando fluxo para edição:', editingFlow)
+      
+      // Pular para o passo de construção
+      setStep(1)
+      
+      // Configurar dados do fluxo
+      setFlowConfig({
+        name: editingFlow.name || '',
+        description: editingFlow.description || '',
+        trigger_keywords: editingFlow.trigger_keywords || [],
+        is_active: editingFlow.is_active !== undefined ? editingFlow.is_active : true,
+        is_default: editingFlow.is_default !== undefined ? editingFlow.is_default : false
+      })
+      
+      // Configurar bot
+      if (editingFlow.bot_id) {
+        setInternalSelectedBot(editingFlow.bot_id)
+      }
+      
+      // Converter nós do fluxo para blocos visuais
+      if (editingFlow.flow_data && editingFlow.flow_data.nodes) {
+        const convertedBlocks = convertFlowNodesToBlocks(editingFlow.flow_data.nodes)
+        setFlowBlocks(convertedBlocks)
+      }
+    }
+  }, [isEditing, editingFlow, open])
+
+  // Converter nós do fluxo para blocos visuais
+  const convertFlowNodesToBlocks = (nodes) => {
+    const blocks = []
+    const processedNodes = new Set() // Evitar processar o mesmo nó duas vezes
+    
+    console.log('🔧 Iniciando conversão de', nodes.length, 'nós para blocos visuais')
+    
+    // Analisar o fluxo para identificar padrões de interação
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i]
+      
+      // Pular nós já processados
+      if (processedNodes.has(node.id)) continue
+      
+      // Pular nós que não são relevantes para blocos visuais
+      if (node.type === 'start' || node.type === 'end') {
+        processedNodes.add(node.id)
+        continue
+      }
+      
+      // Pular nós auxiliares que fazem parte de outros blocos
+      if (node.id.includes('_input') || node.id.includes('_condition') || node.id.includes('_transfer')) {
+        processedNodes.add(node.id)
+        continue
+      }
+      
+      let block = {
+        id: `block_${blocks.length}`,
+        position: blocks.length
+      }
+      
+      console.log(`🔍 Processando nó: ${node.id} (${node.type})`)
+      
+      switch (node.type) {
+        case 'message':
+          // Verificar se tem nó de input relacionado
+          const inputNode = nodes.find(n => n.id === `${node.id}_input`)
+          const hasInputAfter = inputNode || (node.next && nodes.find(n => n.id === node.next && n.type === 'input'))
+          
+          // Verificar se contém opções numeradas (menu)
+          const hasMenuOptions = node.content && 
+            (/[1-9]️⃣|1\.|2\.|3\.|4\.|5\./.test(node.content) || 
+             /opção|escolha|digite/i.test(node.content))
+          
+          if (hasInputAfter && !hasMenuOptions) {
+            // É uma pergunta que captura informação
+            block.type = 'question'
+            block.content = node.content || ''
+            block.variable = inputNode?.variable || node.next?.replace('_input', '') || 'user_response'
+            
+            // Marcar nós relacionados como processados
+            processedNodes.add(node.id)
+            if (inputNode) processedNodes.add(inputNode.id)
+            
+            console.log(`✅ Criado bloco QUESTION: ${block.content.substring(0, 30)}...`)
+            
+          } else if (hasMenuOptions) {
+            // É um menu de opções
+            block.type = 'menu'
+            block.content = node.content || ''
+            
+            // Extrair opções do texto
+            const optionMatches = node.content.match(/([1-9]️⃣|[1-9]\.)\s*([^\n]+)/g) || []
+            block.options = optionMatches.map((match, idx) => ({
+              id: (idx + 1).toString(),
+              text: match.replace(/^[1-9]️⃣|^[1-9]\./, '').trim()
+            }))
+            
+            if (block.options.length === 0) {
+              // Se não conseguiu extrair, criar opções padrão
+              block.options = [
+                { id: '1', text: 'Opção 1' },
+                { id: '2', text: 'Opção 2' }
+              ]
+            }
+            
+            // Marcar nós relacionados como processados
+            processedNodes.add(node.id)
+            const relatedInput = nodes.find(n => n.id === `${node.id}_input`)
+            const relatedCondition = nodes.find(n => n.id === `${node.id}_condition`)
+            if (relatedInput) processedNodes.add(relatedInput.id)
+            if (relatedCondition) processedNodes.add(relatedCondition.id)
+            
+            console.log(`✅ Criado bloco MENU com ${block.options.length} opções`)
+            
+          } else {
+            // Mensagem simples
+            block.type = 'message'
+            block.content = node.content || ''
+            processedNodes.add(node.id)
+            
+            console.log(`✅ Criado bloco MESSAGE: ${block.content.substring(0, 30)}...`)
+          }
+          break
+          
+        case 'ai_response':
+          block.type = 'ai_response'
+          block.content = 'Resposta gerada por IA'
+          block.prompt = node.data?.system_prompt || 'Você é um assistente prestativo.'
+          processedNodes.add(node.id)
+          
+          console.log(`✅ Criado bloco AI_RESPONSE`)
+          break
+          
+        case 'action':
+          if (node.action === 'transfer_to_human') {
+            block.type = 'human_transfer'
+            block.content = node.content || 'Transferindo para atendente...'
+          } else {
+            block.type = 'message'
+            block.content = node.content || `Ação: ${node.action}`
+          }
+          processedNodes.add(node.id)
+          
+          console.log(`✅ Criado bloco ACTION/TRANSFER`)
+          break
+          
+        case 'input':
+          // Input isolado - verificar se não faz parte de uma mensagem anterior
+          const parentMessage = nodes.find(n => n.next === node.id && n.type === 'message')
+          if (!parentMessage || processedNodes.has(parentMessage.id)) {
+            block.type = 'question'
+            block.content = 'Digite sua resposta:'
+            block.variable = node.variable || 'user_input'
+            processedNodes.add(node.id)
+            
+            console.log(`✅ Criado bloco INPUT isolado`)
+          } else {
+            // Pular - será processado junto com a mensagem pai
+            processedNodes.add(node.id)
+            continue
+          }
+          break
+          
+        case 'condition':
+          // Condições geralmente fazem parte de menus - pular se não for independente
+          processedNodes.add(node.id)
+          console.log(`⏭️ Pulando CONDITION (faz parte de menu)`)
+          continue
+          
+        default:
+          // Para outros tipos, criar como mensagem genérica
+          block.type = 'message'
+          block.content = node.content || `Nó ${node.type}`
+          processedNodes.add(node.id)
+          
+          console.log(`✅ Criado bloco DEFAULT: ${node.type}`)
+      }
+      
+      if (block.type) {
+        blocks.push(block)
+      }
+    }
+    
+    console.log(`🎉 Conversão finalizada: ${nodes.length} nós → ${blocks.length} blocos`)
+    console.log('🔄 Blocos convertidos:', blocks.map(b => `${b.type}: ${b.content?.substring(0, 20)}...`))
+    return blocks
+  }
 
   // Aplicar template selecionado
   const applyTemplate = (template) => {
@@ -345,6 +542,7 @@ const FlowBuilder = ({ open, onClose, selectedBot, onFlowCreated }) => {
           break
 
         case 'input':
+        case 'question':
           nodes.push({
             id: block.id,
             type: 'message',
@@ -357,7 +555,7 @@ const FlowBuilder = ({ open, onClose, selectedBot, onFlowCreated }) => {
             id: `${block.id}_input`,
             type: 'input',
             position: { x: 100, y: yPosition + 50 },
-            variable: block.variable,
+            variable: block.variable || 'user_input',
             validation: block.validation,
             next: nextBlockId
           })
@@ -448,7 +646,7 @@ const FlowBuilder = ({ open, onClose, selectedBot, onFlowCreated }) => {
       return
     }
 
-    if (!selectedBot) {
+    if (!internalSelectedBot) {
       toast.error('Selecione um bot')
       return
     }
@@ -464,15 +662,21 @@ const FlowBuilder = ({ open, onClose, selectedBot, onFlowCreated }) => {
       
       const payload = {
         ...flowConfig,
-        bot_id: selectedBot,
+        bot_id: internalSelectedBot,
         flow_data: flowData
       }
 
       console.log('💾 Salvando fluxo:', payload)
 
-      await flowsAPI.create(payload)
+      if (isEditing && editingFlow) {
+        // Atualizar fluxo existente
+        await flowsAPI.update(editingFlow.id, payload)
+      } else {
+        // Criar novo fluxo
+        await flowsAPI.create(payload)
+      }
       
-      toast.success('Fluxo criado com sucesso!')
+      toast.success(isEditing ? 'Fluxo atualizado com sucesso!' : 'Fluxo criado com sucesso!')
       onFlowCreated?.()
       handleClose()
     } catch (error) {
@@ -497,6 +701,7 @@ const FlowBuilder = ({ open, onClose, selectedBot, onFlowCreated }) => {
     })
     setEditingBlock(null)
     setEditDialog(false)
+    setInternalSelectedBot(selectedBot || null)
     onClose()
   }
 
@@ -506,7 +711,9 @@ const FlowBuilder = ({ open, onClose, selectedBot, onFlowCreated }) => {
         <DialogTitle>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <MagicIcon color="primary" />
-            <Typography variant="h6">Construtor de Fluxos Intuitivo</Typography>
+            <Typography variant="h6">
+              {isEditing ? 'Editar Fluxo com Construtor Visual' : 'Construtor de Fluxos Intuitivo'}
+            </Typography>
           </Box>
         </DialogTitle>
 
@@ -521,7 +728,7 @@ const FlowBuilder = ({ open, onClose, selectedBot, onFlowCreated }) => {
             </Stepper>
 
             {/* PASSO 1: Escolher Template */}
-            {step === 0 && (
+            {step === 0 && !isEditing && (
               <Box>
                 <Typography variant="h6" gutterBottom>
                   Escolha um template para começar:
@@ -678,8 +885,30 @@ const FlowBuilder = ({ open, onClose, selectedBot, onFlowCreated }) => {
                   Configurar detalhes do fluxo:
                 </Typography>
 
+                {bots.length === 0 && (
+                  <Alert severity="warning" sx={{ mb: 3 }}>
+                    Nenhum bot encontrado. Você precisa criar um bot primeiro para poder criar fluxos.
+                  </Alert>
+                )}
+
                 <Grid container spacing={3}>
                   <Grid item xs={12} md={6}>
+                    <FormControl fullWidth sx={{ mb: 2 }}>
+                      <InputLabel>Selecionar Bot *</InputLabel>
+                      <Select
+                        value={internalSelectedBot || ''}
+                        onChange={(e) => setInternalSelectedBot(e.target.value)}
+                        label="Selecionar Bot *"
+                        required
+                      >
+                        {bots.map((bot) => (
+                          <MenuItem key={bot.id} value={bot.id}>
+                            {bot.name}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+
                     <TextField
                       fullWidth
                       label="Nome do Fluxo"
@@ -757,6 +986,12 @@ const FlowBuilder = ({ open, onClose, selectedBot, onFlowCreated }) => {
                         Adicione palavras-chave para que o usuário possa ativar este fluxo
                       </Alert>
                     )}
+
+                    {!internalSelectedBot && bots.length > 0 && (
+                      <Alert severity="warning" sx={{ mt: 2 }}>
+                        Selecione um bot para poder salvar o fluxo
+                      </Alert>
+                    )}
                   </Grid>
                 </Grid>
               </Box>
@@ -775,6 +1010,7 @@ const FlowBuilder = ({ open, onClose, selectedBot, onFlowCreated }) => {
                       <Typography variant="subtitle1" gutterBottom>
                         📋 Informações Gerais
                       </Typography>
+                      <Typography><strong>Bot:</strong> {bots.find(b => b.id === internalSelectedBot)?.name || 'Nenhum selecionado'}</Typography>
                       <Typography><strong>Nome:</strong> {flowConfig.name}</Typography>
                       <Typography><strong>Descrição:</strong> {flowConfig.description}</Typography>
                       <Typography><strong>Status:</strong> {flowConfig.is_active ? 'Ativo' : 'Inativo'}</Typography>
@@ -803,7 +1039,10 @@ const FlowBuilder = ({ open, onClose, selectedBot, onFlowCreated }) => {
                 </Grid>
 
                 <Alert severity="success" sx={{ mt: 2 }}>
-                  Seu fluxo está pronto para ser salvo! Clique em "Salvar Fluxo" para criar.
+                  {isEditing 
+                    ? 'Suas alterações estão prontas! Clique em "Atualizar Fluxo" para salvar.' 
+                    : 'Seu fluxo está pronto para ser salvo! Clique em "Salvar Fluxo" para criar.'
+                  }
                 </Alert>
               </Box>
             )}
@@ -835,10 +1074,13 @@ const FlowBuilder = ({ open, onClose, selectedBot, onFlowCreated }) => {
             <Button 
               variant="contained" 
               onClick={saveFlow}
-              disabled={saving}
+              disabled={saving || !internalSelectedBot || !flowConfig.name.trim()}
               startIcon={saving ? <></> : <SaveIcon />}
             >
-              {saving ? 'Salvando...' : 'Salvar Fluxo'}
+              {saving 
+                ? (isEditing ? 'Atualizando...' : 'Salvando...') 
+                : (isEditing ? 'Atualizar Fluxo' : 'Salvar Fluxo')
+              }
             </Button>
           )}
         </DialogActions>
@@ -863,7 +1105,7 @@ const FlowBuilder = ({ open, onClose, selectedBot, onFlowCreated }) => {
                 />
               )}
 
-              {editingBlock.type === 'input' && (
+              {(editingBlock.type === 'input' || editingBlock.type === 'question') && (
                 <Box>
                   <TextField
                     fullWidth
