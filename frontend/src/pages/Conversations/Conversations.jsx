@@ -98,6 +98,7 @@ const Conversations = () => {
   const [availableStatuses, setAvailableStatuses] = useState([])
   const [selectedStatus, setSelectedStatus] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [isUpdating, setIsUpdating] = useState(false)
   const [showStatusFilter, setShowStatusFilter] = useState(false)
 
   // Usar o hook global de conversas
@@ -116,9 +117,14 @@ const Conversations = () => {
     }
   }
 
-  const loadConversations = async () => {
+  const loadConversations = async (showLoading = true) => {
     try {
-      setLoading(true)
+      if (showLoading) {
+        setLoading(true)
+      } else {
+        setIsUpdating(true)
+      }
+      
       // Parâmetros base para as consultas
       const baseParams = {}
       if (statusFilter) {
@@ -218,6 +224,7 @@ const Conversations = () => {
       console.error('Erro ao carregar conversas:', error)
     } finally {
       setLoading(false)
+      setIsUpdating(false)
     }
   }
 
@@ -257,7 +264,7 @@ const Conversations = () => {
       setDialogOpen(true)
       setLastMessageCount(0) // Reset contador para novo chat
       loadMessages(conversation.id, true) // true = carregamento inicial
-      loadConversations() // Refresh list
+      loadConversations(false) // Refresh list sem loading spinner
     } catch (error) {
       console.error('Erro ao assumir conversa:', error)
       // Fallback para método antigo se a nova API não existir
@@ -275,7 +282,7 @@ const Conversations = () => {
         setDialogOpen(true)
         setLastMessageCount(0)
         loadMessages(conversation.id, true)
-        loadConversations()
+        loadConversations(false)
       } catch (fallbackError) {
         console.error('Erro no fallback:', fallbackError)
       }
@@ -319,7 +326,7 @@ const Conversations = () => {
       })
       setDialogOpen(false)
       setSelectedConversation(null)
-      loadConversations()
+      loadConversations(false)
     } catch (error) {
       console.error('Erro ao encerrar conversa:', error)
     }
@@ -339,7 +346,7 @@ const Conversations = () => {
       setDialogOpen(true)
       setLastMessageCount(0) // Reset contador para chat reaberto
       loadMessages(conversation.id, true) // true = carregamento inicial
-      loadConversations()
+      loadConversations(false)
     } catch (error) {
       console.error('Erro ao reabrir conversa:', error)
     }
@@ -392,7 +399,7 @@ const Conversations = () => {
       setDialogOpen(false)
       setSelectedOperator('')
       setTransferReason('')
-      loadConversations()
+      loadConversations(false)
       
       toast.success('Conversa transferida com sucesso!')
     } catch (error) {
@@ -443,7 +450,7 @@ const Conversations = () => {
       
       setStatusDialogOpen(false)
       setSelectedStatus('')
-      loadConversations()
+      loadConversations(false)
       
       const statusName = availableStatuses.find(s => s.id == selectedStatus)?.name || 'Sem status'
       toast.success(`Status alterado para: ${statusName}`)
@@ -472,11 +479,11 @@ const Conversations = () => {
   }
 
   useEffect(() => {
-    loadConversations()
+    loadConversations(false)
     // Atualizar a cada 10 segundos para conversas, mas sem piscar
     const interval = setInterval(() => {
       if (!dialogOpen) { // Só atualiza se o chat não estiver aberto
-        loadConversations()
+        loadConversations(false)
       }
     }, 10000)
     return () => clearInterval(interval)
@@ -544,7 +551,7 @@ const Conversations = () => {
           action={
             <Button color="inherit" size="small" onClick={() => {
               setNewConversationAlert(false)
-              loadConversations()
+              loadConversations(false)
             }}>
               VER
             </Button>
@@ -554,23 +561,44 @@ const Conversations = () => {
         </Alert>
       </Snackbar>
 
-      {/* Botão flutuante de notificação */}
-      {globalUnattendedCount > 0 && (
+      {/* Botões flutuantes melhorados */}
+      <Box className="floating-actions">
+        {globalUnattendedCount > 0 && (
+          <Fab
+            color="warning"
+            size="medium"
+            className="notification-pulse"
+            onClick={() => setAlertOpen(true)}
+            sx={{
+              backgroundImage: 'linear-gradient(135deg, #FFA726, #FB8C00)',
+              '&:hover': {
+                backgroundImage: 'linear-gradient(135deg, #FF9800, #F57C00)',
+                transform: 'scale(1.1)'
+              }
+            }}
+          >
+            <Badge badgeContent={globalUnattendedCount} color="error">
+              <Notifications />
+            </Badge>
+          </Fab>
+        )}
+        
         <Fab
-          color="warning"
+          color="primary"
+          size="small"
+          onClick={() => loadConversations(false)}
+          disabled={isUpdating}
           sx={{
-            position: 'fixed',
-            bottom: 16,
-            right: 16,
-            animation: 'pulse 2s infinite'
+            backgroundImage: 'linear-gradient(135deg, #25D366, #128C7E)',
+            '&:hover': {
+              backgroundImage: 'linear-gradient(135deg, #128C7E, #075E54)',
+              transform: 'scale(1.1)'
+            }
           }}
-          onClick={() => setAlertOpen(true)}
         >
-          <Badge badgeContent={globalUnattendedCount} color="error">
-            <Notifications />
-          </Badge>
+          <Refresh />
         </Fab>
-      )}
+      </Box>
 
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Box>
@@ -688,15 +716,17 @@ const Conversations = () => {
           </Typography>
         </Paper>
       ) : (
-        <Grid container spacing={3}>
-          {conversations.map((conversation) => (
-            <Grid item xs={12} md={6} lg={4} key={conversation.id}>
-              <Card 
-                sx={{ 
-                  height: '100%',
-                  border: conversation.priority > 0 ? '2px solid #f57c00' : 'none'
-                }}
-              >
+        <Box className={`conversation-list ${isUpdating ? 'updating' : ''}`}>
+          <Grid container spacing={3}>
+            {conversations.map((conversation) => (
+              <Grid item xs={12} md={6} lg={4} key={conversation.id}>
+                <Card 
+                  className={`conversation-card smooth-transition ${selectedConversation?.id === conversation.id ? 'selected' : ''}`}
+                  sx={{ 
+                    height: '100%',
+                    border: conversation.priority > 0 ? '2px solid #f57c00' : 'none'
+                  }}
+                >
                 <CardContent>
                   <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
                     <Box display="flex" alignItems="center" gap={1}>
@@ -724,6 +754,7 @@ const Conversations = () => {
                       label={getStatusText(conversation.status)}
                       color={getStatusColor(conversation.status)}
                       size="small"
+                      className={`status-badge status-${conversation.status} smooth-transition`}
                     />
                     {conversation.custom_status && (
                       <Chip
@@ -806,10 +837,11 @@ const Conversations = () => {
                     </Button>
                   )}
                 </CardActions>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
+                              </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
       )}
 
       {/* Dialog para chat */}
@@ -818,7 +850,13 @@ const Conversations = () => {
         onClose={() => setDialogOpen(false)}
         maxWidth="md"
         fullWidth
-        PaperProps={{ sx: { height: '80vh' } }}
+        className="glass-dialog"
+        PaperProps={{ 
+          sx: { 
+            height: '80vh',
+            borderRadius: '16px !important'
+          } 
+        }}
       >
         <DialogTitle>
           {selectedConversation && (
@@ -889,6 +927,7 @@ const Conversations = () => {
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
           <Box 
             ref={messagesContainerRef}
+            className="message-container"
             sx={{ flexGrow: 1, overflow: 'auto', mb: 2 }}
           >
             {messages.length === 0 ? (
@@ -903,11 +942,10 @@ const Conversations = () => {
                       }}
                     >
                       <Paper
+                        className={`message-bubble ${message.direction === 'outgoing' ? 'outgoing' : 'incoming'} smooth-transition`}
                         sx={{
                           p: 2,
-                          maxWidth: '70%',
-                          bgcolor: message.direction === 'outgoing' ? 'primary.main' : 'grey.100',
-                          color: message.direction === 'outgoing' ? 'white' : 'text.primary'
+                          maxWidth: '70%'
                         }}
                       >
                         <Typography variant="body1">

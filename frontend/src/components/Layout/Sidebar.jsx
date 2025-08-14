@@ -24,6 +24,10 @@ import {
   Settings as SettingsIcon,
   WhatsApp as WhatsAppIcon,
   Label as StatusIcon,
+  AutoAwesome,
+  Speed,
+  TrendingUp,
+  GroupWork,
 } from '@mui/icons-material'
 
 import { useConversations } from '../../hooks/useConversations.jsx'
@@ -33,7 +37,7 @@ const menuItems = [
   {
     title: 'Dashboard',
     path: '/dashboard',
-    icon: DashboardIcon,
+    icon: Speed,
     roles: ['admin', 'user'] // Operadores não precisam de dashboard
   },
   {
@@ -51,8 +55,8 @@ const menuItems = [
   {
     title: 'Templates',
     path: '/templates',
-    icon: TemplateIcon,
-    badge: 'Novo',
+    icon: AutoAwesome,
+    badge: 'Pro',
     roles: ['admin', 'user'] // Operadores não usam templates
   },
   {
@@ -77,13 +81,13 @@ const menuItems = [
   {
     title: 'Operadores',
     path: '/operators',
-    icon: OperatorsIcon,
+    icon: GroupWork,
     roles: ['admin', 'user'] // Apenas admins e usuários principais
   },
   {
     title: 'Analytics',
     path: '/analytics',
-    icon: AnalyticsIcon,
+    icon: TrendingUp,
     roles: ['admin', 'user'] // Operadores não precisam de analytics
   },
   {
@@ -125,21 +129,81 @@ const Sidebar = ({ onItemClick }) => {
   }
 
   return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <Box 
+      sx={{ 
+        height: '100%', 
+        display: 'flex', 
+        flexDirection: 'column',
+        background: 'linear-gradient(180deg, rgba(37, 211, 102, 0.95) 0%, rgba(18, 140, 126, 0.95) 100%)',
+        backdropFilter: 'blur(10px)',
+        borderRight: '1px solid rgba(255, 255, 255, 0.1)',
+        position: 'relative',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'linear-gradient(45deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%)',
+          borderRadius: 0,
+          zIndex: -1
+        }
+      }}
+    >
       {/* Logo */}
-      <Box sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
-        <WhatsAppIcon sx={{ fontSize: 32, color: 'primary.main' }} />
+      <Box 
+        sx={{ 
+          p: 2, 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 1.5,
+          background: 'rgba(255, 255, 255, 0.1)',
+          backdropFilter: 'blur(5px)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+          borderRadius: '0 0 12px 12px',
+          margin: '0 8px 12px 8px',
+          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)'
+        }}
+      >
+        <Box 
+          sx={{
+            background: 'linear-gradient(135deg, #fff 0%, rgba(255, 255, 255, 0.9) 100%)',
+            borderRadius: '8px',
+            padding: '6px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+          }}
+        >
+          <WhatsAppIcon sx={{ fontSize: 20, color: '#25D366' }} />
+        </Box>
         <Box>
-          <Typography variant="h6" sx={{ fontWeight: 600, lineHeight: 1 }}>
-            ChatBot
+          <Typography 
+            variant="h6" 
+            sx={{ 
+              fontWeight: 700, 
+              lineHeight: 1,
+              color: 'white',
+              textShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+              fontSize: '0.9rem'
+            }}
+          >
+            ChatBot Pro
           </Typography>
-          <Typography variant="caption" color="text.secondary">
-            System
+          <Typography 
+            variant="caption" 
+            sx={{ 
+              color: 'rgba(255, 255, 255, 0.8)',
+              fontSize: '0.65rem',
+              fontWeight: 500
+            }}
+          >
+            Sistema Avançado
           </Typography>
         </Box>
       </Box>
-
-      <Divider />
 
       {/* Menu Items */}
       <List sx={{ flexGrow: 1, px: 2, py: 1 }}>
@@ -153,19 +217,55 @@ const Sidebar = ({ onItemClick }) => {
               <ListItemButton
                 onClick={() => handleItemClick(item.path)}
                 sx={{
-                  borderRadius: 2,
-                  bgcolor: isActive ? 'primary.main' : 'transparent',
-                  color: isActive ? 'white' : 'text.primary',
+                  borderRadius: '12px',
+                  background: isActive 
+                    ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.15) 100%)'
+                    : 'transparent',
+                  color: 'white',
+                  border: isActive ? '1px solid rgba(255, 255, 255, 0.3)' : '1px solid transparent',
+                  backdropFilter: isActive ? 'blur(10px)' : 'none',
+                  boxShadow: isActive ? '0 4px 12px rgba(0, 0, 0, 0.1)' : 'none',
                   '&:hover': {
-                    bgcolor: isActive ? 'primary.dark' : 'action.hover',
+                    background: isActive 
+                      ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.2) 100%)'
+                      : 'rgba(255, 255, 255, 0.1)',
+                    transform: 'translateX(2px)',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)'
                   },
-                  transition: 'all 0.2s ease-in-out',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  '&::before': isActive ? {
+                    content: '""',
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: '3px',
+                    background: 'linear-gradient(180deg, #fff 0%, rgba(255, 255, 255, 0.8) 100%)',
+                    borderRadius: '0 3px 3px 0'
+                  } : {},
+                  py: 1,
+                  px: 1.5,
+                  minHeight: 'auto'
                 }}
               >
                 <ListItemIcon
                   sx={{
-                    color: isActive ? 'white' : 'text.secondary',
-                    minWidth: 40,
+                    color: 'white',
+                    minWidth: 36,
+                    background: isActive 
+                      ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.1) 100%)'
+                      : 'rgba(255, 255, 255, 0.1)',
+                    borderRadius: '8px',
+                    width: 32,
+                    height: 32,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: 1,
+                    boxShadow: isActive ? '0 2px 6px rgba(0, 0, 0, 0.1)' : 'none',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                   }}
                 >
                   {/* Badge especial para Conversas */}
@@ -181,21 +281,26 @@ const Sidebar = ({ onItemClick }) => {
                             '0%': { transform: 'scale(1)' },
                             '50%': { transform: 'scale(1.3)' },
                             '100%': { transform: 'scale(1)' }
-                          }
+                          },
+                          background: unattendedCount > 0 ? '#ff4444' : '#ff9800',
+                          fontSize: '0.7rem',
+                          fontWeight: 'bold'
                         }
                       }}
-                    >
-                      <Icon />
-                    </Badge>
-                  ) : (
-                    <Icon />
-                  )}
+                                          >
+                        <Icon sx={{ fontSize: 16 }} />
+                      </Badge>
+                    ) : (
+                      <Icon sx={{ fontSize: 16 }} />
+                    )}
                 </ListItemIcon>
                 <ListItemText
                   primary={item.title}
                   primaryTypographyProps={{
-                    fontSize: '0.875rem',
-                    fontWeight: isActive ? 600 : 400,
+                    fontSize: '0.8rem',
+                    fontWeight: isActive ? 600 : 500,
+                    color: 'white',
+                    textShadow: isActive ? '0 1px 2px rgba(0, 0, 0, 0.2)' : 'none'
                   }}
                 />
                 {/* Badge estático original */}
@@ -205,9 +310,15 @@ const Sidebar = ({ onItemClick }) => {
                     size="small"
                     sx={{
                       height: 20,
-                      fontSize: '0.75rem',
-                      bgcolor: isActive ? 'rgba(255,255,255,0.2)' : 'secondary.main',
-                      color: isActive ? 'white' : 'white',
+                      fontSize: '0.6rem',
+                      fontWeight: 600,
+                      background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%)',
+                      color: 'white',
+                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                      boxShadow: '0 1px 4px rgba(255, 107, 107, 0.3)',
+                      '& .MuiChip-label': {
+                        padding: '0 6px'
+                      }
                     }}
                   />
                 )}
@@ -218,16 +329,24 @@ const Sidebar = ({ onItemClick }) => {
                     size="small"
                     sx={{
                       height: 20,
-                      fontSize: '0.75rem',
-                      bgcolor: unattendedCount > 0 
-                        ? (isActive ? 'rgba(255,0,0,0.8)' : 'error.main')
-                        : (isActive ? 'rgba(255,255,255,0.2)' : 'warning.main'),
+                      fontSize: '0.6rem',
+                      fontWeight: 700,
+                      background: unattendedCount > 0 
+                        ? 'linear-gradient(135deg, #ff4444 0%, #cc0000 100%)'
+                        : 'linear-gradient(135deg, #ffa726 0%, #ff9800 100%)',
                       color: 'white',
+                      border: '1px solid rgba(255, 255, 255, 0.3)',
+                      boxShadow: unattendedCount > 0 
+                        ? '0 1px 4px rgba(255, 68, 68, 0.4)'
+                        : '0 1px 4px rgba(255, 167, 38, 0.3)',
                       animation: unattendedCount > 0 ? 'pulse 2s infinite' : 'none',
                       '@keyframes pulse': {
                         '0%': { transform: 'scale(1)' },
                         '50%': { transform: 'scale(1.1)' },
                         '100%': { transform: 'scale(1)' }
+                      },
+                      '& .MuiChip-label': {
+                        padding: '0 6px'
                       }
                     }}
                   />
@@ -238,16 +357,49 @@ const Sidebar = ({ onItemClick }) => {
         })}
       </List>
 
-      <Divider />
-
       {/* Footer */}
-      <Box sx={{ p: 2 }}>
-        <Typography variant="caption" color="text.secondary" align="center" display="block">
-          WhatsApp Chatbot System v1.0
-        </Typography>
-        <Typography variant="caption" color="text.secondary" align="center" display="block">
-          Desenvolvido por erickdev.online
-        </Typography>
+      <Box 
+        sx={{ 
+          p: 1.5,
+          background: 'rgba(0, 0, 0, 0.1)',
+          backdropFilter: 'blur(5px)',
+          borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+          borderRadius: '12px 12px 0 0',
+          margin: '12px 8px 0 8px'
+        }}
+      >
+        <Box 
+          sx={{ 
+            textAlign: 'center',
+            background: 'rgba(255, 255, 255, 0.05)',
+            padding: '8px',
+            borderRadius: '8px',
+            border: '1px solid rgba(255, 255, 255, 0.1)'
+          }}
+        >
+          <Typography 
+            variant="caption" 
+            sx={{ 
+              color: 'rgba(255, 255, 255, 0.9)',
+              display: 'block',
+              fontWeight: 600,
+              fontSize: '0.65rem'
+            }}
+          >
+            🚀 ChatBot Pro v2.0
+          </Typography>
+          <Typography 
+            variant="caption" 
+            sx={{ 
+              color: 'rgba(255, 255, 255, 0.7)',
+              display: 'block',
+              fontSize: '0.6rem',
+              mt: 0.3
+            }}
+          >
+            by erickdev.online ✨
+          </Typography>
+        </Box>
       </Box>
     </Box>
   )
