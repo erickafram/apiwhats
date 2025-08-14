@@ -134,10 +134,11 @@ const Sidebar = ({ onItemClick }) => {
         height: '100%', 
         display: 'flex', 
         flexDirection: 'column',
-        background: 'linear-gradient(180deg, rgba(37, 211, 102, 0.95) 0%, rgba(18, 140, 126, 0.95) 100%)',
-        backdropFilter: 'blur(10px)',
-        borderRight: '1px solid rgba(255, 255, 255, 0.1)',
+        background: 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)',
+        backdropFilter: 'blur(20px)',
+        borderRight: '1px solid rgba(148, 163, 184, 0.1)',
         position: 'relative',
+        boxShadow: '2px 0 20px rgba(0, 0, 0, 0.1)',
         '&::before': {
           content: '""',
           position: 'absolute',
@@ -145,7 +146,7 @@ const Sidebar = ({ onItemClick }) => {
           left: 0,
           right: 0,
           bottom: 0,
-          background: 'linear-gradient(45deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%)',
+          background: 'linear-gradient(45deg, rgba(148, 163, 184, 0.03) 0%, rgba(203, 213, 225, 0.02) 100%)',
           borderRadius: 0,
           zIndex: -1
         }
@@ -158,9 +159,9 @@ const Sidebar = ({ onItemClick }) => {
           display: 'flex', 
           alignItems: 'center', 
           gap: 1.5,
-          background: 'rgba(255, 255, 255, 0.1)',
-          backdropFilter: 'blur(5px)',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+          background: 'rgba(148, 163, 184, 0.05)',
+          backdropFilter: 'blur(10px)',
+          borderBottom: '1px solid rgba(148, 163, 184, 0.1)',
           borderRadius: '0 0 12px 12px',
           margin: '0 8px 12px 8px',
           boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)'
@@ -168,16 +169,16 @@ const Sidebar = ({ onItemClick }) => {
       >
         <Box 
           sx={{
-            background: 'linear-gradient(135deg, #fff 0%, rgba(255, 255, 255, 0.9) 100%)',
+            background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
             borderRadius: '8px',
             padding: '6px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+            boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
           }}
         >
-          <WhatsAppIcon sx={{ fontSize: 20, color: '#25D366' }} />
+          <WhatsAppIcon sx={{ fontSize: 20, color: '#ffffff' }} />
         </Box>
         <Box>
           <Typography 
@@ -185,8 +186,8 @@ const Sidebar = ({ onItemClick }) => {
             sx={{ 
               fontWeight: 700, 
               lineHeight: 1,
-              color: 'white',
-              textShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+              color: '#f1f5f9',
+              textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)',
               fontSize: '0.9rem'
             }}
           >
@@ -195,7 +196,7 @@ const Sidebar = ({ onItemClick }) => {
           <Typography 
             variant="caption" 
             sx={{ 
-              color: 'rgba(255, 255, 255, 0.8)',
+              color: '#94a3b8',
               fontSize: '0.65rem',
               fontWeight: 500
             }}
@@ -219,18 +220,19 @@ const Sidebar = ({ onItemClick }) => {
                 sx={{
                   borderRadius: '12px',
                   background: isActive 
-                    ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.15) 100%)'
+                    ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(29, 78, 216, 0.1) 100%)'
                     : 'transparent',
-                  color: 'white',
-                  border: isActive ? '1px solid rgba(255, 255, 255, 0.3)' : '1px solid transparent',
+                  color: isActive ? '#f1f5f9' : '#94a3b8',
+                  border: isActive ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid transparent',
                   backdropFilter: isActive ? 'blur(10px)' : 'none',
-                  boxShadow: isActive ? '0 4px 12px rgba(0, 0, 0, 0.1)' : 'none',
+                  boxShadow: isActive ? '0 4px 12px rgba(59, 130, 246, 0.15)' : 'none',
                   '&:hover': {
                     background: isActive 
-                      ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.2) 100%)'
-                      : 'rgba(255, 255, 255, 0.1)',
+                      ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(29, 78, 216, 0.15) 100%)'
+                      : 'rgba(148, 163, 184, 0.08)',
+                    color: isActive ? '#ffffff' : '#e2e8f0',
                     transform: 'translateX(2px)',
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)'
+                    boxShadow: isActive ? '0 6px 16px rgba(59, 130, 246, 0.2)' : '0 2px 8px rgba(0, 0, 0, 0.1)'
                   },
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                   position: 'relative',
@@ -242,7 +244,7 @@ const Sidebar = ({ onItemClick }) => {
                     top: 0,
                     bottom: 0,
                     width: '3px',
-                    background: 'linear-gradient(180deg, #fff 0%, rgba(255, 255, 255, 0.8) 100%)',
+                    background: 'linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%)',
                     borderRadius: '0 3px 3px 0'
                   } : {},
                   py: 1,
@@ -252,11 +254,11 @@ const Sidebar = ({ onItemClick }) => {
               >
                 <ListItemIcon
                   sx={{
-                    color: 'white',
+                    color: isActive ? '#ffffff' : '#64748b',
                     minWidth: 36,
                     background: isActive 
-                      ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.1) 100%)'
-                      : 'rgba(255, 255, 255, 0.1)',
+                      ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.3) 0%, rgba(29, 78, 216, 0.2) 100%)'
+                      : 'rgba(148, 163, 184, 0.1)',
                     borderRadius: '8px',
                     width: 32,
                     height: 32,
@@ -264,7 +266,7 @@ const Sidebar = ({ onItemClick }) => {
                     alignItems: 'center',
                     justifyContent: 'center',
                     marginRight: 1,
-                    boxShadow: isActive ? '0 2px 6px rgba(0, 0, 0, 0.1)' : 'none',
+                    boxShadow: isActive ? '0 4px 8px rgba(59, 130, 246, 0.2)' : 'none',
                     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                   }}
                 >
@@ -299,7 +301,7 @@ const Sidebar = ({ onItemClick }) => {
                   primaryTypographyProps={{
                     fontSize: '0.8rem',
                     fontWeight: isActive ? 600 : 500,
-                    color: 'white',
+                    color: isActive ? '#f1f5f9' : '#94a3b8',
                     textShadow: isActive ? '0 1px 2px rgba(0, 0, 0, 0.2)' : 'none'
                   }}
                 />
@@ -312,10 +314,10 @@ const Sidebar = ({ onItemClick }) => {
                       height: 20,
                       fontSize: '0.6rem',
                       fontWeight: 600,
-                      background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%)',
+                      background: 'linear-gradient(135deg, #6366f1 0%, #4338ca 100%)',
                       color: 'white',
-                      border: '1px solid rgba(255, 255, 255, 0.2)',
-                      boxShadow: '0 1px 4px rgba(255, 107, 107, 0.3)',
+                      border: '1px solid rgba(99, 102, 241, 0.3)',
+                      boxShadow: '0 2px 6px rgba(99, 102, 241, 0.3)',
                       '& .MuiChip-label': {
                         padding: '0 6px'
                       }
@@ -332,13 +334,15 @@ const Sidebar = ({ onItemClick }) => {
                       fontSize: '0.6rem',
                       fontWeight: 700,
                       background: unattendedCount > 0 
-                        ? 'linear-gradient(135deg, #ff4444 0%, #cc0000 100%)'
-                        : 'linear-gradient(135deg, #ffa726 0%, #ff9800 100%)',
+                        ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
+                        : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
                       color: 'white',
-                      border: '1px solid rgba(255, 255, 255, 0.3)',
+                      border: unattendedCount > 0 
+                        ? '1px solid rgba(239, 68, 68, 0.3)'
+                        : '1px solid rgba(245, 158, 11, 0.3)',
                       boxShadow: unattendedCount > 0 
-                        ? '0 1px 4px rgba(255, 68, 68, 0.4)'
-                        : '0 1px 4px rgba(255, 167, 38, 0.3)',
+                        ? '0 2px 6px rgba(239, 68, 68, 0.4)'
+                        : '0 2px 6px rgba(245, 158, 11, 0.3)',
                       animation: unattendedCount > 0 ? 'pulse 2s infinite' : 'none',
                       '@keyframes pulse': {
                         '0%': { transform: 'scale(1)' },
@@ -361,9 +365,9 @@ const Sidebar = ({ onItemClick }) => {
       <Box 
         sx={{ 
           p: 1.5,
-          background: 'rgba(0, 0, 0, 0.1)',
-          backdropFilter: 'blur(5px)',
-          borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+          background: 'rgba(15, 23, 42, 0.3)',
+          backdropFilter: 'blur(10px)',
+          borderTop: '1px solid rgba(148, 163, 184, 0.1)',
           borderRadius: '12px 12px 0 0',
           margin: '12px 8px 0 8px'
         }}
@@ -371,16 +375,16 @@ const Sidebar = ({ onItemClick }) => {
         <Box 
           sx={{ 
             textAlign: 'center',
-            background: 'rgba(255, 255, 255, 0.05)',
+            background: 'rgba(148, 163, 184, 0.05)',
             padding: '8px',
             borderRadius: '8px',
-            border: '1px solid rgba(255, 255, 255, 0.1)'
+            border: '1px solid rgba(148, 163, 184, 0.1)'
           }}
         >
           <Typography 
             variant="caption" 
             sx={{ 
-              color: 'rgba(255, 255, 255, 0.9)',
+              color: '#e2e8f0',
               display: 'block',
               fontWeight: 600,
               fontSize: '0.65rem'
@@ -391,7 +395,7 @@ const Sidebar = ({ onItemClick }) => {
           <Typography 
             variant="caption" 
             sx={{ 
-              color: 'rgba(255, 255, 255, 0.7)',
+              color: '#94a3b8',
               display: 'block',
               fontSize: '0.6rem',
               mt: 0.3
