@@ -309,10 +309,15 @@ class UltraMsgService {
 
   // Enviar mensagem de texto
   async sendTextMessage(to, body) {
+    // Garantir que quebras de linha sejam preservadas
+    const formattedBody = body.replace(/\n/g, '\n');
+    
+    console.log(`📤 Enviando texto para ${to}:`, JSON.stringify(formattedBody));
+    
     const response = await axios.post(`${this.apiUrl}/${this.instanceId}/messages/chat`, {
       token: this.token,
       to: to,
-      body: body
+      body: formattedBody
     }, {
       headers: this.getHeaders()
     });
